@@ -1,0 +1,11 @@
+{
+  "name": "easy-auth",
+  "version": "0.0.1",
+  "description": "Easy Auth monorepo",
+  "scripts": {},
+  "packageManager": "pnpm@10.6.2",
+  "devDependencies": {
+    "eslint-config-prettier": "^10.1.1",
+    "prettier": "3.5.3"
+  }
+}
