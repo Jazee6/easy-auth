@@ -1,6 +1,7 @@
 {
   "name": "easy-auth",
   "version": "0.0.1",
+  "type": "module",
   "description": "Easy Auth monorepo",
   "scripts": {},
   "packageManager": "pnpm@10.6.2",
