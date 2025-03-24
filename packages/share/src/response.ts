@@ -1,6 +1,7 @@
 export enum Code {
   Success,
-  NeedConfirm,
+  AccountLinked,
+  AccountUnlinked,
 
   UnKnown = 1000,
   TurnstileRequired,
@@ -16,7 +17,8 @@ export enum Code {
 
 const Message = {
   [Code.Success]: "Success",
-  [Code.NeedConfirm]: "Need confirm",
+  [Code.AccountLinked]: "Account linked",
+  [Code.AccountUnlinked]: "Account unlinked",
 
   [Code.UnKnown]: "Unknown error",
   [Code.TurnstileRequired]: "Turnstile token is required",

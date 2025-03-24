@@ -14,7 +14,7 @@ export const signupSchema = z.object({
 
 export const userProfileSchema = z.object({
   avatar: z.string().url().or(z.literal("")),
-  nickname: z.string(),
+  nickname: z.string().min(1),
 });
 
 export const oauth2Schema = z.object({

@@ -1,9 +1,17 @@
 import { auth } from "../lib/middleware";
-import { resetPasswordSchema, suc, userProfileSchema } from "@easy-auth/share";
+import {
+  Code,
+  err,
+  oauthProviderSchema,
+  resetPasswordSchema,
+  suc,
+  success,
+  userProfileSchema,
+} from "@easy-auth/share";
 import { db } from "../db";
 import { hash, newHono } from "../lib/utils";
-import { eq } from "drizzle-orm";
-import { user as userSchema } from "../db/schema";
+import { and, eq } from "drizzle-orm";
+import { account, user as userSchema } from "../db/schema";
 import { zValidator } from "@hono/zod-validator";
 
 export const user = newHono();
@@ -19,6 +27,15 @@ user.get("/profile", async (c) => {
       createdAt: true,
     },
     where: eq(userSchema.id, c.get("payload").sub),
+    with: {
+      accounts: {
+        columns: {
+          id: true,
+          provider: true,
+          name: true,
+        },
+      },
+    },
   });
   return c.json(suc(u));
 });
@@ -46,4 +63,20 @@ user.put("/password", zValidator("json", resetPasswordSchema), async (c) => {
   return c.json(suc());
 });
 
-user.post("/auth/:provider/link", async (c) => {});
+user.get(
+  "/auth/:provider/unlink",
+  zValidator("param", oauthProviderSchema),
+  async (c) => {
+    const { provider } = c.req.valid("param");
+    await db
+      .delete(account)
+      .where(
+        and(
+          eq(account.uid, c.get("payload").sub),
+          eq(account.provider, provider),
+        ),
+      );
+
+    return c.json(success(Code.AccountUnlinked));
+  },
+);

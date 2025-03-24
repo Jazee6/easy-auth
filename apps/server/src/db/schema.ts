@@ -9,7 +9,7 @@ export const user = pgTable("user", {
 	password: varchar(),
 	avatar: varchar(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	nickname: varchar(),
+	nickname: varchar().notNull(),
 	scope: varchar(),
 }, (table) => [
 	unique("user_email_key").on(table.email),

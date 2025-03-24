@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react";
 const OAuth = () => {
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
-  const { provider } = useParams();
+  const { provider, appId } = useParams();
   const { trigger, isMutating } = useSWRMutation("/auth/" + provider, post);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ const OAuth = () => {
 
     const data = {
       code: searchParams.get("code"),
-      appId: searchParams.get("appId"),
+      appId,
     };
 
     const { success, data: valid } = oauth2Schema.safeParse(data);
@@ -35,14 +35,15 @@ const OAuth = () => {
       .then(({ code }) => {
         if (code === Code.Success) {
           toast.success("登陆成功");
-          nav(searchParams.get("redirect") || "/", {
-            replace: true,
-          });
         }
 
-        if (code === Code.NeedConfirm) {
-          toast.success("关联");
+        if (code === Code.AccountLinked) {
+          toast.success("账号已关联");
         }
+
+        nav(searchParams.get("redirect") || "/", {
+          replace: true,
+        });
       })
       .catch((e: Error) => {
         if (e instanceof ResponseError) {
@@ -64,7 +65,7 @@ const OAuth = () => {
           }
         }
       });
-  }, [nav, searchParams, trigger]);
+  }, [appId, nav, searchParams, trigger]);
 
   return (
     <div className="h-screen flex items-center justify-center">

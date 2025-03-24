@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import Footer from "@/components/footer.tsx";
 import {
   Form,
@@ -18,10 +18,12 @@ import { z } from "zod";
 import { loginSchema } from "@easy-auth/share";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { getGithubUrl } from "@/lib/utils.ts";
 
 const Login = () => {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
+  const { appId } = useParams();
 
   const { trigger, isMutating } = useSWRMutation("/login", post);
 
@@ -42,25 +44,6 @@ const Login = () => {
         replace: true,
       });
     }
-  };
-
-  const getGithubUrl = () => {
-    const state = Math.random().toString(36).slice(2);
-
-    sessionStorage.setItem("state", state);
-
-    const redirect_uri = new URL(
-      `/auth/github?appId=${searchParams.get("appId") || "easy-auth"}`,
-      window.location.origin,
-    ).toString();
-
-    const url = new URL("https://github.com/login/oauth/authorize");
-    url.searchParams.append("client_id", import.meta.env.VITE_GITHUB_ID);
-    url.searchParams.append("redirect_uri", redirect_uri);
-    url.searchParams.append("state", state);
-    url.searchParams.append("scope", "user:email");
-
-    return url.href;
   };
 
   return (
@@ -128,7 +111,11 @@ const Login = () => {
                     </span>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
-                    <Link to={getGithubUrl()}>
+                    <Link
+                      to={getGithubUrl({
+                        appId,
+                      })}
+                    >
                       <Button
                         variant="outline"
                         type="button"

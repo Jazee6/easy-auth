@@ -9,12 +9,14 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { ChevronUp, Home } from "lucide-react";
+import { ChevronUp, Home, Link as LinkIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu.tsx";
 import {
@@ -33,11 +35,11 @@ const items = [
     url: "/",
     icon: Home,
   },
-  // {
-  //   title: "Settings",
-  //   url: "#",
-  //   icon: Settings,
-  // },
+  {
+    title: "关联",
+    url: "/link",
+    icon: LinkIcon,
+  },
 ];
 
 export function AppSidebar({ user }: { user?: User }) {
@@ -106,6 +108,12 @@ export function AppSidebar({ user }: { user?: User }) {
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top">
+                {user?.email && (
+                  <>
+                    <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem onClick={onLogout} disabled={isMutating}>
                   <span>登出</span>
                 </DropdownMenuItem>

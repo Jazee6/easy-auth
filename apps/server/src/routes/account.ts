@@ -60,6 +60,7 @@ account.post("/signup", zValidator("json", signupSchema), async (c) => {
     id,
     email: data.email,
     password: hash(data.password),
+    nickname: data.email,
   };
   await db.insert(user).values(newUser);
 
@@ -181,7 +182,24 @@ account.post(
         return c.json(err(Code.AccountAlreadyLinked));
       }
       if (u.id === res.payload.sub) {
-        return c.json(successRes(Code.NeedConfirm));
+        const newAccount: typeof accountSchema.$inferInsert = {
+          id: nanoid(),
+          uid: u.id,
+          name: data.login,
+          provider,
+        };
+        await db.transaction(async (trx) => {
+          await trx.insert(accountSchema).values(newAccount);
+          if (!u.avatar) {
+            await trx
+              .update(user)
+              .set({
+                avatar: data.avatar_url,
+              })
+              .where(eq(user.id, u.id));
+          }
+        });
+        return c.json(successRes(Code.AccountLinked));
       }
       return c.json(err(Code.AccountAlreadyLinked));
     }

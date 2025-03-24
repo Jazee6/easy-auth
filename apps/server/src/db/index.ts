@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "./schema.js";
+import * as relations from "./relations.js";
 import { isProd } from "../lib/utils";
 
 export const db = drizzle({
@@ -7,5 +8,8 @@ export const db = drizzle({
     connectionString: process.env.DATABASE_URL!,
     ssl: isProd,
   },
-  schema,
+  schema: {
+    ...schema,
+    ...relations,
+  },
 });

@@ -51,7 +51,7 @@ const ResetPasswordForm = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline">重设密码</Button>
+        <Button variant="secondary">重设密码</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -111,8 +111,6 @@ const ProfileForm = ({ user }: { user: User }) => {
 
   return (
     <div className="space-y-6">
-      <div>Email: {user.email}</div>
-
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
