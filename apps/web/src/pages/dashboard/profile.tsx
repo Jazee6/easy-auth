@@ -1,4 +1,3 @@
-import useSWR, { mutate } from "swr";
 import { User } from "@/lib/types.ts";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -28,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog.tsx";
 import { useState } from "react";
+import { useUserProfile } from "@/lib/hooks.ts";
 
 const ResetPasswordForm = () => {
   const { trigger, isMutating } = useSWRMutation("/password", put);
@@ -105,7 +105,6 @@ const ProfileForm = ({ user }: { user: User }) => {
     const res = await trigger(values);
     if (res.success) {
       toast.success("更新成功");
-      await mutate("/profile");
     }
   };
 
@@ -154,7 +153,7 @@ const ProfileForm = ({ user }: { user: User }) => {
 };
 
 const Profile = () => {
-  const { data: user } = useSWR<User>("/profile");
+  const { data: user } = useUserProfile();
 
   return user ? (
     <ProfileForm user={user} />

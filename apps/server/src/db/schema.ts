@@ -1,4 +1,4 @@
-import { pgTable, unique, varchar, timestamp, json, foreignKey } from "drizzle-orm/pg-core"
+import { pgTable, unique, varchar, timestamp, foreignKey, json } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 
 
@@ -15,15 +15,6 @@ export const user = pgTable("user", {
 	unique("user_email_key").on(table.email),
 ]);
 
-export const app = pgTable("app", {
-	id: varchar().primaryKey().notNull(),
-	secret: varchar().notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	name: varchar(),
-	publicKey: json("public_key").notNull(),
-	privateKey: json("private_key").notNull(),
-});
-
 export const account = pgTable("account", {
 	id: varchar().primaryKey().notNull(),
 	uid: varchar().notNull(),
@@ -37,3 +28,19 @@ export const account = pgTable("account", {
 			name: "account_uid_fkey"
 		}),
 ]);
+
+export const code = pgTable("code", {
+	id: varchar().primaryKey().notNull(),
+	user: json().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+});
+
+export const app = pgTable("app", {
+	id: varchar().primaryKey().notNull(),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	name: varchar(),
+	publicKey: json("public_key").notNull(),
+	privateKey: json("private_key").notNull(),
+	redirect: varchar().notNull(),
+	secret: varchar().notNull(),
+});

@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import useSWR from "swr";
+import { User } from "@/lib/types.ts";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
 
 export const useCFT = () => {
   const [token, setToken] = useState("");
@@ -32,4 +36,20 @@ export const useCookie = (name: string) => {
   }, [name]);
 
   return value;
+};
+
+export const useUserProfile = (permission?: string) => {
+  const user = useSWR<User>("/profile");
+  const nav = useNavigate();
+
+  useEffect(() => {
+    if (user.data && permission) {
+      if (user.data.scope !== permission) {
+        toast.error("没有权限");
+        nav("/login");
+      }
+    }
+  }, [nav, permission, user.data]);
+
+  return user;
 };

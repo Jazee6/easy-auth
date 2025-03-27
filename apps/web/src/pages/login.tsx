@@ -19,33 +19,39 @@ import { loginSchema } from "@easy-auth/share";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { getGithubUrl } from "@/lib/utils.ts";
+import { LoginResponse } from "@/lib/types.ts";
 
 const Login = () => {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const { appId } = useParams();
 
-  const { trigger, isMutating } = useSWRMutation("/login", post);
+  const { trigger, isMutating } = useSWRMutation("/login", post<LoginResponse>);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
       password: "",
-      // appId: params.appId
+      appId,
+      state: searchParams.get("state") ?? "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof loginSchema>) => {
-    const { success } = await trigger(values);
-    if (success) {
-      toast.success("登录成功");
-      nav(searchParams.get("redirect") || "/", {
-        replace: true,
-      });
+    const { data } = await trigger(values);
+
+    toast.success("登录成功");
+    if (data?.redirect) {
+      location.href = data.redirect;
+      return;
     }
+    nav(searchParams.get("redirect") || "/", {
+      replace: true,
+    });
   };
 
+  // TODO 已登陆状态
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm md:max-w-3xl">
@@ -136,7 +142,10 @@ const Login = () => {
                   </div>
                   <div className="text-center text-sm">
                     还没有账号？{" "}
-                    <Link to="/signup" className="underline underline-offset-4">
+                    <Link
+                      to={"/signup" + (appId !== undefined ? `/${appId}` : "")}
+                      className="underline underline-offset-4"
+                    >
                       立即注册
                     </Link>
                   </div>

@@ -1,9 +1,13 @@
 import { createMiddleware } from "hono/factory";
-import { app_secret, verifyHS256JWT } from "./utils";
+import { app_secret, type Variables, verifyHS256JWT } from "./utils";
 import { getCookie } from "hono/cookie";
 import { Code, err } from "@easy-auth/share";
 
-export const auth = createMiddleware(async (c, next) => {
+interface Vars {
+  Variables: Variables;
+}
+
+export const auth = createMiddleware<Vars>(async (c, next) => {
   const token = getCookie(c, "id_token");
   if (!token) {
     return c.json(err(Code.LoginRequired), 401);
@@ -17,6 +21,6 @@ export const auth = createMiddleware(async (c, next) => {
     }
     return c.json(err(Code.LoginRequired), 401);
   }
-  c.set("payload", res.payload);
+  c.set("payload", res.payload as Variables["payload"]);
   await next();
 });

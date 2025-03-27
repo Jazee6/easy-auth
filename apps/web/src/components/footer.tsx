@@ -1,8 +1,14 @@
 import { version } from "../../package.json";
+import { cn } from "@/lib/utils.ts";
 
-const Footer = () => {
+const Footer = ({ classname }: { classname?: string }) => {
   return (
-    <footer className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
+    <footer
+      className={cn(
+        classname,
+        "text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4",
+      )}
+    >
       {version} | Star on{" "}
       <a href="https://github.com/Jazee6/easy-auth" target="_blank">
         Github

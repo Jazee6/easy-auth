@@ -93,3 +93,23 @@ export const put = async <T = unknown>(
 
   return handleErrors<T>(res);
 };
+
+export const deleteReq = async <T = unknown>(
+  path: string,
+  data: {
+    arg: unknown;
+  },
+  init?: RequestInit,
+) => {
+  const res = await fetch(API_URL + path, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data.arg),
+    credentials: "include",
+    ...init,
+  });
+
+  return handleErrors<T>(res);
+};

@@ -2,9 +2,11 @@ import { zValidator } from "@hono/zod-validator";
 import {
   Code,
   err,
+  jwksSchema,
   loginSchema,
   oauth2Schema,
   oauthProviderSchema,
+  oidcSchema,
   signupSchema,
   suc,
   success as successRes,
@@ -15,17 +17,17 @@ import {
   hash,
   isProd,
   newHono,
+  signES256JWT,
   signHS256JWT,
   validateTurnstile,
   verifyHS256JWT,
 } from "../lib/utils";
 import { db } from "../db";
-import { and, eq } from "drizzle-orm";
-import { user, account as accountSchema } from "../db/schema";
+import { and, eq, gt } from "drizzle-orm";
+import { user, account as accountSchema, app, code } from "../db/schema";
 import { nanoid } from "nanoid";
 import { getCookie, setCookie } from "hono/cookie";
 import type { Context } from "hono";
-import { auth } from "../lib/middleware";
 
 export const account = newHono();
 
@@ -34,6 +36,7 @@ const setIdTokenCookie = async (
   payload: Record<string, unknown>,
 ) => {
   setCookie(c, "id_token", await signHS256JWT(payload, app_secret), {
+    // TODO sub domain
     httpOnly: true,
     secure: isProd,
     maxAge: 60 * 60 * 24, // TODO
@@ -64,24 +67,49 @@ account.post("/signup", zValidator("json", signupSchema), async (c) => {
   };
   await db.insert(user).values(newUser);
 
-  await setIdTokenCookie(c, { sub: id });
+  await setIdTokenCookie(c, { sub: id, scope: null });
   return c.json(suc());
 });
 
 account.post("/login", zValidator("json", loginSchema), async (c) => {
-  const data = c.req.valid("json");
+  const { email, password, appId, state } = c.req.valid("json");
+
+  let a;
+  if (appId) {
+    a = await db.query.app.findFirst({
+      where: eq(app.id, appId),
+    });
+  }
 
   const u = await db.query.user.findFirst({
-    where: eq(user.email, data.email),
+    where: eq(user.email, email),
   });
   if (!u || !u.password) {
     return c.json(err(Code.EmailOrPasswordIncorrect));
   }
-  if (!compareHash(data.password, u.password)) {
+  if (!compareHash(password, u.password)) {
     return c.json(err(Code.EmailOrPasswordIncorrect));
   }
 
-  await setIdTokenCookie(c, { sub: u.id, scope: u.scope });
+  const payload = { sub: u.id, scope: u.scope };
+  await setIdTokenCookie(c, payload);
+  if (a) {
+    const nid = nanoid();
+    const data: typeof code.$inferInsert = {
+      id: nid,
+      user: payload,
+    };
+    await db.insert(code).values(data);
+
+    const url = new URL(a.redirect);
+    url.searchParams.set("state", state ?? "");
+    url.searchParams.set("code", nid);
+    return c.json(
+      suc({
+        redirect: url.href,
+      }),
+    );
+  }
   return c.json(suc());
 });
 
@@ -204,5 +232,49 @@ account.post(
       return c.json(err(Code.AccountAlreadyLinked));
     }
     return c.json(err(Code.UnKnown));
+  },
+);
+
+account.post("/oidc/token", zValidator("json", oidcSchema), async (c) => {
+  const { appId, appSecret, code: cod } = c.req.valid("json");
+  const a = await db.query.app.findFirst({
+    where: and(eq(app.id, appId), eq(app.secret, appSecret)),
+  });
+  if (!a) {
+    return c.json(err(Code.ParamsError));
+  }
+  const cdata = await db.query.code.findFirst({
+    where: and(
+      eq(code.id, cod),
+      gt(code.createdAt, new Date(Date.now() - 60 * 1000 * 2).toISOString()),
+    ),
+  });
+  if (!cdata) {
+    return c.json(err(Code.ParamsError));
+  }
+  return c.json(
+    suc({
+      id_token: await signES256JWT(
+        cdata.user as Record<string, unknown>,
+        a.privateKey as Object,
+      ),
+    }),
+  );
+});
+
+account.get(
+  "/oidc/.well-known/jwks.json",
+  zValidator("query", jwksSchema),
+  async (c) => {
+    const { appId } = c.req.valid("query");
+    const a = await db.query.app.findFirst({
+      where: eq(app.id, appId),
+    });
+    if (!a) {
+      return c.json(err(Code.ParamsError));
+    }
+    return c.json({
+      keys: [a.publicKey],
+    });
   },
 );

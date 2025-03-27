@@ -13,6 +13,7 @@ export enum Code {
   LoginRequired,
   LoginExpired,
   AccountAlreadyLinked,
+  PermissionDenied,
 }
 
 const Message = {
@@ -30,13 +31,14 @@ const Message = {
   [Code.LoginRequired]: "Login is required",
   [Code.LoginExpired]: "Login expired",
   [Code.AccountAlreadyLinked]: "Account already linked to another user",
+  [Code.PermissionDenied]: "Permission denied",
 } as const;
 
 const localeMessage = {
   en: Message,
 };
 
-export interface ResponseBody<T = unknown> {
+export interface ResponseBody<T> {
   success: boolean;
   code: Code;
   message: (typeof Message)[Code];

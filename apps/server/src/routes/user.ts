@@ -1,7 +1,6 @@
 import { auth } from "../lib/middleware";
 import {
   Code,
-  err,
   oauthProviderSchema,
   resetPasswordSchema,
   suc,
@@ -25,6 +24,7 @@ user.get("/profile", async (c) => {
       nickname: true,
       avatar: true,
       createdAt: true,
+      scope: true,
     },
     where: eq(userSchema.id, c.get("payload").sub),
     with: {

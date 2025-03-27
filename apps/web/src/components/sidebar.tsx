@@ -9,7 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { ChevronUp, Home, Link as LinkIcon } from "lucide-react";
+import { ChevronUp, Home, LayoutGrid, Link as LinkIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
 import {
   DropdownMenu,
@@ -28,6 +28,39 @@ import { User } from "@/lib/types.ts";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import useSWRMutation from "swr/mutation";
 import { get } from "@/lib/request.ts";
+
+const adminItems = [
+  {
+    title: "应用",
+    url: "/apps",
+    icon: LayoutGrid,
+  },
+];
+
+const AdminSideBar = () => {
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel>管理</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {adminItems.map((item) => (
+            <SidebarMenuItem key={item.title}>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === item.url}
+              >
+                <Link to={item.url}>
+                  <item.icon />
+                  <span>{item.title}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+};
 
 const items = [
   {
@@ -50,10 +83,8 @@ export function AppSidebar({ user }: { user?: User }) {
   const { avatar, nickname, email } = user ?? {};
 
   const onLogout = async () => {
-    const { success } = await trigger();
-    if (success) {
-      nav("/login");
-    }
+    await trigger();
+    nav("/login");
   };
 
   return (
@@ -80,6 +111,8 @@ export function AppSidebar({ user }: { user?: User }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {user?.scope === "admin" && <AdminSideBar />}
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>

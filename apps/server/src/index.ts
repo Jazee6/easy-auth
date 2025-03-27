@@ -9,6 +9,9 @@ import { logger } from "hono/logger";
 import { trimTrailingSlash } from "hono/trailing-slash";
 import { err, Code } from "@easy-auth/share";
 import { user } from "./routes/user";
+import { apps } from "./routes/apps";
+import { db } from "./db";
+import { startJobs } from "./lib/jobs";
 
 const SITE_URL = process.env.SITE_URL || "https://account.jaze.top";
 
@@ -24,6 +27,7 @@ const app = createHono().basePath("/");
 
 app.route("/", account);
 app.route("/", user);
+app.route("/", apps);
 
 app.all("*", (c) => c.redirect(SITE_URL));
 
@@ -33,6 +37,8 @@ app.onError((e, c) => {
 });
 
 showRoutes(app);
+
+startJobs();
 
 serve(
   {

@@ -1,4 +1,3 @@
-import useSWR from "swr";
 import {
   SidebarInset,
   SidebarProvider,
@@ -6,12 +5,12 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import { AppSidebar } from "@/components/sidebar.tsx";
 import { Separator } from "@/components/ui/separator.tsx";
-import { User } from "@/lib/types.ts";
-import { useCookie } from "@/lib/hooks.ts";
+import { useCookie, useUserProfile } from "@/lib/hooks.ts";
 import { Outlet } from "react-router";
+import Footer from "@/components/footer.tsx";
 
 const Layout = () => {
-  const { data: user } = useSWR<User>("/profile");
+  const { data: user } = useUserProfile();
 
   const sidebar_state = useCookie("sidebar_state");
 
@@ -33,6 +32,8 @@ const Layout = () => {
         <main className="p-5 h-full">
           <Outlet />
         </main>
+
+        <Footer classname="pb-1" />
       </SidebarInset>
     </SidebarProvider>
   );

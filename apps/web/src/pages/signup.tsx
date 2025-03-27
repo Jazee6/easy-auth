@@ -15,7 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import useSWRMutation from "swr/mutation";
 import { post } from "@/lib/request.ts";
 import { useForm } from "react-hook-form";
@@ -29,26 +29,26 @@ const Signup = () => {
   const { trigger, isMutating } = useSWRMutation("/signup", post);
   const [searchParams] = useSearchParams();
   const nav = useNavigate();
+  const { appId } = useParams();
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       email: "",
       password: "",
       cft: "",
-      // appId: params.appId
+      appId,
     },
   });
   const { holder, reset, isLoading } = useCftForm(form);
 
   const onSubmit = async (values: z.infer<typeof signupSchema>) => {
     reset();
-    const { success } = await trigger(values);
-    if (success) {
-      toast.success("注册成功");
-      nav(searchParams.get("redirect") || "/", {
-        replace: true,
-      });
-    }
+    await trigger(values);
+
+    toast.success("注册成功");
+    nav(searchParams.get("redirect") || "/", {
+      replace: true,
+    });
   };
 
   return (

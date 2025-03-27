@@ -78,7 +78,21 @@ export const verifyHS256JWT = (jwt: string, secret: string) => {
   return jose.jwtVerify(jwt, encoder.encode(secret));
 };
 
-type Variables = {
+export const signES256JWT = async (
+  payload: Record<string, unknown>,
+  jwk: Object,
+) => {
+  return (
+    new jose.SignJWT(payload)
+      .setProtectedHeader({ alg: "ES256" })
+      // .setJti(nanoid())
+      .setExpirationTime("1d") // TODO
+      // .setIssuer("")
+      .sign(await jose.importJWK(jwk, "ES256"))
+  );
+};
+
+export type Variables = {
   payload: {
     sub: string;
     scope: string | null;

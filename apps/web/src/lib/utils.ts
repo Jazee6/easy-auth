@@ -20,13 +20,13 @@ export const getGithubUrl = ({
     `/auth/github/${appId || "easy-auth"}`,
     window.location.origin,
   );
-  redirect_uri.searchParams.append("redirect", redirect || "/");
+  redirect_uri.searchParams.set("redirect", redirect || "/");
 
   const url = new URL("https://github.com/login/oauth/authorize");
-  url.searchParams.append("client_id", import.meta.env.VITE_GITHUB_ID);
-  url.searchParams.append("redirect_uri", redirect_uri.toString());
-  url.searchParams.append("state", state);
-  url.searchParams.append("scope", "user:email");
+  url.searchParams.set("client_id", import.meta.env.VITE_GITHUB_ID);
+  url.searchParams.set("redirect_uri", redirect_uri.toString());
+  url.searchParams.set("state", state);
+  url.searchParams.set("scope", "user:email");
 
   return url.href;
 };
