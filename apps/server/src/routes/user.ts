@@ -1,23 +1,47 @@
-import { auth } from "../lib/middleware";
 import {
-  Code,
+  getUserInfoSchema,
   oauthProviderSchema,
   resetPasswordSchema,
-  suc,
-  success,
   userProfileSchema,
 } from "@easy-auth/share";
-import { db } from "../db";
-import { hash, newHono } from "../lib/utils";
-import { and, eq } from "drizzle-orm";
-import { account, user as userSchema } from "../db/schema";
 import { zValidator } from "@hono/zod-validator";
+import { and, eq } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
+import type { JSONWebKeySet } from "jose";
+import { db } from "../db";
+import { account, app, user as userSchema } from "../db/schema";
+import { auth } from "../lib/middleware";
+import { hash, newHono, verifyES256JWT } from "../lib/utils";
 
 export const user = newHono();
 
-user.use(auth);
+user.get("/info", zValidator("query", getUserInfoSchema), async (c) => {
+  const { client_id, id_token } = c.req.valid("query");
+  const a = await db.query.app.findFirst({
+    where: eq(app.id, client_id),
+  });
+  if (!a) {
+    throw new HTTPException(403);
+  }
+  const { payload } = await verifyES256JWT(id_token, {
+    keys: [a.publicKey],
+  } as JSONWebKeySet);
+  const u = await db.query.user.findFirst({
+    columns: {
+      email: true,
+      nickname: true,
+      avatar: true,
+      createdAt: true,
+    },
+    where: eq(userSchema.id, payload.sub!),
+  });
+  if (!u) {
+    throw new HTTPException(404);
+  }
+  return c.json(u);
+});
 
-user.get("/profile", async (c) => {
+user.get("/profile", auth, async (c) => {
   const u = await db.query.user.findFirst({
     columns: {
       email: true,
@@ -37,34 +61,45 @@ user.get("/profile", async (c) => {
       },
     },
   });
-  return c.json(suc(u));
+  return c.json(u);
 });
 
-user.put("/profile", zValidator("json", userProfileSchema), async (c) => {
-  const { nickname, avatar } = c.req.valid("json");
-  await db
-    .update(userSchema)
-    .set({
-      nickname,
-      avatar,
-    })
-    .where(eq(userSchema.id, c.get("payload").sub));
-  return c.json(suc());
-});
+user.patch(
+  "/profile",
+  auth,
+  zValidator("json", userProfileSchema),
+  async (c) => {
+    const { nickname, avatar } = c.req.valid("json");
+    await db
+      .update(userSchema)
+      .set({
+        nickname,
+        avatar,
+      })
+      .where(eq(userSchema.id, c.get("payload").sub));
+    return c.body(null, 204);
+  },
+);
 
-user.put("/password", zValidator("json", resetPasswordSchema), async (c) => {
-  const { password } = c.req.valid("json");
-  await db
-    .update(userSchema)
-    .set({
-      password: hash(password),
-    })
-    .where(eq(userSchema.id, c.get("payload").sub));
-  return c.json(suc());
-});
+user.put(
+  "/password",
+  auth,
+  zValidator("json", resetPasswordSchema),
+  async (c) => {
+    const { password } = c.req.valid("json");
+    await db
+      .update(userSchema)
+      .set({
+        password: await hash(password),
+      })
+      .where(eq(userSchema.id, c.get("payload").sub));
+    return c.body(null, 204);
+  },
+);
 
-user.get(
+user.put(
   "/auth/:provider/unlink",
+  auth,
   zValidator("param", oauthProviderSchema),
   async (c) => {
     const { provider } = c.req.valid("param");
@@ -77,6 +112,6 @@ user.get(
         ),
       );
 
-    return c.json(success(Code.AccountUnlinked));
+    return c.body(null, 204);
   },
 );

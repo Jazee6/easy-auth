@@ -1,37 +1,37 @@
-import { lazy, StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import "./index.css";
-import { createBrowserRouter, RouterProvider } from "react-router";
-import DashLayout from "./pages/dashboard/layout.tsx";
 import { Toaster } from "@/components/ui/sonner.tsx";
-import Login from "@/pages/login.tsx";
-import Signup from "@/pages/signup.tsx";
-import Layout from "@/pages/layout.tsx";
-import Profile from "@/pages/dashboard/profile.tsx";
 import OAuth from "@/pages/auth/oauth.tsx";
 import Link from "@/pages/dashboard/link.tsx";
+import Profile from "@/pages/dashboard/profile.tsx";
+import Layout from "@/pages/layout.tsx";
+import Login from "@/pages/login.tsx";
+import Signup from "@/pages/signup.tsx";
+import { lazy, StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { createBrowserRouter, RouterProvider } from "react-router";
+import "./index.css";
+import DashLayout from "./pages/dashboard/layout.tsx";
 
 const router = createBrowserRouter([
   {
     Component: Layout,
     children: [
       {
-        path: "login/:appId?",
+        path: "login",
         Component: Login,
       },
       {
-        path: "auth/:provider/:appId",
+        path: "auth/:provider",
         Component: OAuth,
       },
       {
-        path: "signup/:appId?",
+        path: "signup",
         Component: Signup,
       },
       {
         Component: DashLayout,
         children: [
           {
-            index: true,
+            path: "/",
             Component: Profile,
           },
           {

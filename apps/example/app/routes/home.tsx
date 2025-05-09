@@ -1,9 +1,9 @@
-import type { Route } from "./+types/home";
 import { Button } from "@/components/ui/button";
-import { EasyAuthWeb } from "@easy-auth/sdk";
-import { id_tk } from "@/routes/auth";
 import { easyAuthClient } from "@/lib/utils";
-import { Form } from "react-router";
+import { id_tk } from "@/routes/auth";
+import { EasyAuthWeb } from "@easy-auth/sdk";
+import { Form, Link } from "react-router";
+import type { Route } from "./+types/home";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -13,8 +13,9 @@ export function meta({}: Route.MetaArgs) {
 }
 
 const easyAuth = new EasyAuthWeb({
-  appId: "YepnfmohEW2hrYP3x5LH5",
+  appId: "c576ebdc1ccc4560b29639d34e1dafbf",
   host: "http://localhost:5173",
+  redirect_uri: "http://i.localhost:5174/auth",
 });
 
 export const loader = async ({ request }: Route.LoaderArgs) => {
@@ -49,12 +50,17 @@ export default function Home({ loaderData }: Route.ComponentProps) {
         <>
           Login Success! Your ID:
           <div className="font-mono mt-2">{loaderData.id}</div>
-          <Form method="POST" className="mt-2">
-            <Button type="submit">Logout</Button>
-          </Form>
+          <div className="space-x-2 flex mt-4">
+            <Form method="POST">
+              <Button type="submit">Logout</Button>
+            </Form>
+            <Link to="/info">
+              <Button variant="secondary">Info</Button>
+            </Link>
+          </div>
         </>
       ) : (
-        <Button onClick={easyAuth.openLoginWindow}>Login</Button>
+        <Button onClick={() => easyAuth.openLoginWindow()}>Login</Button>
       )}
     </main>
   );

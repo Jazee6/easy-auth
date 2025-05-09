@@ -1,4 +1,17 @@
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar.tsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu.tsx";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -9,25 +22,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { get } from "@/lib/request.ts";
+import { User } from "@/lib/types.ts";
 import { ChevronUp, Home, LayoutGrid, Link as LinkIcon } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu.tsx";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar.tsx";
-import { User } from "@/lib/types.ts";
-import { Skeleton } from "@/components/ui/skeleton.tsx";
 import useSWRMutation from "swr/mutation";
-import { get } from "@/lib/request.ts";
 
 const adminItems = [
   {

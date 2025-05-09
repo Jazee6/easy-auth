@@ -1,155 +1,146 @@
-import { zValidator } from "@hono/zod-validator";
 import {
   Code,
   err,
   jwksSchema,
+  loginOkSchema,
   loginSchema,
   oauth2Schema,
   oauthProviderSchema,
   oidcSchema,
   signupSchema,
-  suc,
-  success as successRes,
 } from "@easy-auth/share";
+import { zValidator } from "@hono/zod-validator";
+import { and, eq, gt } from "drizzle-orm";
+import { getCookie, setCookie } from "hono/cookie";
+import { HTTPException } from "hono/http-exception";
+import { db } from "../db";
+import {
+  account as accountSchema,
+  app,
+  code,
+  user,
+  user as userSchema,
+} from "../db/schema";
+import { auth, authWithoutErr } from "../lib/middleware";
 import {
   app_secret,
   compareHash,
+  handleCode,
+  handleGithub,
   hash,
-  isProd,
   newHono,
+  setIdTokenCookie,
   signES256JWT,
-  signHS256JWT,
   validateTurnstile,
   verifyHS256JWT,
 } from "../lib/utils";
-import { db } from "../db";
-import { and, eq, gt } from "drizzle-orm";
-import { user, account as accountSchema, app, code } from "../db/schema";
-import { nanoid } from "nanoid";
-import { getCookie, setCookie } from "hono/cookie";
-import type { Context } from "hono";
 
 export const account = newHono();
 
-const setIdTokenCookie = async (
-  c: Context,
-  payload: Record<string, unknown>,
-) => {
-  setCookie(c, "id_token", await signHS256JWT(payload, app_secret), {
-    // TODO sub domain
-    httpOnly: true,
-    secure: isProd,
-    maxAge: 60 * 60 * 24, // TODO
-    prefix: isProd ? "secure" : undefined,
-  });
-};
-
 account.post("/signup", zValidator("json", signupSchema), async (c) => {
-  const data = c.req.valid("json");
-  const res = await validateTurnstile(data.cft);
-  if (res !== true) {
-    return c.json(err(res));
-  }
-
-  const u = await db.query.user.findFirst({
-    where: eq(user.email, data.email),
-  });
-  if (u) {
-    return c.json(err(Code.UserExists));
-  }
-
-  const id = nanoid();
-  const newUser: typeof user.$inferInsert = {
-    id,
-    email: data.email,
-    password: hash(data.password),
-    nickname: data.email,
-  };
-  await db.insert(user).values(newUser);
-
-  await setIdTokenCookie(c, { sub: id, scope: null });
-  return c.json(suc());
-});
-
-account.post("/login", zValidator("json", loginSchema), async (c) => {
-  const { email, password, appId, state } = c.req.valid("json");
-
-  let a;
-  if (appId) {
-    a = await db.query.app.findFirst({
-      where: eq(app.id, appId),
-    });
+  const { email, password, client_id, state, cft, redirect_uri } =
+    c.req.valid("json");
+  const res = await validateTurnstile(cft);
+  if (!res) {
+    throw new HTTPException(403, { message: err(Code.TurnstileFailed) });
   }
 
   const u = await db.query.user.findFirst({
     where: eq(user.email, email),
   });
-  if (!u || !u.password) {
-    return c.json(err(Code.EmailOrPasswordIncorrect));
+  if (u) {
+    throw new HTTPException(400, { message: err(Code.UserExists) });
   }
-  if (!compareHash(password, u.password)) {
+
+  const newUser: typeof user.$inferInsert = {
+    email,
+    password: await hash(password),
+    nickname: email,
+  };
+  const d = await db.insert(user).values(newUser).returning();
+
+  const payload = { sub: d[0].id, scope: null };
+  await setIdTokenCookie(c, payload);
+
+  if (client_id) {
+    const redirect = await handleCode(client_id, payload, state, redirect_uri);
+    return c.json(
+      {
+        redirect,
+      },
+      201,
+    );
+  }
+
+  return c.body(null, 201);
+});
+
+account.post("/login", zValidator("json", loginSchema), async (c) => {
+  const { email, password, client_id, state, redirect_uri } =
+    c.req.valid("json");
+
+  const u = await db.query.user.findFirst({
+    where: eq(user.email, email),
+  });
+  if (!u || !u.password || !(await compareHash(password, u.password))) {
     return c.json(err(Code.EmailOrPasswordIncorrect));
   }
 
   const payload = { sub: u.id, scope: u.scope };
   await setIdTokenCookie(c, payload);
-  if (a) {
-    const nid = nanoid();
-    const data: typeof code.$inferInsert = {
-      id: nid,
-      user: payload,
-    };
-    await db.insert(code).values(data);
 
-    const url = new URL(a.redirect);
-    url.searchParams.set("state", state ?? "");
-    url.searchParams.set("code", nid);
-    return c.json(
-      suc({
-        redirect: url.href,
-      }),
-    );
+  if (client_id) {
+    const redirect = await handleCode(client_id, payload, state, redirect_uri);
+    return c.json({
+      redirect,
+    });
   }
-  return c.json(suc());
+
+  return c.body(null);
 });
+
+account.get("/login/check", authWithoutErr, async (c) => {
+  const u = await db.query.user.findFirst({
+    columns: {
+      nickname: true,
+      avatar: true,
+    },
+    where: eq(userSchema.id, c.get("payload").sub),
+  });
+  return c.json(u);
+});
+
+account.post(
+  "/login/ok",
+  auth,
+  zValidator("json", loginOkSchema),
+  async (c) => {
+    const { client_id, state, redirect_uri } = c.req.valid("json");
+    const a = await db.query.app.findFirst({
+      where: eq(app.id, client_id),
+    });
+
+    if (a) {
+      const redirect = await handleCode(
+        client_id,
+        c.get("payload"),
+        state,
+        redirect_uri,
+      );
+      return c.json({
+        redirect,
+      });
+    }
+    return c.body(null);
+  },
+);
 
 account.get("/logout", async (c) => {
   setCookie(c, "id_token", "", {
     maxAge: -1,
   });
-  return c.json(suc());
+  return c.body(null, 200);
 });
-
-const handleGithub = async (code: string) => {
-  const res = await fetch("https://github.com/login/oauth/access_token", {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-    },
-    body: new URLSearchParams({
-      client_id: process.env.GITHUB_ID ?? "",
-      client_secret: process.env.GITHUB_SECRET ?? "",
-      code,
-      redirect_uri: process.env.SITE_URL + "/auth/github",
-    }),
-  });
-  const data = await res.json();
-  if (data.error) {
-    return {
-      success: false,
-      data,
-    };
-  }
-  const profile = await fetch("https://api.github.com/user", {
-    headers: {
-      Authorization: `Bearer ${data.access_token}`,
-    },
-  });
-  return {
-    success: true,
-    data: await profile.json(),
-  };
-};
 
 account.post(
   "/auth/:provider",
@@ -157,16 +148,15 @@ account.post(
   zValidator("json", oauth2Schema),
   async (c) => {
     const { provider } = c.req.valid("param");
-    const { code, appId } = c.req.valid("json");
-    const { success, data } = await handleGithub(code);
-    if (!success) {
-      return c.json(err(Code.ParamsError));
-    }
+    const { code, client_id, state, redirect_uri } = c.req.valid("json");
+    const data = await handleGithub(code);
+
     const u = await db.query.user.findFirst({
       where: eq(user.email, data.email),
     });
+    // Register
     if (!u) {
-      const id = nanoid();
+      const id: string = crypto.randomUUID();
       const newUser: typeof user.$inferInsert = {
         id,
         email: data.email,
@@ -174,19 +164,32 @@ account.post(
         avatar: data.avatar_url,
       };
       const newAccount: typeof accountSchema.$inferInsert = {
-        id: nanoid(),
         uid: id,
         name: data.login,
         provider,
+        ouid: data.node_id,
       };
       await db.transaction(async (trx) => {
         await trx.insert(user).values(newUser);
         await trx.insert(accountSchema).values(newAccount);
       });
-      await setIdTokenCookie(c, { sub: id });
-      return c.json(suc());
+      const payload = { sub: id, scope: null };
+
+      await setIdTokenCookie(c, payload);
+      if (client_id) {
+        const redirect = await handleCode(
+          client_id,
+          payload,
+          state,
+          redirect_uri,
+        );
+        return c.json({ redirect }, 201);
+      }
+
+      return c.body(null, 201);
     }
 
+    // Login
     const a = await db.query.account.findFirst({
       where: and(
         eq(accountSchema.uid, u.id),
@@ -194,27 +197,36 @@ account.post(
       ),
     });
     if (a) {
-      await setIdTokenCookie(c, { sub: u.id });
-      return c.json(suc());
+      const payload = { sub: u.id, scope: u.scope };
+      await setIdTokenCookie(c, payload);
+      if (client_id) {
+        const redirect = await handleCode(
+          client_id,
+          payload,
+          state,
+          redirect_uri,
+        );
+        return c.json({ redirect }, 201);
+      }
+
+      return c.body(null, 200);
     }
 
+    // link
     if (!a) {
       const token = getCookie(c, "id_token");
       if (!token) {
-        return c.json(err(Code.AccountAlreadyLinked));
+        throw new HTTPException(403, {
+          message: err(Code.AccountAlreadyLinked),
+        });
       }
-      let res;
-      try {
-        res = await verifyHS256JWT(token, app_secret);
-      } catch (e: any) {
-        return c.json(err(Code.AccountAlreadyLinked));
-      }
-      if (u.id === res.payload.sub) {
+      const { payload } = await verifyHS256JWT(token, app_secret);
+      if (u.id === payload.sub) {
         const newAccount: typeof accountSchema.$inferInsert = {
-          id: nanoid(),
           uid: u.id,
           name: data.login,
           provider,
+          ouid: data.node_id,
         };
         await db.transaction(async (trx) => {
           await trx.insert(accountSchema).values(newAccount);
@@ -227,51 +239,63 @@ account.post(
               .where(eq(user.id, u.id));
           }
         });
-        return c.json(successRes(Code.AccountLinked));
+
+        if (client_id) {
+          const redirect = await handleCode(
+            client_id,
+            payload,
+            state,
+            redirect_uri,
+          );
+          return c.json({ redirect }, 201);
+        }
+        return c.body(null, 200);
       }
-      return c.json(err(Code.AccountAlreadyLinked));
+      throw new HTTPException(403, {
+        message: err(Code.AccountAlreadyLinked),
+      });
     }
-    return c.json(err(Code.UnKnown));
   },
 );
 
-account.post("/oidc/token", zValidator("json", oidcSchema), async (c) => {
-  const { appId, appSecret, code: cod } = c.req.valid("json");
+account.get("/oidc/token", zValidator("query", oidcSchema), async (c) => {
+  const { client_id, appSecret, code: cod } = c.req.valid("query");
   const a = await db.query.app.findFirst({
-    where: and(eq(app.id, appId), eq(app.secret, appSecret)),
+    where: and(eq(app.id, client_id), eq(app.secret, appSecret)),
   });
   if (!a) {
-    return c.json(err(Code.ParamsError));
+    throw new HTTPException(400);
   }
-  const cdata = await db.query.code.findFirst({
-    where: and(
-      eq(code.id, cod),
-      gt(code.createdAt, new Date(Date.now() - 60 * 1000 * 2).toISOString()),
+  const cdata = await db
+    .delete(code)
+    .where(
+      and(
+        eq(code.id, cod),
+        gt(code.createdAt, new Date(Date.now() - 60 * 1000 * 2).toISOString()),
+      ),
+    )
+    .returning();
+  if (!cdata.length) {
+    throw new HTTPException(400);
+  }
+  return c.json({
+    id_token: await signES256JWT(
+      cdata[0].user as Record<string, unknown>,
+      a.privateKey as Object,
     ),
   });
-  if (!cdata) {
-    return c.json(err(Code.ParamsError));
-  }
-  return c.json(
-    suc({
-      id_token: await signES256JWT(
-        cdata.user as Record<string, unknown>,
-        a.privateKey as Object,
-      ),
-    }),
-  );
 });
 
 account.get(
   "/oidc/.well-known/jwks.json",
   zValidator("query", jwksSchema),
   async (c) => {
-    const { appId } = c.req.valid("query");
+    const { client_id } = c.req.valid("query");
     const a = await db.query.app.findFirst({
-      where: eq(app.id, appId),
+      where: eq(app.id, client_id),
     });
     if (!a) {
-      return c.json(err(Code.ParamsError));
+      throw new HTTPException(400);
     }
     return c.json({
       keys: [a.publicKey],

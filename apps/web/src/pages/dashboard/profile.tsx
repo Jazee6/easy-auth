@@ -1,22 +1,4 @@
-import { User } from "@/lib/types.ts";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { resetPasswordSchema, userProfileSchema } from "@easy-auth/share";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import useSWRMutation from "swr/mutation";
-import { put } from "@/lib/request.ts";
-import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton.tsx";
 import {
   Dialog,
   DialogContent,
@@ -26,8 +8,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog.tsx";
-import { useState } from "react";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form.tsx";
+import { Input } from "@/components/ui/input.tsx";
+import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useUserProfile } from "@/lib/hooks.ts";
+import { patch, put } from "@/lib/request.ts";
+import { User } from "@/lib/types.ts";
+import { resetPasswordSchema, userProfileSchema } from "@easy-auth/share";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import useSWRMutation from "swr/mutation";
+import { z } from "zod";
 
 const ResetPasswordForm = () => {
   const { trigger, isMutating } = useSWRMutation("/password", put);
@@ -41,11 +41,9 @@ const ResetPasswordForm = () => {
   });
 
   const onSubmit = async (values: z.infer<typeof resetPasswordSchema>) => {
-    const res = await trigger(values);
-    if (res.success) {
-      toast.success("更新成功");
-      setOpen(false);
-    }
+    await trigger(values);
+    toast.success("更新成功");
+    setOpen(false);
   };
 
   return (
@@ -88,7 +86,7 @@ const ResetPasswordForm = () => {
 };
 
 const ProfileForm = ({ user }: { user: User }) => {
-  const { trigger, isMutating } = useSWRMutation("/profile", put);
+  const { trigger, isMutating } = useSWRMutation("/profile", patch);
 
   const form = useForm<z.infer<typeof userProfileSchema>>({
     resolver: zodResolver(userProfileSchema),
@@ -102,10 +100,8 @@ const ProfileForm = ({ user }: { user: User }) => {
     if (Object.values(values).every((item) => !item)) {
       return;
     }
-    const res = await trigger(values);
-    if (res.success) {
-      toast.success("更新成功");
-    }
+    await trigger(values);
+    toast.success("更新成功");
   };
 
   return (

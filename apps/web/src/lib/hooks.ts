@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import useSWR from "swr";
 import { User } from "@/lib/types.ts";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
+import useSWR from "swr";
 
 export const useCFT = () => {
   const [token, setToken] = useState("");
@@ -24,7 +24,7 @@ export const useCFT = () => {
 };
 
 export const useCookie = (name: string) => {
-  const [value, setValue] = useState<string | null>(null);
+  const [value, setValue] = useState("true");
 
   useEffect(() => {
     const cookie = document.cookie

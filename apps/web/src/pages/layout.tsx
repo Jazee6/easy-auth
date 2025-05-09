@@ -1,6 +1,6 @@
+import { get, ResponseError } from "@/lib/request.ts";
 import { Outlet, useNavigate } from "react-router";
 import { toast } from "sonner";
-import { getData, ResponseError } from "@/lib/request.ts";
 import { SWRConfig } from "swr";
 
 const Layout = () => {
@@ -8,15 +8,16 @@ const Layout = () => {
 
   const value = {
     onError: (err: Error) => {
-      toast.error(err.message);
-
       if (err instanceof ResponseError) {
         if (err.status === 401) {
+          toast.error(err.message);
           nav("/login");
+          return;
         }
       }
+      toast.error(err.message);
     },
-    fetcher: getData,
+    fetcher: get,
   };
 
   return (

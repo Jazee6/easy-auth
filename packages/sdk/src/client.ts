@@ -1,10 +1,18 @@
 import * as jose from "jose";
 
+interface User {
+  email: string;
+  nickname: string;
+  avatar: string;
+  createdAt: string;
+}
+
 export class EasyAuthClient {
   private readonly appId: string;
   private readonly appSecret: string;
   private readonly host: string;
   private readonly JWKS;
+  private userMap: Map<string, User & { lastGet: Date }> = new Map();
 
   constructor({
     appId,
@@ -19,32 +27,24 @@ export class EasyAuthClient {
     this.appSecret = appSecret;
     this.host = host;
     this.JWKS = jose.createRemoteJWKSet(
-      new URL("/oidc/.well-known/jwks.json?appId=" + this.appId, this.host),
+      new URL("/oidc/.well-known/jwks.json?client_id=" + this.appId, this.host),
     );
   }
 
   onLoginRedirect = async (code: string) => {
-    if (code.length !== 21) {
-      throw new Error("Invalid code");
+    const url = new URL("/oidc/token", this.host);
+    url.searchParams.append("code", code);
+    url.searchParams.append("client_id", this.appId);
+    url.searchParams.append("appSecret", this.appSecret);
+    const res = await fetch(url);
+    if (res.ok) {
+      const data: {
+        id_token: string;
+      } = await res.json();
+      return data;
     }
 
-    const url = new URL("/oidc/token", this.host);
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        code,
-        appId: this.appId,
-        appSecret: this.appSecret,
-      }),
-    });
-    const { success, data, message } = await res.json();
-    if (success) {
-      return data as { id_token: string };
-    }
-    throw new Error(message);
+    throw new Error(res.statusText);
   };
 
   verifyES256JWT = async (jwt: string) => {
@@ -70,5 +70,25 @@ export class EasyAuthClient {
         throw error;
       });
     return payload;
+  };
+
+  getUserInfo = async (id_token: string) => {
+    if (this.userMap.has(id_token)) {
+      const user = this.userMap.get(id_token)!;
+      if (user.lastGet!.getTime() + 1000 * 60 > Date.now()) {
+        return { ...user, lastGet: undefined };
+      }
+    }
+
+    const url = new URL("/info", this.host);
+    url.searchParams.append("client_id", this.appId);
+    url.searchParams.append("id_token", id_token);
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(res.statusText);
+    }
+    const data: User = await res.json();
+    this.userMap.set(id_token, { ...data, lastGet: new Date() });
+    return data;
   };
 }

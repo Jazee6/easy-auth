@@ -13,6 +13,11 @@ export interface User {
   }[];
 }
 
-export interface LoginResponse {
+export type LoginResponse = {
   redirect: string;
+} | null;
+
+export interface AppInfo {
+  name: string;
+  createdAt: string;
 }

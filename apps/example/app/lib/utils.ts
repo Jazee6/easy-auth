@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const easyAuthClient = new EasyAuthClient({
-  appId: "YepnfmohEW2hrYP3x5LH5",
-  appSecret: "ZdVfZ3KbhC618GLhA8Q3X19ZgCb7ZsVj",
+  appId: "c576ebdc1ccc4560b29639d34e1dafbf",
+  appSecret: "7e4a69ee6f9a4fa6b8f3f4ddd8fe5389",
   host: "http://localhost:3000",
 });

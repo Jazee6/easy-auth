@@ -1,20 +1,21 @@
-import { User } from "@/lib/types.ts";
+import { Button } from "@/components/ui/button.tsx";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button.tsx";
-import { get } from "@/lib/request.ts";
-import { toast } from "sonner";
-import { getGithubUrl } from "@/lib/utils.ts";
 import { useUserProfile } from "@/lib/hooks.ts";
+import { put } from "@/lib/request.ts";
+import { User } from "@/lib/types.ts";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
 
 const Link = () => {
   const { data: user, mutate } = useUserProfile();
   const [loading, setLoading] = useState(false);
+  const nav = useNavigate();
 
   const accounts = useMemo(() => {
     const obj: {
@@ -29,7 +30,7 @@ const Link = () => {
   const handleLink = async (provider: string) => {
     if (accounts[provider]) {
       setLoading(true);
-      toast.promise(get(`/auth/${provider}/unlink`), {
+      toast.promise(put(`/auth/${provider}/unlink`, { arg: null }), {
         loading: "正在取消关联",
         success: () => {
           mutate();
@@ -43,13 +44,14 @@ const Link = () => {
       return;
     }
 
-    switch (provider) {
-      case "github":
-        window.location.href = getGithubUrl({
-          redirect: "/link",
-        });
-        break;
-    }
+    nav("/login?other=1");
+    // switch (provider) {
+    //   case "github":
+    //     location.href = getGithubUrl({
+    //       redirect: "/link",
+    //     });
+    //     break;
+    // }
   };
 
   return (

@@ -1,8 +1,10 @@
+import { useCftForm } from "@/components/cft.tsx";
 import Footer from "@/components/footer";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card.tsx";
@@ -15,58 +17,76 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
-import useSWRMutation from "swr/mutation";
 import { post } from "@/lib/request.ts";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useCftForm } from "@/components/cft.tsx";
-import { toast } from "sonner";
-import { z } from "zod";
+import { AppInfo, LoginResponse } from "@/lib/types.ts";
 import { signupSchema } from "@easy-auth/share";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { GalleryVerticalEnd } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { toast } from "sonner";
+import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
+import { z } from "zod";
 
 const Signup = () => {
-  const { trigger, isMutating } = useSWRMutation("/signup", post);
-  const [searchParams] = useSearchParams();
   const nav = useNavigate();
-  const { appId } = useParams();
+  const [searchParams] = useSearchParams();
+  const client_id = searchParams.get("client_id") ?? undefined;
+
+  const { data: app } = useSWR<AppInfo>(
+    client_id ? `/app/info/${client_id}` : undefined,
+  );
+  const { trigger, isMutating } = useSWRMutation(
+    "/signup",
+    post<LoginResponse>,
+  );
+
   const form = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       email: "",
       password: "",
       cft: "",
-      appId,
+      client_id,
+      state: searchParams.get("state") ?? undefined,
+      redirect_uri: searchParams.get("redirect_uri") ?? undefined,
     },
   });
   const { holder, reset, isLoading } = useCftForm(form);
 
   const onSubmit = async (values: z.infer<typeof signupSchema>) => {
     reset();
-    await trigger(values);
+    const data = await trigger(values);
+    if (data?.redirect) {
+      location.href = data.redirect;
+      return;
+    }
 
+    nav(searchParams.get("redirect") ?? "/");
     toast.success("注册成功");
-    nav(searchParams.get("redirect") || "/", {
-      replace: true,
-    });
   };
 
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
-        {/*<a href="#" className="flex items-center gap-2 self-center font-medium">*/}
-        {/*  <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">*/}
-        {/*    <GalleryVerticalEnd className="size-4" />*/}
-        {/*  </div>*/}
-        {/*  Acme Inc.*/}
-        {/*</a>*/}
+        <a
+          href="https://github.com/Jazee6/easy-auth"
+          target="_blank"
+          className="flex items-center gap-2 self-center font-medium"
+        >
+          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+            <GalleryVerticalEnd className="size-4" />
+          </div>
+          Easy Auth
+        </a>
         <div className={"flex flex-col gap-6"}>
           <Card>
             <CardHeader className="text-center">
               <CardTitle className="text-xl">注册</CardTitle>
-              {/*<CardDescription>*/}
-              {/*  Login with your Apple or Google account*/}
-              {/*</CardDescription>*/}
+              <CardDescription>
+                {app && "注册成功后，您将会跳转到" + app.name}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -121,7 +141,10 @@ const Signup = () => {
 
                 <div className="text-center text-sm mt-4">
                   已有账号？{" "}
-                  <Link to="/login" className="underline underline-offset-4">
+                  <Link
+                    to={"/login" + location.search}
+                    className="underline underline-offset-4"
+                  >
                     登录
                   </Link>
                 </div>

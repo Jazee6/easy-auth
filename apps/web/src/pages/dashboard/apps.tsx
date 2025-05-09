@@ -1,33 +1,5 @@
-import useSWRMutation from "swr/mutation";
-import { deleteReq, post } from "@/lib/request.ts";
-import { createContext, useContext, useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { newAppSchema } from "@easy-auth/share";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet.tsx";
-import { Button } from "@/components/ui/button.tsx";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form.tsx";
-import { Input } from "@/components/ui/input.tsx";
-import { ColumnDef } from "@tanstack/react-table";
-import useSWR from "swr";
+import CopyButton from "@/components/copy-button.tsx";
 import { DataTable } from "@/components/data-table.tsx";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,8 +11,36 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button.tsx";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form.tsx";
+import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
-import CopyButton from "@/components/copy-button.tsx";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet.tsx";
+import { deleteReq, post } from "@/lib/request.ts";
+import { deleteAppSchema, newAppSchema } from "@easy-auth/share";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ColumnDef } from "@tanstack/react-table";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { createContext, useContext, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import useSWR from "swr";
+import useSWRMutation from "swr/mutation";
+import { z } from "zod";
 
 const mutateContext = createContext(() => {});
 
@@ -50,7 +50,7 @@ interface NewAppRes {
 }
 
 const NewAppForm = () => {
-  const { trigger, isMutating } = useSWRMutation("/apps", post<NewAppRes>);
+  const { trigger, isMutating } = useSWRMutation("/app", post<NewAppRes>);
   const [open, setOpen] = useState(false);
   const [newApp, setNewApp] = useState<NewAppRes>();
   const mutate = useContext(mutateContext);
@@ -59,13 +59,13 @@ const NewAppForm = () => {
     resolver: zodResolver(newAppSchema),
     values: {
       name: "",
-      redirect: "",
+      redirect_uri: "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof newAppSchema>) => {
-    const { data } = await trigger(values);
-    setNewApp(data!);
+    const data = await trigger(values);
+    setNewApp(data);
     mutate();
   };
 
@@ -135,7 +135,7 @@ const NewAppForm = () => {
 
                 <FormField
                   control={form.control}
-                  name="redirect"
+                  name="redirect_uri"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>回调地址</FormLabel>
@@ -162,22 +162,20 @@ const NewAppForm = () => {
 interface Apps {
   id: string;
   name: string;
-  redirect: string;
+  redirectUri: string;
   createdAt: string;
 }
 
-const Actions = ({ appId }: { appId: string }) => {
-  const { trigger, isMutating } = useSWRMutation("/apps", deleteReq);
+const Actions = ({ client_id }: z.infer<typeof deleteAppSchema>) => {
+  const { trigger, isMutating } = useSWRMutation("/app", deleteReq);
   const [open, setOpen] = useState(false);
   const mutate = useContext(mutateContext);
 
   const handleDelete = async () => {
-    const res = await trigger({ appId });
-    if (res.success) {
-      toast.success("删除成功");
-      setOpen(false);
-      mutate();
-    }
+    await trigger({ client_id });
+    toast.success("删除成功");
+    setOpen(false);
+    mutate();
   };
 
   return (
@@ -215,8 +213,8 @@ const columns: ColumnDef<Apps>[] = [
     header: "App ID",
   },
   {
-    accessorKey: "redirect",
-    header: "Redirect",
+    accessorKey: "redirectUri",
+    header: "RedirectUri",
   },
   {
     accessorKey: "createdAt",
@@ -230,7 +228,7 @@ const columns: ColumnDef<Apps>[] = [
     id: "actions",
     header: () => <span className="ml-4">Actions</span>,
     cell: ({ row }) => {
-      return <Actions appId={row.original.id} />;
+      return <Actions client_id={row.original.id} />;
     },
   },
 ];
@@ -238,7 +236,7 @@ const columns: ColumnDef<Apps>[] = [
 const Apps = () => {
   const [offset, setOffset] = useState(0);
   const { data, isValidating, mutate } = useSWR<Apps[]>(
-    "/apps?offset=" + offset,
+    "/app?offset=" + offset,
   );
 
   return (

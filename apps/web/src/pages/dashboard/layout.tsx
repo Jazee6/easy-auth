@@ -1,24 +1,21 @@
+import Footer from "@/components/footer.tsx";
+import { AppSidebar } from "@/components/sidebar.tsx";
+import { Separator } from "@/components/ui/separator.tsx";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar.tsx";
-import { AppSidebar } from "@/components/sidebar.tsx";
-import { Separator } from "@/components/ui/separator.tsx";
 import { useCookie, useUserProfile } from "@/lib/hooks.ts";
 import { Outlet } from "react-router";
-import Footer from "@/components/footer.tsx";
 
 const Layout = () => {
   const { data: user } = useUserProfile();
 
   const sidebar_state = useCookie("sidebar_state");
 
-  if (!sidebar_state) {
-    return null;
-  }
-
   return (
+    // TODO
     <SidebarProvider defaultOpen={sidebar_state !== "false"}>
       <AppSidebar user={user} />
       <SidebarInset>

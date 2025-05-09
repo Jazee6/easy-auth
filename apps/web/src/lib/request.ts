@@ -1,33 +1,35 @@
-import { ResponseBody } from "@easy-auth/share";
+import { Code, ErrorResponse } from "@easy-auth/share";
 
-export class ResponseError<T> extends Error {
-  status: number | undefined;
-  data: ResponseBody<T>;
+export class ResponseError extends Error {
+  status: number;
+  code?: Code;
 
-  constructor(data: ResponseBody<T>, status?: number) {
-    super(data.message);
+  constructor(status: number, message: string, code?: Code) {
+    super(message);
     this.status = status;
-    this.data = data;
+    this.code = code;
   }
 }
 
 const handleErrors = async <T>(res: Response) => {
-  const data = (await res.json()) as ResponseBody<T>;
-
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    /* empty */
+  }
   if (!res.ok) {
-    throw new ResponseError(data, res.status);
+    const message = (data as ErrorResponse)?.message || res.statusText;
+    const code = (data as ErrorResponse)?.code;
+    throw new ResponseError(res.status, message, code);
   }
 
-  if (!data.success) {
-    throw new ResponseError(data);
-  }
-
-  return data;
+  return data as T;
 };
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-export const get = async <T = unknown>(
+export const get = async <T>(
   path: string,
   data?: { arg?: URLSearchParams },
   init?: RequestInit,
@@ -40,21 +42,7 @@ export const get = async <T = unknown>(
   return handleErrors<T>(res);
 };
 
-export const getData = async <T = unknown>(
-  path: string,
-  data?: { arg?: URLSearchParams },
-  init?: RequestInit,
-) => {
-  const url = new URL(API_URL + path);
-  if (data?.arg) {
-    url.search = data.arg.toString();
-  }
-  const res = await fetch(url, { credentials: "include", ...init });
-  const d = await handleErrors<T>(res);
-  return d.data;
-};
-
-export const post = async <T = unknown>(
+export const post = async <T>(
   path: string,
   data: {
     arg: unknown;
@@ -74,7 +62,7 @@ export const post = async <T = unknown>(
   return handleErrors<T>(res);
 };
 
-export const put = async <T = unknown>(
+export const put = async <T>(
   path: string,
   data: {
     arg: unknown;
@@ -94,7 +82,27 @@ export const put = async <T = unknown>(
   return handleErrors<T>(res);
 };
 
-export const deleteReq = async <T = unknown>(
+export const patch = async <T>(
+  path: string,
+  data: {
+    arg: unknown;
+  },
+  init?: RequestInit,
+) => {
+  const res = await fetch(API_URL + path, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data.arg),
+    credentials: "include",
+    ...init,
+  });
+
+  return handleErrors<T>(res);
+};
+
+export const deleteReq = async <T>(
   path: string,
   data: {
     arg: unknown;
