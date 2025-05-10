@@ -9,7 +9,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@easy-auth/share": "workspace:*",
+    "@easy_auth/share": "workspace:*",
     "@hono/node-server": "^1.14.1",
     "@hono/zod-validator": "^0.5.0",
     "argon2": "^0.43.0",

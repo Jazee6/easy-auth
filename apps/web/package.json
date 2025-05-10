@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:one": "tsc -b && vite build && rm -r ../server/public && mv dist ../server/public",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@easy-auth/share": "workspace:*",
+    "@easy_auth/share": "workspace:*",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-alert-dialog": "^1.1.13",
     "@radix-ui/react-avatar": "^1.1.9",
