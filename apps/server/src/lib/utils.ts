@@ -154,7 +154,6 @@ export const handleCode = async (
   const i = await db.insert(code).values(data).returning();
 
   let url = new URL(a.redirectUri);
-  console.log(redirect_uri, url);
   if (redirect_uri) {
     const r = new URL(redirect_uri);
     if (r.host === url.host) {

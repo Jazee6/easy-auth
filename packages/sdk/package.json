@@ -1,11 +1,14 @@
 {
-  "name": "@easy-auth/sdk",
-  "version": "0.0.1",
-  "main": "dist/index.js",
+  "name": "@easy_auth/sdk",
+  "version": "0.0.2-alpha.0",
+  "main": "./dist/index.js",
   "type": "module",
   "scripts": {
     "dev": "tsc --watch --preserveWatchOutput"
   },
+  "files": [
+    "dist/**/*"
+  ],
   "packageManager": "pnpm@10.6.2",
   "devDependencies": {
     "@types/node": "^22.13.13",
