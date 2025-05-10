@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Easy Auth Monorepo",
   "scripts": {
+    "build:pre": "pnpm --filter @easy_auth/share build",
     "build:web": "pnpm --filter @easy-auth/web build",
     "build:server": "pnpm --filter @easy-auth/server build"
   },
