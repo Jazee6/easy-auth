@@ -6,10 +6,10 @@ import { csrf } from "hono/csrf";
 import { showRoutes } from "hono/dev";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
-import { startJobs } from "./lib/jobs";
+import { startJobs } from "./lib/jobs.js";
 import { account } from "./routes/account.js";
-import { apps } from "./routes/apps";
-import { user } from "./routes/user";
+import { apps } from "./routes/apps.js";
+import { user } from "./routes/user.js";
 
 const SITE_URL = process.env.SITE_URL || "https://account.jaze.top";
 
@@ -28,7 +28,7 @@ app.route("/", apps);
 
 app.all("*", (c) => c.redirect(SITE_URL));
 
-app.onError((err, c) => {
+app.onError((err) => {
   if (err instanceof HTTPException) {
     return err.getResponse();
   }

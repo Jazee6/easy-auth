@@ -3,15 +3,15 @@ import {
   oauthProviderSchema,
   resetPasswordSchema,
   userProfileSchema,
-} from "@easy-auth/share";
+} from "@easy_auth/share";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type { JSONWebKeySet } from "jose";
-import { db } from "../db";
-import { account, app, user as userSchema } from "../db/schema";
-import { auth } from "../lib/middleware";
-import { hash, newHono, verifyES256JWT } from "../lib/utils";
+import { db } from "../db/index.js";
+import { account, app, user as userSchema } from "../db/schema.js";
+import { auth } from "../lib/middleware.js";
+import { hash, newHono, verifyES256JWT } from "../lib/utils.js";
 
 export const user = newHono();
 

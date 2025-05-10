@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { clientIdSchema } from "./common";
+import { clientIdSchema } from "./common.js";
 
 export const newAppSchema = z.object({
   name: z.string().min(1).max(32),

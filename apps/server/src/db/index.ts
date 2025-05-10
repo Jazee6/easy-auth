@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "./schema.js";
+import { isProd } from "../lib/utils.js";
 import * as relations from "./relations.js";
-import { isProd } from "../lib/utils";
+import * as schema from "./schema.js";
 
 export const db = drizzle({
   connection: {

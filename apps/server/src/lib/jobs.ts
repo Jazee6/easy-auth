@@ -1,6 +1,6 @@
-import { db } from "../db";
-import { code } from "../db/schema";
 import { lt } from "drizzle-orm";
+import { db } from "../db/index.js";
+import { code } from "../db/schema.js";
 
 export const startJobs = () => {
   setInterval(

@@ -8,20 +8,20 @@ import {
   oauthProviderSchema,
   oidcSchema,
   signupSchema,
-} from "@easy-auth/share";
+} from "@easy_auth/share";
 import { zValidator } from "@hono/zod-validator";
 import { and, eq, gt } from "drizzle-orm";
 import { getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
-import { db } from "../db";
+import { db } from "../db/index.js";
 import {
   account as accountSchema,
   app,
   code,
   user,
   user as userSchema,
-} from "../db/schema";
-import { auth, authWithoutErr } from "../lib/middleware";
+} from "../db/schema.js";
+import { auth, authWithoutErr } from "../lib/middleware.js";
 import {
   app_secret,
   compareHash,
@@ -33,7 +33,7 @@ import {
   signES256JWT,
   validateTurnstile,
   verifyHS256JWT,
-} from "../lib/utils";
+} from "../lib/utils.js";
 
 export const account = newHono();
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { clientIdSchema } from "./common";
+import { clientIdSchema } from "./common.js";
 
 export const userProfileSchema = z.object({
   avatar: z.string().url().or(z.literal("")),

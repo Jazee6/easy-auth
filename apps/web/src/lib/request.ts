@@ -27,16 +27,16 @@ const handleErrors = async <T>(res: Response) => {
   return data as T;
 };
 
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const get = async <T>(
   path: string,
   data?: { arg?: URLSearchParams },
   init?: RequestInit,
 ) => {
-  const url = new URL(API_URL + path, window.location.origin);
+  let url = API_URL + path;
   if (data?.arg) {
-    url.search = data.arg.toString();
+    url += data.arg.toString();
   }
   const res = await fetch(url, { credentials: "include", ...init });
   return handleErrors<T>(res);

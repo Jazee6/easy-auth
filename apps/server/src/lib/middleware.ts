@@ -1,8 +1,8 @@
-import { Code, err } from "@easy-auth/share";
+import { Code, err } from "@easy_auth/share";
 import { getCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { HTTPException } from "hono/http-exception";
-import { app_secret, type Variables, verifyHS256JWT } from "./utils";
+import { app_secret, type Variables, verifyHS256JWT } from "./utils.js";
 
 interface Vars {
   Variables: Variables;

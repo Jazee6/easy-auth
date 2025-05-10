@@ -3,14 +3,14 @@ import {
   getAppSchema,
   newAppSchema,
   pageQuerySchema,
-} from "@easy-auth/share";
+} from "@easy_auth/share";
 import { zValidator } from "@hono/zod-validator";
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { db } from "../db";
-import { app } from "../db/schema";
-import { auth, validateScope } from "../lib/middleware";
-import { genES256JWK, newHono } from "../lib/utils";
+import { db } from "../db/index.js";
+import { app } from "../db/schema.js";
+import { auth, validateScope } from "../lib/middleware.js";
+import { genES256JWK, newHono } from "../lib/utils.js";
 
 export const apps = newHono();
 

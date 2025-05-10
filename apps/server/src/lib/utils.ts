@@ -1,4 +1,4 @@
-import { Code, err } from "@easy-auth/share";
+import { Code, err } from "@easy_auth/share";
 import * as argon2 from "argon2";
 import { eq } from "drizzle-orm";
 import { type Context, Hono } from "hono";
@@ -6,8 +6,8 @@ import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import type { JSONWebKeySet } from "jose";
 import * as jose from "jose";
-import { db } from "../db";
-import { app, code } from "../db/schema";
+import { db } from "../db/index.js";
+import { app, code } from "../db/schema.js";
 
 const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
