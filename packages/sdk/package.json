@@ -6,9 +6,6 @@
   "scripts": {
     "dev": "tsc --watch --preserveWatchOutput"
   },
-  "files": [
-    "dist/**/*"
-  ],
   "packageManager": "pnpm@10.6.2",
   "devDependencies": {
     "@types/node": "^22.13.13",

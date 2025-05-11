@@ -1,12 +1,16 @@
 {
   "name": "@easy_auth/share",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "build": "tsc -b",
+    "prepublishOnly": "pnpm build",
     "dev": "tsc --watch --preserveWatchOutput"
   },
+  "files": [
+    "dist"
+  ],
   "packageManager": "pnpm@10.10.0",
   "devDependencies": {
     "typescript": "~5.8.3"
