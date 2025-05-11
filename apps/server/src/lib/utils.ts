@@ -13,9 +13,7 @@ const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 export const app_secret = process.env.APP_SECRET!;
 
-const node_env = process.env.NODE_ENV || "development";
-
-export const isProd = node_env === "production";
+export const isProd = process.env.NODE_ENV === "production";
 
 if (!app_secret) {
   throw new Error("APP_SECRET is required");
@@ -174,6 +172,5 @@ export const setIdTokenCookie = async (
     httpOnly: true,
     secure: isProd,
     maxAge: 60 * 60 * 24, // TODO
-    prefix: isProd ? "secure" : undefined,
   });
 };
