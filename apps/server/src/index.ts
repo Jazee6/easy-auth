@@ -1,4 +1,3 @@
-import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
@@ -20,7 +19,7 @@ const createHono = () =>
     .use(cors({ origin: SITE_URL, credentials: true }))
     .use(csrf({ origin: SITE_URL }));
 
-const app = createHono().basePath("/");
+export const app = createHono().basePath("/");
 
 app.route("/", account);
 app.route("/", user);
@@ -42,13 +41,3 @@ app.onError((err) => {
 showRoutes(app);
 
 startJobs();
-
-serve(
-  {
-    fetch: app.fetch,
-    port: Number(process.env.PORT) || 3000,
-  },
-  (info) => {
-    console.log(`Server is running on :${info.port}`);
-  },
-);

@@ -3,8 +3,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file=.env src/index.ts",
+    "dev": "tsx watch --env-file=.env src/index.node.ts",
     "build": "tsc",
+    "start:deno": "deno run --allow-net index.deno.ts",
     "db:pull": "drizzle-kit pull && cp drizzle/schema.ts src/db/schema.ts && cp drizzle/relations.ts src/db/relations.ts",
     "db:studio": "drizzle-kit studio"
   },
