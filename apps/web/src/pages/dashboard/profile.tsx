@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { useUserProfile } from "@/lib/hooks.ts";
 import { patch, put } from "@/lib/request.ts";
 import { User } from "@/lib/types.ts";
-import { resetPasswordSchema, userProfileSchema } from "@easy-auth/share";
+import { resetPasswordSchema, userProfileSchema } from "@easy_auth/share";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";

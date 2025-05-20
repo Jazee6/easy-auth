@@ -1,4 +1,4 @@
-import { Code, ErrorResponse } from "@easy-auth/share";
+import { Code, ErrorResponse } from "@easy_auth/share";
 
 export class ResponseError extends Error {
   status: number;

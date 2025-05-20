@@ -1,6 +1,6 @@
 import { post, ResponseError } from "@/lib/request.ts";
 import { LoginResponse } from "@/lib/types.ts";
-import { Code } from "@easy-auth/share";
+import { Code } from "@easy_auth/share";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";

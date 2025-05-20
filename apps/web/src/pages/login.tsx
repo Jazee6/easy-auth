@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { post } from "@/lib/request.ts";
 import { AppInfo, LoginResponse, User } from "@/lib/types.ts";
 import { getGithubUrl } from "@/lib/utils.ts";
-import { loginSchema } from "@easy-auth/share";
+import { loginSchema } from "@easy_auth/share";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";

@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { post } from "@/lib/request.ts";
 import { AppInfo, LoginResponse } from "@/lib/types.ts";
-import { signupSchema } from "@easy-auth/share";
+import { signupSchema } from "@easy_auth/share";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { GalleryVerticalEnd } from "lucide-react";
 import { useForm } from "react-hook-form";

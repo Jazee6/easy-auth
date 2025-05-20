@@ -31,7 +31,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet.tsx";
 import { deleteReq, post } from "@/lib/request.ts";
-import { deleteAppSchema, newAppSchema } from "@easy-auth/share";
+import { deleteAppSchema, newAppSchema } from "@easy_auth/share";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ColumnDef } from "@tanstack/react-table";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
