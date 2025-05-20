@@ -12,7 +12,8 @@ export class EasyAuthClient {
   private readonly appSecret: string;
   private readonly host: string;
   private readonly JWKS;
-  private userMap: Map<string, User & { lastGet: Date }> = new Map();
+  private readonly userMap: Map<string, User & { lastGet: Date }> = new Map();
+  private readonly encoder = new TextEncoder();
 
   constructor({
     appId,
@@ -35,7 +36,7 @@ export class EasyAuthClient {
     const url = new URL("/oidc/token", this.host);
     url.searchParams.append("code", code);
     url.searchParams.append("client_id", this.appId);
-    url.searchParams.append("appSecret", this.appSecret);
+    url.searchParams.append("client_secret", this.appSecret);
     const res = await fetch(url);
     if (res.ok) {
       const data: {
@@ -47,29 +48,34 @@ export class EasyAuthClient {
     throw new Error(res.statusText);
   };
 
-  verifyES256JWT = async (jwt: string) => {
-    const { payload } = await jose
-      .jwtVerify(jwt, this.JWKS)
-      .catch(async (error) => {
-        if (error?.code === "ERR_JWKS_MULTIPLE_MATCHING_KEYS") {
-          for await (const publicKey of error) {
-            try {
-              return await jose.jwtVerify(jwt, publicKey);
-            } catch (innerError: any) {
-              if (
-                innerError?.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED"
-              ) {
-                continue;
-              }
-              throw innerError;
-            }
-          }
-          throw new jose.errors.JWSSignatureVerificationFailed();
-        }
+  // verifyES256JWT = async (jwt: string) => {
+  //   const { payload } = await jose
+  //     .jwtVerify(jwt, this.JWKS)
+  //     .catch(async (error) => {
+  //       if (error?.code === "ERR_JWKS_MULTIPLE_MATCHING_KEYS") {
+  //         for await (const publicKey of error) {
+  //           try {
+  //             return await jose.jwtVerify(jwt, publicKey);
+  //           } catch (innerError: any) {
+  //             if (
+  //               innerError?.code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED"
+  //             ) {
+  //               continue;
+  //             }
+  //             throw innerError;
+  //           }
+  //         }
+  //         throw new jose.errors.JWSSignatureVerificationFailed();
+  //       }
+  //
+  //       throw error;
+  //     });
+  //   return payload;
+  // };
 
-        throw error;
-      });
-    return payload;
+  verifyHS256JWT = async (jwt: string) => {
+    return (await jose.jwtVerify(jwt, this.encoder.encode(this.appSecret)))
+      .payload;
   };
 
   getUserInfo = async (id_token: string) => {

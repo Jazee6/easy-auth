@@ -40,8 +40,6 @@ export const app = pgTable("app", {
 	id: varchar().primaryKey().notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
 	name: varchar(),
-	publicKey: json("public_key").notNull(),
-	privateKey: json("private_key").notNull(),
 	redirectUri: varchar("redirect_uri").notNull(),
 	secret: varchar().notNull(),
 });

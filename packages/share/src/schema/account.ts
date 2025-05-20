@@ -38,7 +38,7 @@ export const oauth2Schema = z.object({
 export const oidcSchema = z.object({
   code: z.string().uuid(),
   client_id: clientIdSchema,
-  appSecret: clientIdSchema,
+  client_secret: clientIdSchema,
 });
 
 export const jwksSchema = z.object({

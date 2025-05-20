@@ -12,5 +12,6 @@ export const resetPasswordSchema = z.object({
 
 export const getUserInfoSchema = z.object({
   client_id: clientIdSchema,
+  client_secret: clientIdSchema,
   id_token: z.string(),
 });

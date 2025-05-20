@@ -4,7 +4,6 @@ import { eq } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
-import type { JSONWebKeySet } from "jose";
 import * as jose from "jose";
 import { db } from "../db/index.js";
 import { app, code } from "../db/schema.js";
@@ -45,20 +44,22 @@ export const compareHash = (password: string, hash: string) => {
   return argon2.verify(hash, password);
 };
 
-export const genES256JWK = async () => {
-  const { publicKey, privateKey } = await crypto.subtle.generateKey(
-    {
-      name: "ECDSA",
-      namedCurve: "P-256",
-    },
-    true,
-    ["sign", "verify"],
-  );
-  return {
-    publicKey: await crypto.subtle.exportKey("jwk", publicKey),
-    privateKey: await crypto.subtle.exportKey("jwk", privateKey),
-  };
-};
+// export const genES256JWK = async () => {
+//   const { publicKey, privateKey } = await crypto.subtle.generateKey(
+//     {
+//       name: "ECDSA",
+//       namedCurve: "P-256",
+//     },
+//     true,
+//     ["sign", "verify"],
+//   );
+//   return {
+//     publicKey: await crypto.subtle.exportKey("jwk", publicKey),
+//     privateKey: await crypto.subtle.exportKey("jwk", privateKey),
+//   };
+// };
+//
+//
 
 const encoder = new TextEncoder();
 
@@ -80,23 +81,23 @@ export const verifyHS256JWT = async (jwt: string, secret: string) => {
   }
 };
 
-export const verifyES256JWT = async (jwt: string, JWKS: JSONWebKeySet) => {
-  try {
-    return await jose.jwtVerify(jwt, jose.createLocalJWKSet(JWKS));
-  } catch {
-    throw new HTTPException(400);
-  }
-};
-
-export const signES256JWT = async (
-  payload: Record<string, unknown>,
-  jwk: Object,
-) => {
-  return new jose.SignJWT(payload)
-    .setProtectedHeader({ alg: "ES256" })
-    .setExpirationTime("1d") // TODO
-    .sign(await jose.importJWK(jwk, "ES256"));
-};
+// export const verifyES256JWT = async (jwt: string, JWKS: JSONWebKeySet) => {
+//   try {
+//     return await jose.jwtVerify(jwt, jose.createLocalJWKSet(JWKS));
+//   } catch {
+//     throw new HTTPException(400);
+//   }
+// };
+//
+// export const signES256JWT = async (
+//   payload: Record<string, unknown>,
+//   jwk: Object,
+// ) => {
+//   return new jose.SignJWT(payload)
+//     .setProtectedHeader({ alg: "ES256" })
+//     .setExpirationTime("1d") // TODO
+//     .sign(await jose.importJWK(jwk, "ES256"));
+// };
 
 export type Variables = {
   payload: {

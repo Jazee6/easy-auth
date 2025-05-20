@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:one": "tsc -b && vite build && rm -r ../server/public && mv dist ../server/public",
+    "build:one": "tsc -b && vite build && rm -rf ../server/public && mv dist ../server/public",
     "lint": "eslint .",
     "preview": "vite preview"
   },

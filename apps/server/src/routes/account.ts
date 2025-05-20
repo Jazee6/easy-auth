@@ -1,7 +1,6 @@
 import {
   Code,
   err,
-  jwksSchema,
   loginOkSchema,
   loginSchema,
   oauth2Schema,
@@ -30,7 +29,7 @@ import {
   hash,
   newHono,
   setIdTokenCookie,
-  signES256JWT,
+  signHS256JWT,
   validateTurnstile,
   verifyHS256JWT,
 } from "../lib/utils.js";
@@ -258,6 +257,34 @@ account.post(
   },
 );
 
+// account.get("/oidc/token", zValidator("query", oidcSchema), async (c) => {
+//   const { client_id, appSecret, code: cod } = c.req.valid("query");
+//   const a = await db.query.app.findFirst({
+//     where: and(eq(app.id, client_id), eq(app.secret, appSecret)),
+//   });
+//   if (!a) {
+//     throw new HTTPException(400);
+//   }
+//   const cdata = await db
+//     .delete(code)
+//     .where(
+//       and(
+//         eq(code.id, cod),
+//         gt(code.createdAt, new Date(Date.now() - 60 * 1000 * 2).toISOString()),
+//       ),
+//     )
+//     .returning();
+//   if (!cdata.length) {
+//     throw new HTTPException(400);
+//   }
+//   return c.json({
+//     id_token: await signES256JWT(
+//       cdata[0].user as Record<string, unknown>,
+//       a.privateKey as Object,
+//     ),
+//   });
+// });
+
 account.get("/oidc/token", zValidator("query", oidcSchema), async (c) => {
   const { client_id, appSecret, code: cod } = c.req.valid("query");
   const a = await db.query.app.findFirst({
@@ -279,26 +306,26 @@ account.get("/oidc/token", zValidator("query", oidcSchema), async (c) => {
     throw new HTTPException(400);
   }
   return c.json({
-    id_token: await signES256JWT(
+    id_token: await signHS256JWT(
       cdata[0].user as Record<string, unknown>,
-      a.privateKey as Object,
+      a.secret,
     ),
   });
 });
 
-account.get(
-  "/oidc/.well-known/jwks.json",
-  zValidator("query", jwksSchema),
-  async (c) => {
-    const { client_id } = c.req.valid("query");
-    const a = await db.query.app.findFirst({
-      where: eq(app.id, client_id),
-    });
-    if (!a) {
-      throw new HTTPException(400);
-    }
-    return c.json({
-      keys: [a.publicKey],
-    });
-  },
-);
+// account.get(
+//   "/oidc/.well-known/jwks.json",
+//   zValidator("query", jwksSchema),
+//   async (c) => {
+//     const { client_id } = c.req.valid("query");
+//     const a = await db.query.app.findFirst({
+//       where: eq(app.id, client_id),
+//     });
+//     if (!a) {
+//       throw new HTTPException(400);
+//     }
+//     return c.json({
+//       keys: [a.publicKey],
+//     });
+//   },
+// );

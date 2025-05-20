@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { get } from "@/lib/request.ts";
 import { User } from "@/lib/types.ts";
 import { ChevronUp, Home, LayoutGrid, Link as LinkIcon } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { NavLink, useLocation, useNavigate } from "react-router";
 import useSWRMutation from "swr/mutation";
 
 const adminItems = [
@@ -49,10 +49,10 @@ const AdminSideBar = () => {
                 asChild
                 isActive={location.pathname === item.url}
               >
-                <Link to={item.url}>
+                <NavLink to={item.url}>
                   <item.icon />
                   <span>{item.title}</span>
-                </Link>
+                </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
@@ -101,10 +101,10 @@ export function AppSidebar({ user }: { user?: User }) {
                     asChild
                     isActive={location.pathname === item.url}
                   >
-                    <Link to={item.url}>
+                    <NavLink to={item.url}>
                       <item.icon />
                       <span>{item.title}</span>
-                    </Link>
+                    </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

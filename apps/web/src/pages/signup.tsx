@@ -148,6 +148,10 @@ const Signup = () => {
                     登录
                   </Link>
                 </div>
+
+                <div className="text-center text-destructive text-sm mt-4">
+                  当前仍在测试阶段，您的账号可能随时会被删除！
+                </div>
               </Form>
             </CardContent>
           </Card>

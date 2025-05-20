@@ -7,25 +7,22 @@ import {
 import { zValidator } from "@hono/zod-validator";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import type { JSONWebKeySet } from "jose";
 import { db } from "../db/index.js";
 import { account, app, user as userSchema } from "../db/schema.js";
 import { auth } from "../lib/middleware.js";
-import { hash, newHono, verifyES256JWT } from "../lib/utils.js";
+import { hash, newHono, verifyHS256JWT } from "../lib/utils.js";
 
 export const user = newHono();
 
 user.get("/info", zValidator("query", getUserInfoSchema), async (c) => {
-  const { client_id, id_token } = c.req.valid("query");
+  const { client_id, id_token, client_secret } = c.req.valid("query");
   const a = await db.query.app.findFirst({
-    where: eq(app.id, client_id),
+    where: and(eq(app.id, client_id), eq(app.secret, client_secret)),
   });
   if (!a) {
     throw new HTTPException(403);
   }
-  const { payload } = await verifyES256JWT(id_token, {
-    keys: [a.publicKey],
-  } as JSONWebKeySet);
+  const { payload } = await verifyHS256JWT(id_token, a.secret);
   const u = await db.query.user.findFirst({
     columns: {
       email: true,

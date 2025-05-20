@@ -10,7 +10,7 @@ import { HTTPException } from "hono/http-exception";
 import { db } from "../db/index.js";
 import { app } from "../db/schema.js";
 import { auth, validateScope } from "../lib/middleware.js";
-import { genES256JWK, newHono } from "../lib/utils.js";
+import { newHono } from "../lib/utils.js";
 
 export const apps = newHono();
 
@@ -67,7 +67,6 @@ apps.post(
       name,
       redirectUri: redirect_uri,
       secret: crypto.randomUUID().replaceAll("-", ""),
-      ...(await genES256JWK()),
     };
     await db.insert(app).values(data);
     return c.json(
