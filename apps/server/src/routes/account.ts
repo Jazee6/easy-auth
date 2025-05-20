@@ -9,7 +9,7 @@ import {
   signupSchema,
 } from "@easy_auth/share";
 import { zValidator } from "@hono/zod-validator";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm";
 import { getCookie, setCookie } from "hono/cookie";
 import { HTTPException } from "hono/http-exception";
 import { db } from "../db/index.js";
@@ -286,9 +286,9 @@ account.post(
 // });
 
 account.get("/oidc/token", zValidator("query", oidcSchema), async (c) => {
-  const { client_id, appSecret, code: cod } = c.req.valid("query");
+  const { client_id, client_secret, code: cod } = c.req.valid("query");
   const a = await db.query.app.findFirst({
-    where: and(eq(app.id, client_id), eq(app.secret, appSecret)),
+    where: and(eq(app.id, client_id), eq(app.secret, client_secret)),
   });
   if (!a) {
     throw new HTTPException(400);
@@ -305,6 +305,11 @@ account.get("/oidc/token", zValidator("query", oidcSchema), async (c) => {
   if (!cdata.length) {
     throw new HTTPException(400);
   }
+  await db
+    .delete(code)
+    .where(
+      lt(code.createdAt, new Date(Date.now() - 1000 * 60 * 2).toISOString()),
+    );
   return c.json({
     id_token: await signHS256JWT(
       cdata[0].user as Record<string, unknown>,

@@ -5,7 +5,6 @@ import { csrf } from "hono/csrf";
 import { showRoutes } from "hono/dev";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "hono/logger";
-import { startJobs } from "./lib/jobs.js";
 import { account } from "./routes/account.js";
 import { apps } from "./routes/apps.js";
 import { user } from "./routes/user.js";
@@ -39,5 +38,3 @@ app.onError((err) => {
 });
 
 showRoutes(app);
-
-startJobs();
