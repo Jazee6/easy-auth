@@ -305,11 +305,6 @@ account.get("/oidc/token", zValidator("query", oidcSchema), async (c) => {
   if (!cdata.length) {
     throw new HTTPException(400);
   }
-  await db
-    .delete(code)
-    .where(
-      lt(code.createdAt, new Date(Date.now() - 1000 * 60 * 2).toISOString()),
-    );
   return c.json({
     id_token: await signHS256JWT(
       cdata[0].user as Record<string, unknown>,
