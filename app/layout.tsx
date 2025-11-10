@@ -1,5 +1,6 @@
 import "./globals.css";
 import type React from "react";
+import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -8,7 +9,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children} <Toaster position="top-center" richColors />
+      </body>
     </html>
   );
 }
