@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import SignupForm from "@/components/form/signup-form";
+import SignupForm from "@/app/signup/signup-form";
 import { LogIn } from "lucide-react";
 import Link from "next/link";
 import Footer from "@/components/footer";

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { UserWithRole } from "better-auth/plugins";
 import { useState } from "react";
-import DataTable from "@/components/data-table";
+import DataTable from "@/components/table/data-table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { authClient } from "@/lib/auth-client";
 

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
 
-const AccountList = ({
+const Client = ({
   accounts,
 }: {
   accounts: Awaited<ReturnType<typeof auth.api.listUserAccounts>>;
@@ -73,4 +73,4 @@ const AccountList = ({
   );
 };
 
-export default AccountList;
+export default Client;

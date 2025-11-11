@@ -14,5 +14,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/accounts", "/auth", "/sessions", "/users", "/apps"],
+  matcher: [
+    {
+      source:
+        "/((?!api|login|signup|consent|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    },
+  ],
 };

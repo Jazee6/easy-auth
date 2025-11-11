@@ -9,7 +9,7 @@ import {
   type PaginationState,
   useReactTable,
 } from "@tanstack/react-table";
-import DataTablePagination from "@/components/data-table-pagination";
+import DataTablePagination from "@/components/table/data-table-pagination";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Table,

@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import LoginForm from "@/components/form/login-form";
+import LoginForm from "@/app/login/login-form";
 import Link from "next/link";
 import Footer from "@/components/footer";
 

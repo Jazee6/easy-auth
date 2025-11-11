@@ -1,4 +1,4 @@
-import ProfileUpdate from "@/components/form/profile-update";
+import ProfileUpdate from "@/app/(dash)/(admin)/users/profile-update";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";

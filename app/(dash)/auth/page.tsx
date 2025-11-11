@@ -1,4 +1,4 @@
-import ChangePassword from "@/components/change-password";
+import ChangePassword from "@/app/(dash)/auth/change-password";
 import {
   Item,
   ItemActions,

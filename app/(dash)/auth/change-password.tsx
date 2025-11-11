@@ -40,7 +40,7 @@ const changePasswordSchema = z
     path: ["newPasswordConfirm"],
   });
 
-const Index = ({ disabled }: { disabled?: boolean }) => {
+const ChangePasswordDialog = ({ disabled }: { disabled?: boolean }) => {
   const currentPasswordId = useId();
   const newPasswordId = useId();
   const newPasswordConfirmId = useId();
@@ -197,4 +197,4 @@ const Index = ({ disabled }: { disabled?: boolean }) => {
   );
 };
 
-export default Index;
+export default ChangePasswordDialog;
