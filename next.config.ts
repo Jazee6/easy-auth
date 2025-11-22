@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   experimental: {
     typedEnv: true,
     serverActions: {
-      allowedOrigins: [process.env.BETTER_AUTH_URL as string],
+      allowedOrigins: [new URL(process.env.BETTER_AUTH_URL as string).host],
     },
   },
 };

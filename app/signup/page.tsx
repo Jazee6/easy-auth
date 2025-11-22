@@ -9,6 +9,12 @@ import SignupForm from "@/app/signup/signup-form";
 import { LogIn } from "lucide-react";
 import Link from "next/link";
 import Footer from "@/components/footer";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Sign Up - Easy Auth",
+  description: "Create an account on Easy Auth",
+};
 
 const Page = () => {
   return (

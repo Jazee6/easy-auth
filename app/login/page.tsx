@@ -2,6 +2,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import LoginForm from "@/app/login/login-form";
 import Link from "next/link";
 import Footer from "@/components/footer";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Login - Easy Auth",
+  description: "Log in to Easy Auth",
+};
 
 const Page = () => {
   return (

@@ -7,6 +7,12 @@ import {
 } from "@/components/ui/item";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Authentication - Easy Auth",
+  description: "Manage your authentication settings on Easy Auth.",
+};
 
 const Page = async () => {
   const accounts = await auth.api.listUserAccounts({

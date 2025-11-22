@@ -71,6 +71,8 @@ const Page = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <title>Sessions - Easy Auth</title>
+      <meta name="description" content="Manage your sessions on Easy Auth." />
       <DataTable columns={columns} data={data} isLoading={isLoading} />
     </div>
   );
