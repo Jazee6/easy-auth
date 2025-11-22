@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -38,6 +39,16 @@ export default function DataTable<TData, TValue>({
   rowCount,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
+    initialState: {
+      columnPinning: {
+        left: columns
+          .filter((col) => col.meta?.pin === "left" && col.id)
+          .map((col) => col.id ?? ""),
+        right: columns
+          .filter((col) => col.meta?.pin === "right")
+          .map((col) => col.id ?? ""),
+      },
+    },
     state: {
       pagination,
     },
@@ -59,7 +70,15 @@ export default function DataTable<TData, TValue>({
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        header.column.getIsPinned() === "right" &&
+                          "sticky right-0 bg-background",
+                        header.column.getIsPinned() === "left" &&
+                          "sticky left-0 bg-background",
+                      )}
+                    >
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -80,7 +99,15 @@ export default function DataTable<TData, TValue>({
                   data-state={row.getIsSelected() && "selected"}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        cell.column.getIsPinned() === "right" &&
+                          "sticky right-0 bg-background",
+                        cell.column.getIsPinned() === "left" &&
+                          "sticky left-0 bg-background",
+                      )}
+                    >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext(),

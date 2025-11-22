@@ -34,7 +34,7 @@ const columns: ColumnDef<User>[] = [
   },
   {
     accessorKey: "createdAt",
-    header: "CreatedAt",
+    header: "Created At",
     cell: ({ row }) => {
       const createdAt = row.original.createdAt;
       return createdAt.toLocaleString();
@@ -42,7 +42,7 @@ const columns: ColumnDef<User>[] = [
   },
 ];
 
-const Index = () => {
+const Page = () => {
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 20,
@@ -87,4 +87,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Page;

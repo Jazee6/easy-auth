@@ -11,6 +11,4 @@ export const authClient = createAuthClient({
   plugins: [adminClient(), oidcClient()],
 });
 
-export const { useSession } = authClient;
-
 export type Session = typeof authClient.$Infer.Session;
