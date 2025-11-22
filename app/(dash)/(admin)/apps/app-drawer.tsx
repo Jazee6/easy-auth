@@ -1,7 +1,7 @@
 "use client";
 
 import { z } from "zod";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { addApp } from "@/lib/actions";
+import { addApp, updateApp } from "@/lib/actions";
 import {
   InputGroup,
   InputGroupAddon,
@@ -26,18 +26,20 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { XIcon } from "lucide-react";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
 import CopyButton from "@/components/copy-button";
+import { TableItem } from "@/app/(dash)/(admin)/apps/page";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const appAddSchema = z.object({
+  id: z.string(),
   client_name: z.string().min(1).trim(),
   redirect_uris: z
     .array(
@@ -48,14 +50,16 @@ const appAddSchema = z.object({
     .min(1, "At least one Redirect URI is required."),
 });
 
-const AddDrawer = ({
+const AppDrawer = ({
   open,
   onOpenChange,
   refetch,
+  rowData,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   refetch: () => void;
+  rowData?: TableItem;
 }) => {
   const [isPending, setIsPending] = useState(false);
   const [result, setResult] = useState<{
@@ -65,13 +69,28 @@ const AddDrawer = ({
   const formId = useId();
   const nameId = useId();
 
+  const isEdit = !!rowData;
+
   const form = useForm<z.infer<typeof appAddSchema>>({
     resolver: zodResolver(appAddSchema),
     defaultValues: {
+      id: "",
       client_name: "",
       redirect_uris: [{ value: "" }],
     },
   });
+
+  useEffect(() => {
+    if (isEdit && rowData) {
+      form.reset({
+        id: rowData.id,
+        client_name: rowData.name ?? "",
+        redirect_uris: rowData.redirectURLs
+          ?.split(",")
+          .map((url) => ({ value: url })),
+      });
+    }
+  }, [form.reset, rowData, isEdit]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -80,13 +99,24 @@ const AddDrawer = ({
 
   const onSubmit = async (data: z.infer<typeof appAddSchema>) => {
     setIsPending(true);
-    const { redirect_uris, ...rest } = data;
+    const { id, client_name, redirect_uris } = data;
+
+    if (isEdit) {
+      await updateApp(id, {
+        name: client_name,
+        redirectURLs: redirect_uris.map(({ value }) => value).join(","),
+      }).finally(() => setIsPending(false));
+      toast.success("App updated successfully.");
+      refetch();
+      onOpenChange(false);
+      return;
+    }
+
     const { client_id, client_secret } = await addApp({
+      client_name,
       redirect_uris: redirect_uris.map(({ value }) => value),
-      ...rest,
     }).finally(() => setIsPending(false));
     setResult({ client_id, client_secret });
-    toast.success("App created successfully.");
   };
 
   const onDrawerOpenChange = (open: boolean) => {
@@ -99,16 +129,16 @@ const AddDrawer = ({
   };
 
   return (
-    <Drawer open={open} onOpenChange={onDrawerOpenChange} direction="right">
+    <Dialog open={open} onOpenChange={onDrawerOpenChange}>
       <form id={formId} onSubmit={form.handleSubmit(onSubmit)}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Add App</DrawerTitle>
-            <DrawerDescription></DrawerDescription>
-          </DrawerHeader>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add App</DialogTitle>
+            <DialogDescription></DialogDescription>
+          </DialogHeader>
 
           {result ? (
-            <FieldSet className="px-4 overflow-auto">
+            <FieldSet>
               <FieldGroup>
                 <Field>
                   <FieldLabel>Client ID</FieldLabel>
@@ -131,7 +161,7 @@ const AddDrawer = ({
               </FieldGroup>
             </FieldSet>
           ) : (
-            <FieldSet className="px-4 overflow-auto">
+            <FieldSet>
               <FieldGroup>
                 <Controller
                   name="client_name"
@@ -212,27 +242,27 @@ const AddDrawer = ({
             </FieldSet>
           )}
 
-          <DrawerFooter>
+          <DialogFooter>
             {result ? (
-              <DrawerClose asChild>
+              <DialogClose asChild>
                 <Button variant="outline">Close</Button>
-              </DrawerClose>
+              </DialogClose>
             ) : (
               <>
-                <DrawerClose asChild>
+                <DialogClose asChild>
                   <Button variant="outline">Cancel</Button>
-                </DrawerClose>
+                </DialogClose>
                 <Button type="submit" form={formId} disabled={isPending}>
                   {isPending && <Spinner />}
                   Save
                 </Button>
               </>
             )}
-          </DrawerFooter>
-        </DrawerContent>
+          </DialogFooter>
+        </DialogContent>
       </form>
-    </Drawer>
+    </Dialog>
   );
 };
 
-export default AddDrawer;
+export default AppDrawer;

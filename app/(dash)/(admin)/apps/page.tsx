@@ -7,19 +7,7 @@ import DataTable from "@/components/table/data-table";
 import { deleteApp, getApps } from "@/lib/actions";
 import { oauthApplication } from "@/lib/db/schema/auth";
 import { Button } from "@/components/ui/button";
-import EditDialog from "@/app/(dash)/(admin)/apps/edit-dialog";
-import AddDrawer from "@/app/(dash)/(admin)/apps/add-drawer";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import AppDrawer from "@/app/(dash)/(admin)/apps/app-drawer";
 import { showAlertDialog } from "@/components/alert-dialog";
 
 export type TableItem = typeof oauthApplication.$inferSelect;
@@ -29,8 +17,7 @@ const Page = () => {
     pageIndex: 0,
     pageSize: 20,
   });
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [appDialogOpen, setAppDialogOpen] = useState(false);
   const [rowData, setRowData] = useState<TableItem>();
 
   const {
@@ -91,7 +78,7 @@ const Page = () => {
               variant="link"
               className="p-0"
               onClick={() => {
-                setEditDialogOpen(true);
+                setAppDialogOpen(true);
                 setRowData(row.original);
               }}
             >
@@ -121,7 +108,13 @@ const Page = () => {
   return (
     <div className="max-w-3xl mx-auto space-y-2">
       <div className="flex">
-        <Button className="ml-auto" onClick={() => setAddDialogOpen(true)}>
+        <Button
+          className="ml-auto"
+          onClick={() => {
+            setRowData(undefined);
+            setAppDialogOpen(true);
+          }}
+        >
           Add +
         </Button>
       </div>
@@ -135,15 +128,9 @@ const Page = () => {
         rowCount={data.total}
       />
 
-      <AddDrawer
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        refetch={refetch}
-      />
-
-      <EditDialog
-        open={editDialogOpen}
-        onOpenChange={setEditDialogOpen}
+      <AppDrawer
+        open={appDialogOpen}
+        onOpenChange={setAppDialogOpen}
         rowData={rowData}
         refetch={refetch}
       />
