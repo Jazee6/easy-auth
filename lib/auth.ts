@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, captcha, oidcProvider } from "better-auth/plugins";
+import { admin, captcha, oAuthProxy, oidcProvider } from "better-auth/plugins";
 import { db } from "@/lib/db";
 
 export const auth = betterAuth({
@@ -35,7 +35,10 @@ export const auth = betterAuth({
       maxAge: 5 * 60,
     },
   },
-  trustedOrigins: [process.env.BETTER_AUTH_URL as string],
+  trustedOrigins: [
+    process.env.BETTER_AUTH_URL as string,
+    "http://localhost:3000",
+  ],
   advanced: {
     cookiePrefix: "ea",
   },

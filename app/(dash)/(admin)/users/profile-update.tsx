@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
+import { revalidateSession } from "@/lib/actions";
 
 const profileUpdateSchema = z.object({
   image: z.url().or(z.string().length(0)),
@@ -47,6 +48,7 @@ const ProfileUpdate = ({
   const onSubmit = async (data: z.infer<typeof profileUpdateSchema>) => {
     setIsLoading(true);
     await authClient.updateUser(data).finally(() => setIsLoading(false));
+    await revalidateSession();
     toast.success("Profile updated successfully.");
   };
 

@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { oauthApplication } from "@/lib/db/schema/auth";
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 
 const checkAdmin = async () => {
   const session = await auth.api.getSession({
@@ -75,4 +76,8 @@ export const deleteApp = async (id: string) => {
     .where(
       and(eq(oauthApplication.id, id), eq(oauthApplication.userId, user.id)),
     );
+};
+
+export const revalidateSession = async () => {
+  revalidatePath("/");
 };
