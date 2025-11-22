@@ -35,7 +35,7 @@ export const auth = betterAuth({
       maxAge: 5 * 60,
     },
   },
-  trustedOrigins: ["https://account.jaze.top"],
+  trustedOrigins: [process.env.BETTER_AUTH_URL as string],
   advanced: {
     cookiePrefix: "ea",
   },
