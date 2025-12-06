@@ -1,6 +1,6 @@
-import { betterAuth } from "better-auth";
+import { betterAuth } from "better-auth/minimal";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, captcha, oAuthProxy, oidcProvider } from "better-auth/plugins";
+import { admin, captcha, oidcProvider } from "better-auth/plugins";
 import { db } from "@/lib/db";
 
 export const auth = betterAuth({
@@ -41,5 +41,9 @@ export const auth = betterAuth({
   ],
   advanced: {
     cookiePrefix: "ea",
+    database: { generateId: "uuid" },
+  },
+  experimental: {
+    joins: true,
   },
 });
