@@ -85,7 +85,7 @@ const AppDrawer = ({
       form.reset({
         id: rowData.id,
         client_name: rowData.name ?? "",
-        redirect_uris: rowData.redirectURLs
+        redirect_uris: rowData.redirectUrls
           ?.split(",")
           .map((url) => ({ value: url })),
       });
