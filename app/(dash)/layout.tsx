@@ -3,18 +3,12 @@ import { CSSProperties } from "react";
 import Sidebar from "@/components/sidebar";
 import Footer from "@/components/footer";
 import { Header } from "@/components/sidebar/header";
-import { auth } from "@/lib/auth";
-import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import QueryClient from "@/components/query-client";
+import { checkSession } from "@/lib/actions";
 
 const Index = async ({ children }: LayoutProps<"/">) => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) {
-    redirect("/login");
-  }
+  const session = await checkSession();
 
   const cookieStore = await cookies();
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";

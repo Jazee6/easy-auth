@@ -1,8 +1,6 @@
 import ProfileUpdate from "@/app/(dash)/(admin)/users/profile-update";
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { Metadata } from "next";
+import { checkSession } from "@/lib/actions";
 
 export const metadata: Metadata = {
   title: "Profile - Easy Auth",
@@ -10,12 +8,7 @@ export const metadata: Metadata = {
 };
 
 const Page = async () => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) {
-    redirect("/login");
-  }
+  const session = await checkSession();
   const { user } = session;
 
   return (

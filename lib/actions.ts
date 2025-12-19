@@ -8,11 +8,19 @@ import { oauthApplication } from "@/lib/db/schema/auth";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-const checkAdmin = async () => {
+export const checkSession = async () => {
   const session = await auth.api.getSession({
     headers: await headers(),
   });
-  const isAdmin = session?.user.role === "admin";
+  if (!session) {
+    redirect("/login");
+  }
+  return session;
+};
+
+export const checkAdmin = async () => {
+  const session = await checkSession();
+  const isAdmin = session.user.role === "admin";
   if (!isAdmin) {
     redirect("/");
   }
@@ -43,7 +51,7 @@ export const updateApp = async (
   id: string,
   params: {
     name: string;
-    redirectURLs: string;
+    redirectUrls: string;
   },
 ) => {
   const { user } = await checkAdmin();
@@ -80,4 +88,14 @@ export const deleteApp = async (id: string) => {
 
 export const revalidateSession = async () => {
   revalidatePath("/");
+};
+
+export const getOAuthApp = async (clientId: string) => {
+  return db.query.oauthApplication.findFirst({
+    where: eq(oauthApplication.clientId, clientId),
+    columns: {
+      id: true,
+      name: true,
+    },
+  });
 };

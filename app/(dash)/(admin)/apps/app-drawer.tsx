@@ -104,7 +104,7 @@ const AppDrawer = ({
     if (isEdit) {
       await updateApp(id, {
         name: client_name,
-        redirectURLs: redirect_uris.map(({ value }) => value).join(","),
+        redirectUrls: redirect_uris.map(({ value }) => value).join(","),
       }).finally(() => setIsPending(false));
       toast.success("App updated successfully.");
       refetch();

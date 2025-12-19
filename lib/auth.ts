@@ -35,10 +35,6 @@ export const auth = betterAuth({
       maxAge: 5 * 60,
     },
   },
-  trustedOrigins: [
-    process.env.BETTER_AUTH_URL as string,
-    "http://localhost:3000",
-  ],
   advanced: {
     cookiePrefix: "ea",
     database: { generateId: "uuid" },

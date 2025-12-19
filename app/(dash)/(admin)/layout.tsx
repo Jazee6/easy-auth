@@ -1,15 +1,7 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { checkAdmin } from "@/lib/actions";
 
 const Index = async ({ children }: LayoutProps<"/">) => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  const isAdmin = session?.user.role === "admin";
-  if (!isAdmin) {
-    redirect("/");
-  }
+  await checkAdmin();
 
   return children;
 };

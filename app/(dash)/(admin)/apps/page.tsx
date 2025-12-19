@@ -49,7 +49,7 @@ const Page = () => {
       header: "Client ID",
     },
     {
-      accessorKey: "redirectURLs",
+      accessorKey: "redirectUrls",
       header: "Redirect URIs",
     },
     {
