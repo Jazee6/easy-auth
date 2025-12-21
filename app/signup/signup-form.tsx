@@ -66,7 +66,7 @@ const SignupForm = () => {
     }
 
     toast.success("Signup successful!");
-    router.push("/");
+    router.push("/profile");
   };
 
   return (

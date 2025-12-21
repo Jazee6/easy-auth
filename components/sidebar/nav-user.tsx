@@ -33,7 +33,7 @@ export function NavUser({
     authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
-          router.push("/");
+          router.push("/login");
         },
       },
     });

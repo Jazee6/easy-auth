@@ -1,9 +1,9 @@
 import {
   CircleUser,
-  House,
   KeyRound,
   LayoutGrid,
   Lock,
+  UserRoundPen,
   UserRoundSearch,
 } from "lucide-react";
 import { type ComponentProps } from "react";
@@ -24,9 +24,9 @@ import Link from "next/link";
 export const sidebar = {
   navMain: [
     {
-      title: "Home",
-      url: "/",
-      icon: <House />,
+      title: "Profile",
+      url: "/profile",
+      icon: <UserRoundPen />,
     },
     {
       title: "Accounts",

@@ -42,7 +42,7 @@ const LoginForm = () => {
       .email({
         email,
         password,
-        callbackURL: "/",
+        callbackURL: "/profile",
       })
       .finally(() => setLoginLoading(false));
   };
@@ -52,8 +52,8 @@ const LoginForm = () => {
     await authClient.signIn
       .social({
         provider: "github",
-        callbackURL: "/",
-        newUserCallbackURL: "/?welcome=true",
+        callbackURL: "/profile",
+        newUserCallbackURL: "/profile?welcome=true",
       })
       .finally(() => setSocialLoading(false));
   };

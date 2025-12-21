@@ -16,7 +16,13 @@ export const metadata: Metadata = {
   description: "Create an account on Easy Auth",
 };
 
-const Page = () => {
+const Page = async ({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    [key: string]: string;
+  }>;
+}) => {
   return (
     <main className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
@@ -42,7 +48,10 @@ const Page = () => {
 
               <div className="text-center text-sm mt-4">
                 Already have an account?{" "}
-                <Link href="/login" className="underline underline-offset-4">
+                <Link
+                  href={`/login?${new URLSearchParams(await searchParams).toString()}`}
+                  className="underline underline-offset-4"
+                >
                   Login
                 </Link>
               </div>

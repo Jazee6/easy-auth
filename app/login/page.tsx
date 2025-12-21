@@ -9,7 +9,13 @@ export const metadata: Metadata = {
   description: "Log in to Easy Auth",
 };
 
-const Page = () => {
+const Page = async ({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    [key: string]: string;
+  }>;
+}) => {
   return (
     <main className="bg-muted flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm md:max-w-3xl">
@@ -26,7 +32,7 @@ const Page = () => {
                   <div className="text-center text-sm">
                     Don't have an account?{" "}
                     <Link
-                      href="/signup"
+                      href={`/signup?${new URLSearchParams(await searchParams).toString()}`}
                       className="underline underline-offset-4"
                     >
                       Sign up
@@ -40,7 +46,7 @@ const Page = () => {
                 {/*  alt="Image"*/}
                 {/*  className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"*/}
                 {/*/>*/}
-                <div className="inset-0 bg-gradient-to-br from-cyan-50 to-lime-50 absolute"></div>
+                <div className="inset-0 bg-linear-to-br from-cyan-50 to-lime-50 absolute"></div>
               </div>
             </CardContent>
           </Card>

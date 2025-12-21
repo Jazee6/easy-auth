@@ -22,11 +22,10 @@ type AlertDialogOptions = {
   onConfirmAction?: () => Promise<unknown>;
 };
 
-const dialogBus = new EventTarget();
 const BUS_EVENT = "alert-dialog:open";
 
 export const showAlertDialog = (options: AlertDialogOptions) => {
-  dialogBus.dispatchEvent(new CustomEvent(BUS_EVENT, { detail: options }));
+  dispatchEvent(new CustomEvent(BUS_EVENT, { detail: options }));
 };
 
 const AlertDialog = () => {
@@ -41,8 +40,8 @@ const AlertDialog = () => {
       setOpen(true);
     };
 
-    dialogBus.addEventListener(BUS_EVENT, handler);
-    return () => dialogBus.removeEventListener(BUS_EVENT, handler);
+    addEventListener(BUS_EVENT, handler);
+    return () => removeEventListener(BUS_EVENT, handler);
   }, []);
 
   if (!options) return null;

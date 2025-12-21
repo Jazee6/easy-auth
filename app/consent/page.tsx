@@ -27,7 +27,7 @@ const Page = async ({
   const app = await getOAuthApp(client_id);
 
   if (!app) {
-    redirect("/login");
+    redirect("/profile");
   }
 
   return (
