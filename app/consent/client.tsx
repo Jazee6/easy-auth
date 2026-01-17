@@ -8,7 +8,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
@@ -47,13 +46,8 @@ const Client = ({ session }: { session: Session }) => {
     >
       {user.image && (
         <ItemMedia variant="image">
-          <Image
-            src={user.image}
-            alt="avatar"
-            width={32}
-            height={32}
-            className="object-cover"
-          />
+          {/** biome-ignore lint/performance/noImgElement: <any host> */}
+          <img src={user.image} alt="avatar" className="object-cover size-8" />
         </ItemMedia>
       )}
       <ItemContent>

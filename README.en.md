@@ -2,6 +2,8 @@
 
 English | [中文](./README.md)
 
+![banner](https://github.com/user-attachments/assets/857cc611-7ad4-4364-b4a4-32c70ce3ccca)
+
 ## Deployment
 
 ### Environment Variables
@@ -16,6 +18,17 @@ English | [中文](./README.md)
 | TURNSTILE_SECRET_KEY           | Cloudflare Turnstile secret key             |
 | NEXT_PUBLIC_TURNSTILE_SITE_KEY | Cloudflare Turnstile site key               |
 
+### Database
+
+Postgres is used as the default database. Ensure that the `DATABASE_URL` environment variable correctly points to your
+database.
+
+Run `bun run push` to perform database migrations.
+
 ### Promote an Admin
 
 After registering an account, update the `role` column to `admin` in the corresponding row of the `user` table.
+
+### More Guides
+
+Please refer to: [Easy Auth User Guide](https://jaze.top/posts/easy-auth)

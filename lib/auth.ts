@@ -29,6 +29,9 @@ export const auth = betterAuth({
     oauthProvider({
       loginPage: "/login",
       consentPage: "/consent",
+      signup: {
+        page: "/signup",
+      },
     }),
   ],
   session: {
