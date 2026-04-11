@@ -111,6 +111,7 @@ export const oauthClient = pgTable("oauth_client", {
   disabled: boolean("disabled").default(false),
   skipConsent: boolean("skip_consent"),
   enableEndSession: boolean("enable_end_session"),
+  subjectType: text("subject_type"),
   scopes: text("scopes").array(),
   userId: uuid("user_id").references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at"),
@@ -131,6 +132,7 @@ export const oauthClient = pgTable("oauth_client", {
   responseTypes: text("response_types").array(),
   public: boolean("public"),
   type: text("type"),
+  requirePKCE: boolean("require_pkce"),
   referenceId: text("reference_id"),
   metadata: jsonb("metadata"),
 });
@@ -153,6 +155,7 @@ export const oauthRefreshToken = pgTable("oauth_refresh_token", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at"),
   revoked: timestamp("revoked"),
+  authTime: timestamp("auth_time"),
   scopes: text("scopes").array().notNull(),
 });
 

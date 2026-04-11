@@ -1,11 +1,11 @@
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import viteReact from "@vitejs/plugin-react";
+import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
-import viteTsConfigPaths from "vite-tsconfig-paths";
 import edgeoneAdapter from "@edgeone/tanstack-start";
+import babel from "@rolldown/plugin-babel";
 
 const config = defineConfig({
   server: {
@@ -15,20 +15,15 @@ const config = defineConfig({
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
+    tsconfigPaths: true,
   },
   plugins: [
     devtools(),
     // nitro(),
-    viteTsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
     tailwindcss(),
     tanstackStart(),
-    viteReact({
-      babel: {
-        plugins: ["babel-plugin-react-compiler"],
-      },
-    }),
+    viteReact(),
+    babel({ presets: [reactCompilerPreset()] }),
     edgeoneAdapter(),
   ],
 });
