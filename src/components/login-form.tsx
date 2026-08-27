@@ -5,7 +5,13 @@ import * as v from "valibot";
 
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
-import { getPostLoginRedirect, loginSchema, translateAuthError } from "@/lib/auth-policy";
+import {
+  getLoginFailureResolution,
+  getPostLoginRedirect,
+  loginSchema,
+  normalizeEmail,
+  translateAuthError,
+} from "@/lib/auth-policy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -27,17 +33,29 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
         return;
       }
 
-      const res = await authClient.signIn.email({
-        email: value.email.trim().toLowerCase(),
-        password: value.password,
-      });
+      const email = normalizeEmail(value.email);
 
-      if (res.error) {
-        setFormError(translateAuthError(res.error, "login"));
-        return;
+      try {
+        const res = await authClient.signIn.email({
+          email,
+          password: value.password,
+        });
+
+        if (res.error) {
+          const failure = getLoginFailureResolution(res.error, email);
+          if (failure.destination) {
+            await navigate(failure.destination);
+            return;
+          }
+
+          setFormError(failure.message);
+          return;
+        }
+
+        await navigate({ to: getPostLoginRedirect() });
+      } catch (error) {
+        setFormError(translateAuthError(error, "login"));
       }
-
-      await navigate({ to: getPostLoginRedirect() });
     },
   });
 

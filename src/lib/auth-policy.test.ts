@@ -7,6 +7,7 @@ import {
   deriveInitialName,
   deriveSignupPayload,
   getInitials,
+  getLoginFailureResolution,
   getPostLoginRedirect,
   getPostLogoutRedirect,
   getPostSignupDestination,
@@ -254,6 +255,35 @@ describe("auth-policy", () => {
         ),
       ).toBe(false);
       expect(shouldRejectPasswordlessOtpRequest("/email-otp/verify-email")).toBe(false);
+    });
+  });
+
+  describe("login failure resolution", () => {
+    it("continues correct-password unverified users to the normalized verification flow", () => {
+      expect(
+        getLoginFailureResolution(
+          { code: "EMAIL_NOT_VERIFIED", message: "Email not verified" },
+          " Alice+Demo@Example.COM ",
+        ),
+      ).toEqual({
+        message: "Please verify your email address to continue.",
+        destination: {
+          to: "/verify-email",
+          search: { email: "alice+demo@example.com" },
+        },
+      });
+    });
+
+    it("keeps incorrect credentials generic and does not expose a verification destination", () => {
+      expect(
+        getLoginFailureResolution(
+          { code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid credentials" },
+          "unknown@example.com",
+        ),
+      ).toEqual({
+        message: "Invalid email or password",
+        destination: null,
+      });
     });
   });
 

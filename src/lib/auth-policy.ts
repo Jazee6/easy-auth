@@ -124,18 +124,34 @@ export function shouldRejectPasswordlessOtpRequest(path?: string, otpType?: stri
   );
 }
 
+function getAuthErrorCode(error: unknown): string {
+  return typeof error === "string"
+    ? error
+    : typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code: unknown }).code)
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message: unknown }).message)
+        : "";
+}
+
+export interface LoginFailureResolution {
+  message: string;
+  destination: ReturnType<typeof getPostSignupDestination> | null;
+}
+
+export function getLoginFailureResolution(error: unknown, email: string): LoginFailureResolution {
+  return {
+    message: translateAuthError(error, "login"),
+    destination:
+      getAuthErrorCode(error) === "EMAIL_NOT_VERIFIED" ? getPostSignupDestination(email) : null,
+  };
+}
+
 export function translateAuthError(
   error: unknown,
   mode: "login" | "signup" | "verify-email" | "resend-otp",
 ): string {
-  const errCode =
-    typeof error === "string"
-      ? error
-      : typeof error === "object" && error !== null && "code" in error
-        ? String((error as { code: unknown }).code)
-        : typeof error === "object" && error !== null && "message" in error
-          ? String((error as { message: unknown }).message)
-          : "";
+  const errCode = getAuthErrorCode(error);
 
   if (errCode === "EMAIL_NOT_VERIFIED") {
     return "Please verify your email address to continue.";

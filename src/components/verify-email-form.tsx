@@ -17,6 +17,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { Turnstile, type TurnstileRef } from "@/components/turnstile";
 
 export interface VerifyEmailFormProps extends React.ComponentProps<typeof Card> {
@@ -46,6 +53,11 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
     onSubmit: async ({ value }) => {
       setFormError(null);
       setInfoMessage(null);
+
+      if (!normalizedEmail) {
+        setFormError("A valid login email is required to verify your email.");
+        return;
+      }
 
       const validation = v.safeParse(verifyEmailFormSchema, {
         email: normalizedEmail,
@@ -169,25 +181,41 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
               }}
             >
               {(field) => (
-                <Field>
+                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
                   <FieldLabel htmlFor="otp">Verification code</FieldLabel>
-                  <Input
-                    id="otp"
-                    name={field.name}
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    placeholder="123456"
-                    className="font-mono text-center tracking-widest text-lg"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    required
-                  />
-                  <FieldDescription>Code is valid for 5 minutes.</FieldDescription>
+                  <div className="flex justify-center py-1">
+                    <InputOTP
+                      id="otp"
+                      name={field.name}
+                      maxLength={6}
+                      pattern={REGEXP_ONLY_DIGITS}
+                      autoComplete="one-time-code"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(value) => field.handleChange(value)}
+                      aria-invalid={field.state.meta.errors.length > 0}
+                      required
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+                  <FieldDescription className="text-center">
+                    Code is valid for 5 minutes.
+                  </FieldDescription>
                   {field.state.meta.errors.length > 0 && (
-                    <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
+                    <FieldError className="text-center">
+                      {field.state.meta.errors[0]?.toString()}
+                    </FieldError>
                   )}
                 </Field>
               )}
