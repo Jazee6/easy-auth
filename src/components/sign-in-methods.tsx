@@ -1,0 +1,216 @@
+import * as React from "react";
+import { Link, useRouter } from "@tanstack/react-router";
+import { GitBranch, KeyRound } from "lucide-react";
+
+import { authClient } from "@/lib/auth-client";
+import {
+  deriveSignInMethodState,
+  getGithubLinkOptions,
+  translateSignInMethodsError,
+  type SignInMethodAccount,
+} from "@/lib/auth-policy";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import { toast } from "@/components/ui/toast";
+
+interface SignInMethodsProps {
+  user: {
+    email: string;
+  };
+  accounts: SignInMethodAccount[];
+  status?: string;
+  error?: string;
+}
+
+export function SignInMethods({ user, accounts, status, error }: SignInMethodsProps) {
+  const router = useRouter();
+  const methodState = deriveSignInMethodState(accounts);
+  const [isLinking, setIsLinking] = React.useState(false);
+  const [isUnlinking, setIsUnlinking] = React.useState(false);
+  const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (status === "github-linked") {
+      toast.add({
+        title: "GitHub linked",
+        description: "GitHub is now available as a sign-in method.",
+        type: "success",
+      });
+    } else if (error) {
+      toast.add({
+        title: "GitHub was not linked",
+        description: translateSignInMethodsError(error),
+        type: "error",
+      });
+    }
+  }, [error, status]);
+
+  const linkGithub = async () => {
+    setIsLinking(true);
+
+    try {
+      const result = await authClient.linkSocial(getGithubLinkOptions());
+      if (result.error) {
+        toast.add({
+          title: "GitHub was not linked",
+          description: translateSignInMethodsError(result.error.code ?? "linking_failed"),
+          type: "error",
+        });
+        setIsLinking(false);
+      }
+    } catch {
+      toast.add({
+        title: "GitHub was not linked",
+        description: translateSignInMethodsError("linking_failed"),
+        type: "error",
+      });
+      setIsLinking(false);
+    }
+  };
+
+  const unlinkGithub = async () => {
+    if (!methodState.github.accountId || !methodState.github.canUnlink) return;
+
+    setIsUnlinking(true);
+
+    try {
+      const result = await authClient.unlinkAccount({
+        accountId: methodState.github.accountId,
+      });
+
+      if (result.error) {
+        toast.add({
+          title: "GitHub was not unlinked",
+          description: translateSignInMethodsError(result.error.code ?? "unlink_failed"),
+          type: "error",
+        });
+        return;
+      }
+
+      setIsUnlinkDialogOpen(false);
+      toast.add({
+        title: "GitHub unlinked",
+        description: "GitHub can no longer be used to sign in to Easy Auth.",
+        type: "success",
+      });
+      await router.invalidate();
+    } catch {
+      toast.add({
+        title: "GitHub was not unlinked",
+        description: translateSignInMethodsError("unlink_failed"),
+        type: "error",
+      });
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-2xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Sign-in methods</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage the ways you can sign in to Easy Auth.
+        </p>
+      </div>
+
+      <ItemGroup>
+        <Item variant="outline">
+          <ItemMedia variant="icon">
+            <KeyRound />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>Password</ItemTitle>
+            <ItemDescription>{methodState.password.isSet ? "Set" : "Not set"}</ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <Button
+              variant="outline"
+              render={
+                <Link
+                  to="/forgot-password"
+                  search={{
+                    email: user.email,
+                    action: methodState.password.isSet ? "reset" : "set",
+                  }}
+                />
+              }
+            >
+              {methodState.password.isSet ? "Reset password" : "Set password"}
+            </Button>
+          </ItemActions>
+        </Item>
+
+        <Item variant="outline">
+          <ItemMedia variant="icon">
+            <GitBranch />
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>GitHub</ItemTitle>
+            <ItemDescription>
+              {methodState.github.isLinked ? "Linked" : "Not linked"}
+              {methodState.github.unlinkReason && (
+                <span className="mt-1 block">{methodState.github.unlinkReason}</span>
+              )}
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            {!methodState.github.isLinked ? (
+              <Button loading={isLinking} disabled={isLinking} onClick={linkGithub}>
+                Link GitHub
+              </Button>
+            ) : (
+              <AlertDialog open={isUnlinkDialogOpen} onOpenChange={setIsUnlinkDialogOpen}>
+                <AlertDialogTrigger
+                  render={<Button variant="outline" disabled={!methodState.github.canUnlink} />}
+                >
+                  Unlink
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Unlink GitHub?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      GitHub will stop working as a local sign-in method. This removes locally
+                      stored GitHub tokens, but it does not revoke the Authorized OAuth App grant in
+                      GitHub.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isUnlinking}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      loading={isUnlinking}
+                      disabled={isUnlinking}
+                      onClick={unlinkGithub}
+                    >
+                      Unlink GitHub
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </ItemActions>
+        </Item>
+      </ItemGroup>
+    </div>
+  );
+}

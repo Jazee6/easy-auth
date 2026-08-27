@@ -27,8 +27,10 @@ Configure local values in `.env.local`. Configure deployed secrets with Wrangler
 | `EMAIL_FROM`              | Server        | Full verified sender identity, for example `Easy Auth <auth@example.com>` |
 | `TURNSTILE_SECRET_KEY`    | Server secret | Cloudflare Turnstile server verification key                              |
 | `VITE_TURNSTILE_SITE_KEY` | Browser       | Cloudflare Turnstile managed-widget site key                              |
+| `GITHUB_CLIENT_ID`        | Server        | GitHub OAuth App client ID                                                |
+| `GITHUB_CLIENT_SECRET`    | Server secret | GitHub OAuth App client secret                                            |
 
-Resend and Turnstile configuration is required. Missing bindings do not disable verification: Turnstile fails closed and email delivery failures are caught and logged in the background without changing the public registration response.
+Set the GitHub OAuth App callback URL to `<BETTER_AUTH_URL>/api/auth/callback/github`. Easy Auth uses GitHub's default profile and email scopes; no additional scopes are requested. Resend, Turnstile, and GitHub configuration is required. Missing bindings do not disable verification: Turnstile fails closed and email delivery failures are caught and logged in the background without changing the public registration response.
 
 Local automation must explicitly configure Cloudflare's official always-pass Turnstile test pair: site key `1x00000000000000000000AA` and secret key `1x0000000000000000000000000000000AA`. Manual development and production use environment-provided credentials. Never deploy the test keys. Automated tests inject a deterministic email sender and do not call Resend or production Turnstile.
 
@@ -40,3 +42,5 @@ Local automation must explicitly configure Cloudflare's official always-pass Tur
 - `bun run fmt:check` — formatting check
 - `bun run build` — production build
 - `bun run db:migrate:local` — apply migrations to local D1
+
+See [`docs/releases/0.2.0-acceptance.md`](docs/releases/0.2.0-acceptance.md) for release qualification and the remaining external-service acceptance pass.

@@ -11,14 +11,18 @@ import * as schema from "../db/schema";
 import { createResendEmailSender, deliverAuthEmail, scheduleBackgroundTask } from "./email-service";
 import {
   captchaProtectedAuthEndpoints,
+  githubAuthPolicy,
   passwordResetPolicy,
   shouldRejectPasswordlessOtpRequest,
+  validateGithubIdentity,
 } from "./auth-policy";
 
 type AuthEnvironment = Cloudflare.Env & {
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
   TURNSTILE_SECRET_KEY?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
 };
 
 const authEnvironment = env as AuthEnvironment;
@@ -54,6 +58,28 @@ export const auth = betterAuth({
   },
   emailVerification: {
     autoSignInAfterVerification: true,
+  },
+  socialProviders: {
+    github: {
+      clientId: authEnvironment.GITHUB_CLIENT_ID ?? "",
+      clientSecret: authEnvironment.GITHUB_CLIENT_SECRET ?? "",
+      requireEmailVerification: githubAuthPolicy.requireEmailVerification,
+      overrideUserInfoOnSignIn: githubAuthPolicy.overrideUserInfoOnSignIn,
+    },
+  },
+  user: {
+    validateUserInfo(data) {
+      return validateGithubIdentity(data.user, data.source);
+    },
+  },
+  account: {
+    encryptOAuthTokens: githubAuthPolicy.encryptOAuthTokens,
+    accountLinking: {
+      disableImplicitLinking: githubAuthPolicy.disableImplicitLinking,
+      allowDifferentEmails: githubAuthPolicy.allowDifferentEmails,
+      updateUserInfoOnLink: githubAuthPolicy.updateUserInfoOnLink,
+      allowUnlinkingAll: githubAuthPolicy.allowUnlinkingAll,
+    },
   },
   rateLimit: {
     storage: "database",

@@ -6,20 +6,45 @@ import * as v from "valibot";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import {
+  getGithubSignInOptions,
   getLoginFailureResolution,
   getPostLoginRedirect,
   loginSchema,
   normalizeEmail,
   translateAuthError,
+  translateGithubOauthError,
 } from "@/lib/auth-policy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-export function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
+interface LoginFormProps extends React.ComponentProps<"div"> {
+  oauthError?: string;
+}
+
+export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
   const navigate = useNavigate();
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(() =>
+    translateGithubOauthError(oauthError),
+  );
+  const [isGithubPending, setIsGithubPending] = useState(false);
+
+  const signInWithGithub = async () => {
+    setFormError(null);
+    setIsGithubPending(true);
+
+    try {
+      const result = await authClient.signIn.social(getGithubSignInOptions());
+      if (result.error) {
+        setFormError(translateGithubOauthError(result.error.code));
+        setIsGithubPending(false);
+      }
+    } catch {
+      setFormError(translateGithubOauthError("oauth_provider_failure"));
+      setIsGithubPending(false);
+    }
+  };
 
   const form = useForm({
     defaultValues: {
@@ -153,11 +178,21 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
               <form.Subscribe selector={(state) => state.isSubmitting}>
                 {(isSubmitting) => (
                   <Field>
-                    <Button type="submit" loading={isSubmitting}>
+                    <Button
+                      type="submit"
+                      loading={isSubmitting}
+                      disabled={isSubmitting || isGithubPending}
+                    >
                       Login
                     </Button>
-                    <Button variant="outline" type="button" disabled aria-disabled="true">
-                      Login with Google (Coming soon)
+                    <Button
+                      variant="outline"
+                      type="button"
+                      loading={isGithubPending}
+                      disabled={isSubmitting || isGithubPending}
+                      onClick={signInWithGithub}
+                    >
+                      Continue with GitHub
                     </Button>
                     <FieldDescription className="text-center">
                       Don&apos;t have a user?{" "}

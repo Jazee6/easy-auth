@@ -181,9 +181,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                   >
                     Create user
                   </Button>
-                  <Button variant="outline" type="button" disabled aria-disabled="true">
-                    Sign up with Google (Coming soon)
-                  </Button>
                   <FieldDescription className="text-center">
                     Already registered?{" "}
                     <Link to="/login" className="underline underline-offset-4 hover:text-primary">

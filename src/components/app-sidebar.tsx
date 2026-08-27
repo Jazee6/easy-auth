@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { IdCard, User } from "lucide-react";
+import { IdCard, KeyRound, User } from "lucide-react";
 
 import { NavUser } from "@/components/nav-user";
 import {
@@ -28,6 +28,7 @@ export function AppSidebar({
 } & React.ComponentProps<typeof Sidebar>) {
   const location = useLocation();
   const isProfileActive = location.pathname === "/profile";
+  const isSignInMethodsActive = location.pathname === "/sign-in-methods";
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -60,6 +61,18 @@ export function AppSidebar({
                     <Link to="/profile">
                       <User className="size-4" />
                       <span>Profile</span>
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isSignInMethodsActive}
+                  tooltip="Sign-in methods"
+                  render={
+                    <Link to="/sign-in-methods">
+                      <KeyRound className="size-4" />
+                      <span>Sign-in methods</span>
                     </Link>
                   }
                 />

@@ -59,6 +59,203 @@ export const passwordResetPolicy = {
   establishSession: false,
 } as const;
 
+export const githubAuthPolicy = {
+  requireEmailVerification: true,
+  overrideUserInfoOnSignIn: false,
+  disableImplicitLinking: true,
+  allowDifferentEmails: false,
+  updateUserInfoOnLink: false,
+  allowUnlinkingAll: false,
+  encryptOAuthTokens: false,
+} as const;
+
+export interface GithubIdentitySource {
+  action: "create-user" | "link-account" | "sign-in";
+  method: string;
+  oauth?: { providerId: string };
+}
+
+export function validateGithubIdentity(
+  user: { email?: string | null; emailVerified?: boolean | null },
+  source: GithubIdentitySource,
+): { error: string; errorDescription: string } | undefined {
+  if (source.method !== "oauth" || source.oauth?.providerId !== "github") {
+    return undefined;
+  }
+
+  if (!user.email) {
+    return {
+      error: "github_email_missing",
+      errorDescription: "GitHub must provide an email address",
+    };
+  }
+
+  if (!user.emailVerified) {
+    return {
+      error: "github_email_not_verified",
+      errorDescription: "GitHub must provide a verified email address",
+    };
+  }
+
+  return undefined;
+}
+
+export function getGithubSignInOptions(): {
+  provider: "github";
+  callbackURL: "/profile";
+  newUserCallbackURL: "/profile";
+  errorCallbackURL: "/login";
+} {
+  return {
+    provider: "github",
+    callbackURL: "/profile",
+    newUserCallbackURL: "/profile",
+    errorCallbackURL: "/login",
+  };
+}
+
+export interface SignInMethodAccount {
+  id: string;
+  providerId: string;
+}
+
+export function deriveSignInMethodState(accounts: SignInMethodAccount[]): {
+  password: { isSet: boolean };
+  github: {
+    isLinked: boolean;
+    accountId: string | null;
+    canUnlink: boolean;
+    unlinkReason: string | null;
+  };
+} {
+  const passwordAccount = accounts.find((account) => account.providerId === "credential");
+  const githubAccount = accounts.find((account) => account.providerId === "github");
+  const hasAnotherMethod = accounts.some((account) => account.providerId !== "github");
+
+  return {
+    password: { isSet: Boolean(passwordAccount) },
+    github: {
+      isLinked: Boolean(githubAccount),
+      accountId: githubAccount?.id ?? null,
+      canUnlink: Boolean(githubAccount && hasAnotherMethod),
+      unlinkReason:
+        githubAccount && !hasAnotherMethod
+          ? "Set a password before unlinking your final sign-in method."
+          : null,
+    },
+  };
+}
+
+interface GithubLinkEvaluationInput {
+  userId: string;
+  loginEmail: string;
+  providerEmail?: string | null;
+  providerEmailVerified: boolean;
+  githubIdentityCount: number;
+  identityOwnerUserId?: string | null;
+}
+
+export function evaluateGithubLink(
+  input: GithubLinkEvaluationInput,
+): { allowed: true } | { allowed: false; code: string } {
+  if (!input.providerEmail) {
+    return { allowed: false, code: "github_email_missing" };
+  }
+
+  if (!input.providerEmailVerified) {
+    return { allowed: false, code: "github_email_not_verified" };
+  }
+
+  if (normalizeEmail(input.providerEmail) !== normalizeEmail(input.loginEmail)) {
+    return { allowed: false, code: "email_does_not_match" };
+  }
+
+  if (input.identityOwnerUserId && input.identityOwnerUserId !== input.userId) {
+    return { allowed: false, code: "identity_owned_by_another_user" };
+  }
+
+  if (input.githubIdentityCount > 0) {
+    return { allowed: false, code: "github_already_linked" };
+  }
+
+  return { allowed: true };
+}
+
+export function getGithubLinkOptions(): {
+  provider: "github";
+  callbackURL: "/sign-in-methods?status=github-linked";
+  errorCallbackURL: "/sign-in-methods";
+} {
+  return {
+    provider: "github",
+    callbackURL: "/sign-in-methods?status=github-linked",
+    errorCallbackURL: "/sign-in-methods",
+  };
+}
+
+export function translateSignInMethodsError(error: string): string {
+  const errorCode = error.toLowerCase();
+
+  if (
+    errorCode === "email_does_not_match" ||
+    errorCode === "linking_different_emails_not_allowed"
+  ) {
+    return "The verified GitHub email must match your login email.";
+  }
+
+  if (
+    errorCode === "account_already_linked_to_different_user" ||
+    errorCode === "social_account_already_linked" ||
+    errorCode === "identity_owned_by_another_user"
+  ) {
+    return "This GitHub identity is already linked to another user.";
+  }
+
+  if (
+    errorCode === "unable_to_link_account" ||
+    errorCode === "github_already_linked" ||
+    errorCode === "linking_failed"
+  ) {
+    return "A GitHub identity is already linked, or the link could not be completed.";
+  }
+
+  if (errorCode === "github_email_missing" || errorCode === "email_not_found") {
+    return "GitHub did not provide an email. Verify your primary email in GitHub and try again.";
+  }
+
+  if (errorCode === "github_email_not_verified" || errorCode === "email_not_verified") {
+    return "Verify your primary email in GitHub before linking.";
+  }
+
+  if (errorCode === "failed_to_unlink_last_account") {
+    return "Set a password before unlinking your final sign-in method.";
+  }
+
+  return "Unable to update sign-in methods. Please try again.";
+}
+
+export function translateGithubOauthError(error?: string): string | null {
+  if (!error) return null;
+
+  if (error === "access_denied" || error === "no_code") {
+    return "GitHub sign-in was canceled. Please try again.";
+  }
+
+  if (error === "email_not_found" || error === "github_email_missing") {
+    return "GitHub did not provide an email. Verify your primary email in GitHub and try again.";
+  }
+
+  if (error === "email_not_verified" || error === "github_email_not_verified") {
+    return "Verify your primary email in GitHub before signing in.";
+  }
+
+  if (error === "account_not_linked") {
+    return "A user already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.";
+  }
+
+  return "Unable to sign in with GitHub. Please try again.";
+}
+
 export const profileSchema = v.object({
   name: v.pipe(v.string("Name is required"), v.trim(), v.nonEmpty("Name is required")),
   image: v.optional(
@@ -290,7 +487,7 @@ export function getRouteRedirect({ pathname, hasSession }: RouteRedirectParams):
     return hasSession ? "/profile" : null;
   }
 
-  if (cleanPath === "/profile") {
+  if (cleanPath === "/profile" || cleanPath === "/sign-in-methods") {
     return hasSession ? null : "/login";
   }
 

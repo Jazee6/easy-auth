@@ -8,6 +8,10 @@ import {
   deriveInitialName,
   derivePasswordResetPayload,
   deriveSignupPayload,
+  deriveSignInMethodState,
+  evaluateGithubLink,
+  getGithubLinkOptions,
+  getGithubSignInOptions,
   getInitials,
   getLoginFailureResolution,
   getPostLoginRedirect,
@@ -26,8 +30,12 @@ import {
   profileSchema,
   shouldRejectPasswordlessOtpRequest,
   signupSchema,
+  githubAuthPolicy,
   translateAuthError,
+  translateGithubOauthError,
   translateProfileError,
+  translateSignInMethodsError,
+  validateGithubIdentity,
   verifyEmailFormSchema,
 } from "./auth-policy";
 import { PasswordResetEmail } from "../emails/password-reset-email";
@@ -385,6 +393,177 @@ describe("auth-policy", () => {
     });
   });
 
+  describe("GitHub identity admission and OAuth feedback", () => {
+    it("admits only GitHub identities with a verified email for create, sign-in, and link", () => {
+      for (const action of ["create-user", "sign-in", "link-account"] as const) {
+        expect(
+          validateGithubIdentity(
+            { email: "User@Example.com", emailVerified: true },
+            { action, method: "oauth", oauth: { providerId: "github" } },
+          ),
+        ).toBeUndefined();
+        expect(
+          validateGithubIdentity(
+            { email: "user@example.com", emailVerified: false },
+            { action, method: "oauth", oauth: { providerId: "github" } },
+          ),
+        ).toEqual({
+          error: "github_email_not_verified",
+          errorDescription: "GitHub must provide a verified email address",
+        });
+      }
+
+      expect(
+        validateGithubIdentity(
+          { emailVerified: false },
+          { action: "create-user", method: "oauth", oauth: { providerId: "github" } },
+        ),
+      ).toEqual({
+        error: "github_email_missing",
+        errorDescription: "GitHub must provide an email address",
+      });
+    });
+
+    it("does not apply GitHub admission policy to other authentication methods", () => {
+      expect(
+        validateGithubIdentity(
+          { email: "user@example.com", emailVerified: false },
+          { action: "create-user", method: "email-password" },
+        ),
+      ).toBeUndefined();
+      expect(
+        validateGithubIdentity(
+          { email: "user@example.com", emailVerified: false },
+          { action: "create-user", method: "oauth", oauth: { providerId: "google" } },
+        ),
+      ).toBeUndefined();
+    });
+
+    it("keeps linking explicit and preserves maintained profile data", () => {
+      expect(githubAuthPolicy).toEqual({
+        requireEmailVerification: true,
+        overrideUserInfoOnSignIn: false,
+        disableImplicitLinking: true,
+        allowDifferentEmails: false,
+        updateUserInfoOnLink: false,
+        allowUnlinkingAll: false,
+        encryptOAuthTokens: false,
+      });
+    });
+
+    it("uses stable local destinations for GitHub sign-in", () => {
+      expect(getGithubSignInOptions()).toEqual({
+        provider: "github",
+        callbackURL: "/profile",
+        newUserCallbackURL: "/profile",
+        errorCallbackURL: "/login",
+      });
+    });
+
+    it("translates cancellation, unverified email, and collisions without exposing framework errors", () => {
+      expect(translateGithubOauthError("access_denied")).toBe(
+        "GitHub sign-in was canceled. Please try again.",
+      );
+      expect(translateGithubOauthError("github_email_missing")).toBe(
+        "GitHub did not provide an email. Verify your primary email in GitHub and try again.",
+      );
+      expect(translateGithubOauthError("github_email_not_verified")).toBe(
+        "Verify your primary email in GitHub before signing in.",
+      );
+      expect(translateGithubOauthError("account_not_linked")).toBe(
+        "A user already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.",
+      );
+      expect(translateGithubOauthError("raw_provider_failure")).toBe(
+        "Unable to sign in with GitHub. Please try again.",
+      );
+      expect(translateGithubOauthError(undefined)).toBeNull();
+    });
+  });
+
+  describe("sign-in method policy", () => {
+    it("derives password and GitHub state from Better Auth account records", () => {
+      expect(
+        deriveSignInMethodState([
+          { id: "credential-1", providerId: "credential" },
+          { id: "github-1", providerId: "github" },
+        ]),
+      ).toEqual({
+        password: { isSet: true },
+        github: { isLinked: true, accountId: "github-1", canUnlink: true, unlinkReason: null },
+      });
+
+      expect(deriveSignInMethodState([{ id: "github-1", providerId: "github" }])).toEqual({
+        password: { isSet: false },
+        github: {
+          isLinked: true,
+          accountId: "github-1",
+          canUnlink: false,
+          unlinkReason: "Set a password before unlinking your final sign-in method.",
+        },
+      });
+
+      expect(deriveSignInMethodState([{ id: "credential-1", providerId: "credential" }])).toEqual({
+        password: { isSet: true },
+        github: { isLinked: false, accountId: null, canUnlink: false, unlinkReason: null },
+      });
+    });
+
+    it("requires an unused, verified, same-email GitHub identity for explicit linking", () => {
+      const base = {
+        userId: "user-1",
+        loginEmail: " User@Example.com ",
+        providerEmail: "user@example.COM",
+        providerEmailVerified: true,
+        githubIdentityCount: 0,
+        identityOwnerUserId: null,
+      };
+
+      expect(evaluateGithubLink(base)).toEqual({ allowed: true });
+      expect(evaluateGithubLink({ ...base, providerEmailVerified: false })).toEqual({
+        allowed: false,
+        code: "github_email_not_verified",
+      });
+      expect(evaluateGithubLink({ ...base, providerEmail: "other@example.com" })).toEqual({
+        allowed: false,
+        code: "email_does_not_match",
+      });
+      expect(evaluateGithubLink({ ...base, githubIdentityCount: 1 })).toEqual({
+        allowed: false,
+        code: "github_already_linked",
+      });
+      expect(evaluateGithubLink({ ...base, identityOwnerUserId: "user-2" })).toEqual({
+        allowed: false,
+        code: "identity_owned_by_another_user",
+      });
+    });
+
+    it("uses authenticated local destinations for explicit GitHub linking", () => {
+      expect(getGithubLinkOptions()).toEqual({
+        provider: "github",
+        callbackURL: "/sign-in-methods?status=github-linked",
+        errorCallbackURL: "/sign-in-methods",
+      });
+    });
+
+    it("maps link and unlink errors to stable feedback", () => {
+      expect(translateSignInMethodsError("email_does_not_match")).toBe(
+        "The verified GitHub email must match your login email.",
+      );
+      expect(translateSignInMethodsError("account_already_linked_to_different_user")).toBe(
+        "This GitHub identity is already linked to another user.",
+      );
+      expect(translateSignInMethodsError("unable_to_link_account")).toBe(
+        "A GitHub identity is already linked, or the link could not be completed.",
+      );
+      expect(translateSignInMethodsError("FAILED_TO_UNLINK_LAST_ACCOUNT")).toBe(
+        "Set a password before unlinking your final sign-in method.",
+      );
+      expect(translateSignInMethodsError("provider_raw_error")).toBe(
+        "Unable to update sign-in methods. Please try again.",
+      );
+    });
+  });
+
   describe("error translation", () => {
     it("maps authentication failure to generic error message without disclosing user existence", () => {
       expect(translateAuthError("INVALID_EMAIL_OR_PASSWORD", "login")).toBe(
@@ -490,9 +669,11 @@ describe("auth-policy", () => {
       expect(getRouteRedirect({ pathname: "/forgot-password", hasSession: true })).toBeNull();
     });
 
-    it("redirects protected /profile to /login for unauthenticated visitors, but allows authenticated users", () => {
+    it("redirects protected user-panel routes to /login for unauthenticated visitors", () => {
       expect(getRouteRedirect({ pathname: "/profile", hasSession: true })).toBeNull();
       expect(getRouteRedirect({ pathname: "/profile", hasSession: false })).toBe("/login");
+      expect(getRouteRedirect({ pathname: "/sign-in-methods", hasSession: true })).toBeNull();
+      expect(getRouteRedirect({ pathname: "/sign-in-methods", hasSession: false })).toBe("/login");
     });
 
     it("returns expected post-action redirect paths", () => {

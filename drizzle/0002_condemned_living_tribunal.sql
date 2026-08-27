@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `account_userId_github_uidx` ON `account` (`user_id`) WHERE "account"."provider_id" = 'github';
