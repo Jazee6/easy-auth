@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
+import { Loader2 } from "lucide-react";
 import * as v from "valibot";
 
 import { authClient } from "@/lib/auth-client";
@@ -182,7 +183,14 @@ export function ProfileForm({
                 {([isSubmitting]) => (
                   <Field className="pt-2">
                     <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? "Saving..." : "Save Changes"}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
                     </Button>
                   </Field>
                 )}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
+import { Loader2 } from "lucide-react";
 import * as v from "valibot";
 
 import { cn } from "@/lib/utils";
@@ -136,13 +137,20 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 {([isSubmitting]) => (
                   <Field>
                     <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? "Logging in..." : "Login"}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="animate-spin" />
+                          Logging in...
+                        </>
+                      ) : (
+                        "Login"
+                      )}
                     </Button>
                     <Button variant="outline" type="button" disabled aria-disabled="true">
                       Login with Google (Coming soon)
                     </Button>
                     <FieldDescription className="text-center">
-                      Don&apos;t have an account?{" "}
+                      Don&apos;t have a user?{" "}
                       <Link
                         to="/signup"
                         className="underline underline-offset-4 hover:text-primary"

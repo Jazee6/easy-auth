@@ -55,7 +55,7 @@ Follow these steps to manually verify the complete 0.1.0 authentication lifecycl
 - Notice the minimal form requesting only **Email** and **Password** (no name field or password confirmation).
 - Notice the disabled **Sign up with Google (Coming soon)** button.
 - Enter an email (e.g. `alice+demo@example.com`) and password (at least 8 characters).
-- Click **Create Account**.
+- Click **Create user**.
 - **Expected**: A session is created and you are navigated directly to `/profile`.
 
 ### 3. Inspect Initial Profile

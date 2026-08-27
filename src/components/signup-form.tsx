@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
+import { Loader2 } from "lucide-react";
 import * as v from "valibot";
 
 import { cn } from "@/lib/utils";
@@ -51,7 +52,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
   return (
     <Card className={cn(className)} {...props}>
       <CardHeader>
-        <CardTitle>Create an account</CardTitle>
+        <CardTitle>Create user</CardTitle>
         <CardDescription>Enter your email and password below to create your user</CardDescription>
       </CardHeader>
       <CardContent>
@@ -134,13 +135,20 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
               {([isSubmitting]) => (
                 <Field>
                   <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating user..." : "Create Account"}
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="animate-spin" />
+                        Creating user...
+                      </>
+                    ) : (
+                      "Create user"
+                    )}
                   </Button>
                   <Button variant="outline" type="button" disabled aria-disabled="true">
                     Sign up with Google (Coming soon)
                   </Button>
                   <FieldDescription className="text-center">
-                    Already have an account?{" "}
+                    Already registered?{" "}
                     <Link to="/login" className="underline underline-offset-4 hover:text-primary">
                       Log in
                     </Link>

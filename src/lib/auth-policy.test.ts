@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  credentialsSchema,
   deriveInitialName,
   deriveSignupPayload,
   getInitials,
@@ -61,6 +62,11 @@ describe("auth-policy", () => {
   });
 
   describe("login and signup validation schemas", () => {
+    it("shares identical credentials schema between login and signup", () => {
+      expect(loginSchema).toBe(credentialsSchema);
+      expect(signupSchema).toBe(credentialsSchema);
+    });
+
     it("validates correct login credentials", () => {
       const valid = v.safeParse(loginSchema, {
         email: "user@example.com",

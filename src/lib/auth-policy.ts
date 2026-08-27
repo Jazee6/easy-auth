@@ -1,6 +1,6 @@
 import * as v from "valibot";
 
-export const loginSchema = v.object({
+export const credentialsSchema = v.object({
   email: v.pipe(
     v.string("Email is required"),
     v.trim(),
@@ -15,20 +15,8 @@ export const loginSchema = v.object({
   ),
 });
 
-export const signupSchema = v.object({
-  email: v.pipe(
-    v.string("Email is required"),
-    v.trim(),
-    v.nonEmpty("Email is required"),
-    v.email("Invalid email address"),
-  ),
-  password: v.pipe(
-    v.string("Password is required"),
-    v.nonEmpty("Password is required"),
-    v.minLength(8, "Password must be at least 8 characters"),
-    v.maxLength(128, "Password must be at most 128 characters"),
-  ),
-});
+export const loginSchema = credentialsSchema;
+export const signupSchema = credentialsSchema;
 
 export const profileSchema = v.object({
   name: v.pipe(v.string("Name is required"), v.trim(), v.nonEmpty("Name is required")),
@@ -49,8 +37,9 @@ export const profileSchema = v.object({
   ),
 });
 
-export type LoginInput = v.InferInput<typeof loginSchema>;
-export type SignupInput = v.InferInput<typeof signupSchema>;
+export type CredentialsInput = v.InferInput<typeof credentialsSchema>;
+export type LoginInput = CredentialsInput;
+export type SignupInput = CredentialsInput;
 export type ProfileInput = v.InferInput<typeof profileSchema>;
 
 export function normalizeEmail(email: string): string {
