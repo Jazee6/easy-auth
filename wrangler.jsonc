@@ -4,4 +4,12 @@
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "easy-auth-d1",
+      "database_id": "easy-auth-d1",
+      "migrations_dir": "drizzle",
+    },
+  ],
 }
