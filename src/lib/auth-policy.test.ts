@@ -2,20 +2,27 @@ import { describe, expect, it } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as v from "valibot";
 import {
+  captchaProtectedAuthEndpoints,
   composeAuthRequestHeaders,
   credentialsSchema,
   deriveInitialName,
+  derivePasswordResetPayload,
   deriveSignupPayload,
   getInitials,
   getLoginFailureResolution,
   getPostLoginRedirect,
+  getPasswordResetRequestSuccessMessage,
   getPostLogoutRedirect,
+  getPostPasswordResetRedirect,
   getPostSignupDestination,
   getPostVerificationRedirect,
   getRouteRedirect,
   loginSchema,
   normalizeEmail,
   otpSchema,
+  passwordResetCompletionSchema,
+  passwordResetPolicy,
+  passwordResetRequestSchema,
   profileSchema,
   shouldRejectPasswordlessOtpRequest,
   signupSchema,
@@ -23,12 +30,14 @@ import {
   translateProfileError,
   verifyEmailFormSchema,
 } from "./auth-policy";
+import { PasswordResetEmail } from "../emails/password-reset-email";
 import { VerificationEmail } from "../emails/verification-email";
 import {
   createResendEmailSender,
-  deliverVerificationEmail,
+  deliverAuthEmail,
+  getAuthEmailContent,
   scheduleBackgroundTask,
-  type VerificationEmailMessage,
+  type AuthEmailMessage,
 } from "./email-service";
 
 describe("auth-policy", () => {
@@ -92,6 +101,82 @@ describe("auth-policy", () => {
         otp: "123",
       });
       expect(badOtp.success).toBe(false);
+    });
+  });
+
+  describe("password reset validation and policy", () => {
+    it("accepts a normalized reset request email and a complete matching reset payload", () => {
+      expect(v.safeParse(passwordResetRequestSchema, { email: " User@Example.COM " }).success).toBe(
+        true,
+      );
+      expect(
+        v.safeParse(passwordResetCompletionSchema, {
+          email: "user@example.com",
+          otp: "123456",
+          password: "new-password",
+          confirmPassword: "new-password",
+        }).success,
+      ).toBe(true);
+    });
+
+    it("enforces Better Auth password limits and matching confirmation", () => {
+      expect(
+        v.safeParse(passwordResetCompletionSchema, {
+          email: "user@example.com",
+          otp: "123456",
+          password: "short",
+          confirmPassword: "short",
+        }).success,
+      ).toBe(false);
+      expect(
+        v.safeParse(passwordResetCompletionSchema, {
+          email: "user@example.com",
+          otp: "123456",
+          password: "a".repeat(129),
+          confirmPassword: "a".repeat(129),
+        }).success,
+      ).toBe(false);
+
+      const mismatch = v.safeParse(passwordResetCompletionSchema, {
+        email: "user@example.com",
+        otp: "123456",
+        password: "new-password",
+        confirmPassword: "different-password",
+      });
+      expect(mismatch.success).toBe(false);
+      if (!mismatch.success) {
+        expect(mismatch.issues.some((issue) => issue.message === "Passwords do not match")).toBe(
+          true,
+        );
+      }
+    });
+
+    it("derives the native Email OTP reset payload without confirmation state", () => {
+      expect(
+        derivePasswordResetPayload({
+          email: " User@Example.COM ",
+          otp: " 123456 ",
+          password: "new-password",
+        }),
+      ).toEqual({
+        email: "user@example.com",
+        otp: "123456",
+        password: "new-password",
+      });
+    });
+
+    it("uses one non-enumerating success response for reset code requests", () => {
+      expect(getPasswordResetRequestSuccessMessage()).toBe(
+        "If a user exists for this email, a password reset code has been sent. Check your inbox before continuing.",
+      );
+    });
+
+    it("revokes existing sessions and returns to login without creating a session", () => {
+      expect(passwordResetPolicy).toEqual({
+        revokeSessions: true,
+        establishSession: false,
+      });
+      expect(getPostPasswordResetRedirect()).toBe("/login");
     });
   });
 
@@ -223,6 +308,14 @@ describe("auth-policy", () => {
   });
 
   describe("captcha request composition", () => {
+    it("configures exactly the public endpoints selected for captcha protection", () => {
+      expect(captchaProtectedAuthEndpoints).toEqual([
+        "/sign-up/email",
+        "/email-otp/send-verification-otp",
+        "/email-otp/request-password-reset",
+      ]);
+    });
+
     it("adds the captcha response only to protected operations", () => {
       expect(composeAuthRequestHeaders("password-signup", "test-token-123")).toEqual({
         "x-captcha-response": "test-token-123",
@@ -230,12 +323,17 @@ describe("auth-policy", () => {
       expect(composeAuthRequestHeaders("verification-otp-send", "test-token-123")).toEqual({
         "x-captcha-response": "test-token-123",
       });
+      expect(composeAuthRequestHeaders("password-reset-request", "test-token-123")).toEqual({
+        "x-captcha-response": "test-token-123",
+      });
       expect(composeAuthRequestHeaders("email-verification", "test-token-123")).toEqual({});
+      expect(composeAuthRequestHeaders("password-reset", "test-token-123")).toEqual({});
     });
 
     it("fails closed without a captcha token", () => {
       expect(composeAuthRequestHeaders("password-signup", null)).toEqual({});
       expect(composeAuthRequestHeaders("verification-otp-send", undefined)).toEqual({});
+      expect(composeAuthRequestHeaders("password-reset-request", undefined)).toEqual({});
     });
   });
 
@@ -333,6 +431,9 @@ describe("auth-policy", () => {
       expect(translateAuthError("RATE_LIMITED", "resend-otp")).toBe(
         "Too many requests. Please wait a moment before trying again.",
       );
+      expect(translateAuthError("INVALID_OTP", "reset-password")).toBe(
+        "Invalid verification code. Please check and try again.",
+      );
     });
 
     it("translates Captcha errors to security verification failure message", () => {
@@ -350,6 +451,15 @@ describe("auth-policy", () => {
       );
       expect(translateAuthError("SERVICE_UNAVAILABLE", "signup")).toBe(
         "Security verification failed. Please try again.",
+      );
+    });
+
+    it("keeps password reset request and completion failures application-owned", () => {
+      expect(translateAuthError("USER_NOT_FOUND", "request-password-reset")).toBe(
+        "Unable to send a reset code. Please try again.",
+      );
+      expect(translateAuthError("PASSWORD_TOO_SHORT", "reset-password")).toBe(
+        "Unable to reset password. Please check your details and try again.",
       );
     });
 
@@ -376,6 +486,8 @@ describe("auth-policy", () => {
 
       expect(getRouteRedirect({ pathname: "/verify-email", hasSession: true })).toBe("/profile");
       expect(getRouteRedirect({ pathname: "/verify-email", hasSession: false })).toBeNull();
+      expect(getRouteRedirect({ pathname: "/forgot-password", hasSession: false })).toBeNull();
+      expect(getRouteRedirect({ pathname: "/forgot-password", hasSession: true })).toBeNull();
     });
 
     it("redirects protected /profile to /login for unauthenticated visitors, but allows authenticated users", () => {
@@ -390,6 +502,7 @@ describe("auth-policy", () => {
         search: { email: "alice+demo@example.com" },
       });
       expect(getPostVerificationRedirect()).toBe("/profile");
+      expect(getPostPasswordResetRedirect()).toBe("/login");
       expect(getPostLogoutRedirect()).toBe("/login");
     });
   });
@@ -403,15 +516,42 @@ describe("auth-policy", () => {
       expect(html).toContain("If you did not request this verification code");
     });
 
+    it("renders the password reset OTP, validity, and unsolicited-request warning", () => {
+      const html = renderToStaticMarkup(PasswordResetEmail({ otp: "246810", expiresInMinutes: 5 }));
+
+      expect(html).toContain("246810");
+      expect(html).toContain("valid for 5 minutes");
+      expect(html).toContain("If you did not request a password reset");
+    });
+
+    it("selects separate verification and password reset templates", () => {
+      const verification = getAuthEmailContent({
+        purpose: "email-verification",
+        to: "user@example.com",
+        otp: "123456",
+      });
+      const passwordReset = getAuthEmailContent({
+        purpose: "password-reset",
+        to: "user@example.com",
+        otp: "654321",
+      });
+
+      expect(verification.subject).toBe("Your Easy Auth verification code");
+      expect(verification.react.type).toBe(VerificationEmail);
+      expect(passwordReset.subject).toBe("Your Easy Auth password reset code");
+      expect(passwordReset.react.type).toBe(PasswordResetEmail);
+    });
+
     it("delivers through an injected deterministic sender", async () => {
-      const sentMessages: VerificationEmailMessage[] = [];
-      const message = {
+      const sentMessages: AuthEmailMessage[] = [];
+      const message: AuthEmailMessage = {
+        purpose: "password-reset",
         to: "user@example.com",
         otp: "654321",
         expiresInMinutes: 5,
       };
 
-      await deliverVerificationEmail(message, async (sentMessage) => {
+      await deliverAuthEmail(message, async (sentMessage) => {
         sentMessages.push(sentMessage);
       });
 

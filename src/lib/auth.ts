@@ -8,12 +8,12 @@ import { env, waitUntil } from "cloudflare:workers";
 
 import { db } from "../db";
 import * as schema from "../db/schema";
+import { createResendEmailSender, deliverAuthEmail, scheduleBackgroundTask } from "./email-service";
 import {
-  createResendEmailSender,
-  deliverVerificationEmail,
-  scheduleBackgroundTask,
-} from "./email-service";
-import { shouldRejectPasswordlessOtpRequest } from "./auth-policy";
+  captchaProtectedAuthEndpoints,
+  passwordResetPolicy,
+  shouldRejectPasswordlessOtpRequest,
+} from "./auth-policy";
 
 type AuthEnvironment = Cloudflare.Env & {
   RESEND_API_KEY?: string;
@@ -50,6 +50,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    revokeSessionsOnPasswordReset: passwordResetPolicy.revokeSessions,
   },
   emailVerification: {
     autoSignInAfterVerification: true,
@@ -72,7 +73,7 @@ export const auth = betterAuth({
       allowedAttempts: 3,
       resendStrategy: "rotate",
       async sendVerificationOTP(data) {
-        if (data.type !== "email-verification") {
+        if (data.type !== "email-verification" && data.type !== "forget-password") {
           throw new Error(`Unsupported email OTP type: ${data.type}`);
         }
 
@@ -81,8 +82,9 @@ export const auth = betterAuth({
           from: authEnvironment.EMAIL_FROM,
         });
 
-        await deliverVerificationEmail(
+        await deliverAuthEmail(
           {
+            purpose: data.type === "forget-password" ? "password-reset" : "email-verification",
             to: data.email,
             otp: data.otp,
             expiresInMinutes: 5,
@@ -94,7 +96,7 @@ export const auth = betterAuth({
     captcha({
       provider: "cloudflare-turnstile",
       secretKey: authEnvironment.TURNSTILE_SECRET_KEY ?? "",
-      endpoints: ["/sign-up/email", "/email-otp/send-verification-otp"],
+      endpoints: [...captchaProtectedAuthEndpoints],
     }),
     rejectPasswordlessOtpSignInPlugin(),
     tanstackStartCookies(),

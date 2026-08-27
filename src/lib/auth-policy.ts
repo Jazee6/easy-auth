@@ -1,18 +1,22 @@
 import * as v from "valibot";
 
+export const emailSchema = v.pipe(
+  v.string("Email is required"),
+  v.trim(),
+  v.nonEmpty("Email is required"),
+  v.email("Invalid email address"),
+);
+
+export const passwordSchema = v.pipe(
+  v.string("Password is required"),
+  v.nonEmpty("Password is required"),
+  v.minLength(8, "Password must be at least 8 characters"),
+  v.maxLength(128, "Password must be at most 128 characters"),
+);
+
 export const credentialsSchema = v.object({
-  email: v.pipe(
-    v.string("Email is required"),
-    v.trim(),
-    v.nonEmpty("Email is required"),
-    v.email("Invalid email address"),
-  ),
-  password: v.pipe(
-    v.string("Password is required"),
-    v.nonEmpty("Password is required"),
-    v.minLength(8, "Password must be at least 8 characters"),
-    v.maxLength(128, "Password must be at most 128 characters"),
-  ),
+  email: emailSchema,
+  password: passwordSchema,
 });
 
 export const loginSchema = credentialsSchema;
@@ -25,14 +29,35 @@ export const otpSchema = v.pipe(
 );
 
 export const verifyEmailFormSchema = v.object({
-  email: v.pipe(
-    v.string("Email is required"),
-    v.trim(),
-    v.nonEmpty("Email is required"),
-    v.email("Invalid email address"),
-  ),
+  email: emailSchema,
   otp: otpSchema,
 });
+
+export const passwordResetRequestSchema = v.object({
+  email: emailSchema,
+});
+
+export const passwordResetCompletionSchema = v.pipe(
+  v.object({
+    email: emailSchema,
+    otp: otpSchema,
+    password: passwordSchema,
+    confirmPassword: passwordSchema,
+  }),
+  v.forward(
+    v.partialCheck(
+      [["password"], ["confirmPassword"]],
+      (input) => input.password === input.confirmPassword,
+      "Passwords do not match",
+    ),
+    ["confirmPassword"],
+  ),
+);
+
+export const passwordResetPolicy = {
+  revokeSessions: true,
+  establishSession: false,
+} as const;
 
 export const profileSchema = v.object({
   name: v.pipe(v.string("Name is required"), v.trim(), v.nonEmpty("Name is required")),
@@ -58,9 +83,27 @@ export type LoginInput = CredentialsInput;
 export type SignupInput = CredentialsInput;
 export type ProfileInput = v.InferInput<typeof profileSchema>;
 export type VerifyEmailFormInput = v.InferInput<typeof verifyEmailFormSchema>;
+export type PasswordResetRequestInput = v.InferInput<typeof passwordResetRequestSchema>;
+export type PasswordResetCompletionInput = v.InferInput<typeof passwordResetCompletionSchema>;
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+export function derivePasswordResetPayload(input: {
+  email: string;
+  otp: string;
+  password: string;
+}): {
+  email: string;
+  otp: string;
+  password: string;
+} {
+  return {
+    email: normalizeEmail(input.email),
+    otp: input.otp.trim(),
+    password: input.password,
+  };
 }
 
 export function deriveInitialName(email: string): string {
@@ -98,17 +141,27 @@ export function getInitials(name?: string | null): string {
   return trimmed.slice(0, 1).toUpperCase();
 }
 
+export const captchaProtectedAuthEndpoints = [
+  "/sign-up/email",
+  "/email-otp/send-verification-otp",
+  "/email-otp/request-password-reset",
+] as const;
+
 export type AuthRequestOperation =
   | "password-signup"
   | "verification-otp-send"
-  | "email-verification";
+  | "email-verification"
+  | "password-reset-request"
+  | "password-reset";
 
 export function composeAuthRequestHeaders(
   operation: AuthRequestOperation,
   captchaToken?: string | null,
 ): Record<string, string> {
   const isCaptchaProtected =
-    operation === "password-signup" || operation === "verification-otp-send";
+    operation === "password-signup" ||
+    operation === "verification-otp-send" ||
+    operation === "password-reset-request";
 
   if (!isCaptchaProtected || !captchaToken) {
     return {};
@@ -149,7 +202,13 @@ export function getLoginFailureResolution(error: unknown, email: string): LoginF
 
 export function translateAuthError(
   error: unknown,
-  mode: "login" | "signup" | "verify-email" | "resend-otp",
+  mode:
+    | "login"
+    | "signup"
+    | "verify-email"
+    | "resend-otp"
+    | "request-password-reset"
+    | "reset-password",
 ): string {
   const errCode = getAuthErrorCode(error);
 
@@ -200,6 +259,14 @@ export function translateAuthError(
     return "Failed to resend verification code. Please try again.";
   }
 
+  if (mode === "request-password-reset") {
+    return "Unable to send a reset code. Please try again.";
+  }
+
+  if (mode === "reset-password") {
+    return "Unable to reset password. Please check your details and try again.";
+  }
+
   return "An unexpected error occurred. Please try again.";
 }
 
@@ -246,6 +313,14 @@ export function getPostSignupDestination(email: string): {
 
 export function getPostVerificationRedirect(): string {
   return "/profile";
+}
+
+export function getPasswordResetRequestSuccessMessage(): string {
+  return "If a user exists for this email, a password reset code has been sent. Check your inbox before continuing.";
+}
+
+export function getPostPasswordResetRedirect(): string {
+  return "/login";
 }
 
 export function getPostLogoutRedirect(): string {
