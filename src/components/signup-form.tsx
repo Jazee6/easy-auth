@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
-import { Loader2 } from "lucide-react";
 import * as v from "valibot";
 
 import { cn } from "@/lib/utils";
@@ -131,18 +130,11 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
               )}
             </form.Field>
 
-            <form.Subscribe selector={(state) => [state.isSubmitting, state.canSubmit]}>
-              {([isSubmitting]) => (
+            <form.Subscribe selector={(state) => state.isSubmitting}>
+              {(isSubmitting) => (
                 <Field>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="animate-spin" />
-                        Creating user...
-                      </>
-                    ) : (
-                      "Create user"
-                    )}
+                  <Button type="submit" loading={isSubmitting}>
+                    Create user
                   </Button>
                   <Button variant="outline" type="button" disabled aria-disabled="true">
                     Sign up with Google (Coming soon)
