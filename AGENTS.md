@@ -11,3 +11,10 @@ Canonical triage roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-
 ### Domain docs
 
 Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
+
+## 项目规则
+
+- 子Agent固定模型为3.7 flash high
+- 表单使用shadcn Field + Tanstack Form + Valibot
+- 表格使用Data Table + Tanstack Table
+- 按钮加载状态统一在文字左侧+Spinner，状态为disabled
