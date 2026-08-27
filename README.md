@@ -34,6 +34,14 @@ bun run db:migrate:local
 ```
 *(Or directly using Wrangler: `bun x wrangler d1 migrations apply DB --local`)*
 
+Schema changes are explicit and never run during application startup. After changing the Better Auth configuration, regenerate the framework-owned Drizzle schema and SQL migration before applying it:
+
+```bash
+bun run auth:generate
+bun run db:generate
+bun run db:migrate:local
+```
+
 ### 3. Start Development Server
 ```bash
 bun run dev
@@ -108,5 +116,6 @@ Follow these steps to manually verify the complete 0.1.0 authentication lifecycl
 - `bun test` - Run automated test suite (authentication flow policy)
 - `bun run typecheck` - Run TypeScript type checking
 - `bun run lint` - Run Oxlint
+- `bun run auth:generate` - Regenerate the Better Auth Drizzle schema with the current CLI
 - `bun run db:generate` - Generate Drizzle SQL migrations from schema
 - `bun run db:migrate:local` - Apply migrations to local D1 database

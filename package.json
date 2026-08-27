@@ -11,6 +11,7 @@
     "deploy": "bun run build && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "auth:generate": "bunx auth@latest generate --config src/lib/auth.ts --output src/db/schema.ts -y",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
