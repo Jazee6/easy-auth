@@ -1,4 +1,4 @@
-import { useState } from "react";
+import * as React from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import * as v from "valibot";
@@ -6,8 +6,9 @@ import * as v from "valibot";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import {
+  composeAuthRequestHeaders,
   deriveSignupPayload,
-  getPostSignupRedirect,
+  getPostSignupDestination,
   signupSchema,
   translateAuthError,
 } from "@/lib/auth-policy";
@@ -15,10 +16,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Turnstile, type TurnstileRef } from "@/components/turnstile";
 
 export function SignupForm({ className, ...props }: React.ComponentProps<typeof Card>) {
   const navigate = useNavigate();
-  const [formError, setFormError] = useState<string | null>(null);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
+  const turnstileRef = React.useRef<TurnstileRef>(null);
+
+  const resetCaptcha = () => {
+    setTurnstileToken(null);
+    turnstileRef.current?.reset();
+  };
 
   const form = useForm({
     defaultValues: {
@@ -27,8 +36,14 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
     },
     onSubmit: async ({ value }) => {
       setFormError(null);
+      if (!turnstileToken) {
+        setFormError("Please complete the security check to continue.");
+        return;
+      }
+
       const validation = v.safeParse(signupSchema, value);
       if (!validation.success) {
+        resetCaptcha();
         return;
       }
 
@@ -37,14 +52,25 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
         password: value.password,
       });
 
-      const res = await authClient.signUp.email(payload);
+      try {
+        const res = await authClient.signUp.email({
+          ...payload,
+          fetchOptions: {
+            headers: composeAuthRequestHeaders("password-signup", turnstileToken),
+          },
+        });
 
-      if (res.error) {
-        setFormError(translateAuthError(res.error, "signup"));
-        return;
+        if (res.error) {
+          setFormError(translateAuthError(res.error, "signup"));
+          return;
+        }
+
+        await navigate(getPostSignupDestination(payload.email));
+      } catch (error) {
+        setFormError(translateAuthError(error, "signup"));
+      } finally {
+        resetCaptcha();
       }
-
-      await navigate({ to: getPostSignupRedirect() });
     },
   });
 
@@ -130,10 +156,29 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
               )}
             </form.Field>
 
+            <div className="py-1">
+              <Turnstile
+                ref={turnstileRef}
+                action="signup"
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => {
+                  resetCaptcha();
+                  setFormError(
+                    "Security verification encountered an error. Please refresh and try again.",
+                  );
+                }}
+              />
+            </div>
+
             <form.Subscribe selector={(state) => state.isSubmitting}>
               {(isSubmitting) => (
                 <Field>
-                  <Button type="submit" loading={isSubmitting}>
+                  <Button
+                    type="submit"
+                    loading={isSubmitting}
+                    disabled={!turnstileToken || isSubmitting}
+                  >
                     Create user
                   </Button>
                   <Button variant="outline" type="button" disabled aria-disabled="true">

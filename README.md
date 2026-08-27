@@ -1,121 +1,42 @@
 # Easy Auth
 
-Easy Auth is an open-source, self-hosted authentication foundation for an identity domain on the Cloudflare stack.
+Easy Auth is a development-stage, self-hosted authentication foundation for an identity domain on the Cloudflare stack. OIDC Provider protocols and production deployment are not yet available.
 
-> **Status (Version 0.1.0)**: Development-stage authentication foundation. Version 0.1.0 establishes open registration, email/password authentication, local Cloudflare D1 persistence, a session-aware application shell, and user profile management. OIDC Provider endpoints, OAuth flows, and production deployments are planned for future milestones.
+## Local development
 
----
+Requirements: [Bun](https://bun.sh/) and [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
 
-## Architecture & Stack
-
-- **Framework**: [TanStack Start](https://tanstack.com/start) with TanStack Router
-- **Authentication**: [Better Auth](https://www.better-auth.com/) with TanStack Start cookie integration
-- **Database & Persistence**: [Cloudflare D1](https://developers.cloudflare.com/d1/) with [Drizzle ORM](https://orm.drizzle.team/)
-- **UI & Components**: [shadcn/ui](https://ui.shadcn.com/) (`base-vega` style) + [Base UI](https://base-ui.com/) Toast + [Tailwind CSS v4](https://tailwindcss.com/)
-- **Forms & Validation**: [TanStack Form](https://tanstack.com/form) + [Valibot](https://valibot.dev/)
-- **Testing & Runtime**: [Bun](https://bun.sh/)
-
----
-
-## Local Setup & Migration
-
-### Prerequisites
-- [Bun](https://bun.sh/) (v1.2+)
-
-### 1. Install Dependencies
 ```bash
 bun install
-```
-
-### 2. Run Local D1 Migrations
-Initialize and migrate the local Cloudflare D1 database:
-```bash
 bun run db:migrate:local
-```
-*(Or directly using Wrangler: `bun x wrangler d1 migrations apply DB --local`)*
-
-Schema changes are explicit and never run during application startup. After changing the Better Auth configuration, regenerate the framework-owned Drizzle schema and SQL migration before applying it:
-
-```bash
-bun run auth:generate
-bun run db:generate
-bun run db:migrate:local
-```
-
-### 3. Start Development Server
-```bash
 bun run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
----
+Database migrations are explicit. Application startup never changes the D1 schema. After an authentication schema change, run `bun run auth:generate`, `bun run db:generate`, and then apply the generated migration.
 
-## Manual Acceptance Flow
+## Runtime bindings
 
-Follow these steps to manually verify the complete 0.1.0 authentication lifecycle:
+Configure local values in `.env.local`. Configure deployed secrets with Wrangler rather than committing them.
 
-### 1. Root & Unauthenticated Redirect
-- Visit `http://localhost:3000/`.
-- **Expected**: Automatically redirects to `http://localhost:3000/login`.
+| Binding                   | Scope         | Purpose                                                                   |
+| ------------------------- | ------------- | ------------------------------------------------------------------------- |
+| `DB`                      | Server        | Cloudflare D1 database binding                                            |
+| `BETTER_AUTH_URL`         | Server        | Public Easy Auth base URL                                                 |
+| `BETTER_AUTH_SECRET`      | Server secret | Better Auth signing secret (at least 32 random characters)                |
+| `RESEND_API_KEY`          | Server secret | Resend API credential                                                     |
+| `EMAIL_FROM`              | Server        | Full verified sender identity, for example `Easy Auth <auth@example.com>` |
+| `TURNSTILE_SECRET_KEY`    | Server secret | Cloudflare Turnstile server verification key                              |
+| `VITE_TURNSTILE_SITE_KEY` | Browser       | Cloudflare Turnstile managed-widget site key                              |
 
-### 2. Open Registration (Signup)
-- Click **Sign up** to navigate to `/signup`.
-- Notice the minimal form requesting only **Email** and **Password** (no name field or password confirmation).
-- Notice the disabled **Sign up with Google (Coming soon)** button.
-- Enter an email (e.g. `alice+demo@example.com`) and password (at least 8 characters).
-- Click **Create user**.
-- **Expected**: A session is created and you are navigated directly to `/profile`.
+Resend and Turnstile configuration is required. Missing bindings do not disable verification: Turnstile fails closed and email delivery failures are caught and logged in the background without changing the public registration response.
 
-### 3. Inspect Initial Profile
-- In the User Panel (`/profile`), confirm:
-  - **Full Name** defaults to the derived local part: `alice+demo`.
-  - **Login Email** displays `alice+demo@example.com` as read-only.
-  - Sidebar footer shows `alice+demo`, the email, and fallback avatar initials (`A`).
+Local automation must explicitly configure Cloudflare's official always-pass Turnstile test pair: site key `1x00000000000000000000AA` and secret key `1x0000000000000000000000000000000AA`. Manual development and production use environment-provided credentials. Never deploy the test keys. Automated tests inject a deterministic email sender and do not call Resend or production Turnstile.
 
-### 4. Edit Profile & Toast Feedback
-- Update **Full Name** to `Alice Demo`.
-- Enter an optional HTTPS avatar URL (e.g. `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100`).
-- Click **Save Changes**.
-- **Expected**:
-  - A Base UI success Toast appears: *"Profile updated"*.
-  - The sidebar footer and avatar preview immediately reflect the new name and image.
+## Commands
 
-### 5. Sign Out
-- Click the user item in the sidebar footer to open the dropdown menu.
-- Confirm the menu contains only **Log out**.
-- Click **Log out**.
-- **Expected**: Session is terminated and you are redirected to `/login`.
-
-### 6. Protected Route Guard
-- While signed out, navigate directly to `http://localhost:3000/profile`.
-- **Expected**: Access is blocked and you are redirected to `/login`.
-
-### 7. Sign In & Data Persistence
-- On `/login`, enter `alice+demo@example.com` and your password.
-- Notice the disabled **Forgot password? (Coming soon)** and **Login with Google (Coming soon)** controls.
-- Click **Login**.
-- **Expected**: Authenticated successfully, redirected to `/profile`, showing persisted name `Alice Demo` and avatar URL.
-
-### 8. Authenticated Route Redirect
-- While logged in, navigate to `http://localhost:3000/login` or `http://localhost:3000/signup`.
-- **Expected**: Automatically redirects to `/profile`.
-
-### 9. Validation & Error Handling Checks
-- **Short Password**: On signup/login, enter `< 8` characters -> Error appears beside password field.
-- **Invalid Email**: Enter `not-an-email` -> Error appears beside email field.
-- **Invalid Credentials**: Enter wrong password on login -> Shows generic error message (*"Invalid email or password"*).
-- **Duplicate Registration**: Attempt to register `alice+demo@example.com` again -> Shows generic error message (*"Unable to create user with provided details"*).
-- **Invalid Avatar URL**: In profile, enter `http://insecure.com/img.png` or `invalid-url` -> Error appears beside avatar field.
-
----
-
-## Available Scripts
-
-- `bun run dev` - Start local development server
-- `bun run build` - Build production client and SSR bundles
-- `bun test` - Run automated test suite (authentication flow policy)
-- `bun run typecheck` - Run TypeScript type checking
-- `bun run lint` - Run Oxlint
-- `bun run auth:generate` - Regenerate the Better Auth Drizzle schema with the current CLI
-- `bun run db:generate` - Generate Drizzle SQL migrations from schema
-- `bun run db:migrate:local` - Apply migrations to local D1 database
+- `bun run test` — automated policy and service-seam tests
+- `bun run typecheck` — TypeScript checking
+- `bun run lint` — Oxlint
+- `bun run fmt:check` — formatting check
+- `bun run build` — production build
+- `bun run db:migrate:local` — apply migrations to local D1

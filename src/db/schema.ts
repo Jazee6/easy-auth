@@ -1,19 +1,11 @@
 import { relations, sql } from "drizzle-orm";
-import {
-  sqliteTable,
-  text,
-  integer,
-  index,
-  uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  emailVerified: integer("email_verified", { mode: "boolean" })
-    .default(false)
-    .notNull(),
+  emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
   image: text("image"),
   createdAt: integer("created_at", { mode: "timestamp_ms" })
     .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
@@ -74,10 +66,7 @@ export const account = sqliteTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("account_issuer_accountId_uidx").on(
-      table.issuer,
-      table.accountId,
-    ),
+    uniqueIndex("account_issuer_accountId_uidx").on(table.issuer, table.accountId),
     index("account_userId_idx").on(table.userId),
   ],
 );
@@ -99,6 +88,13 @@ export const verification = sqliteTable(
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
+
+export const rateLimit = sqliteTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: integer("last_request").notNull(),
+});
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),

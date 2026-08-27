@@ -18,6 +18,22 @@ export const credentialsSchema = v.object({
 export const loginSchema = credentialsSchema;
 export const signupSchema = credentialsSchema;
 
+export const otpSchema = v.pipe(
+  v.string("Verification code is required"),
+  v.trim(),
+  v.regex(/^\d{6}$/, "Verification code must be 6 digits"),
+);
+
+export const verifyEmailFormSchema = v.object({
+  email: v.pipe(
+    v.string("Email is required"),
+    v.trim(),
+    v.nonEmpty("Email is required"),
+    v.email("Invalid email address"),
+  ),
+  otp: otpSchema,
+});
+
 export const profileSchema = v.object({
   name: v.pipe(v.string("Name is required"), v.trim(), v.nonEmpty("Name is required")),
   image: v.optional(
@@ -41,6 +57,7 @@ export type CredentialsInput = v.InferInput<typeof credentialsSchema>;
 export type LoginInput = CredentialsInput;
 export type SignupInput = CredentialsInput;
 export type ProfileInput = v.InferInput<typeof profileSchema>;
+export type VerifyEmailFormInput = v.InferInput<typeof verifyEmailFormSchema>;
 
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -81,11 +98,93 @@ export function getInitials(name?: string | null): string {
   return trimmed.slice(0, 1).toUpperCase();
 }
 
-export function translateAuthError(_error: unknown, mode: "login" | "signup"): string {
+export type AuthRequestOperation =
+  | "password-signup"
+  | "verification-otp-send"
+  | "email-verification";
+
+export function composeAuthRequestHeaders(
+  operation: AuthRequestOperation,
+  captchaToken?: string | null,
+): Record<string, string> {
+  const isCaptchaProtected =
+    operation === "password-signup" || operation === "verification-otp-send";
+
+  if (!isCaptchaProtected || !captchaToken) {
+    return {};
+  }
+
+  return { "x-captcha-response": captchaToken };
+}
+
+export function shouldRejectPasswordlessOtpRequest(path?: string, otpType?: string): boolean {
+  return (
+    path === "/sign-in/email-otp" ||
+    (path === "/email-otp/send-verification-otp" && otpType === "sign-in")
+  );
+}
+
+export function translateAuthError(
+  error: unknown,
+  mode: "login" | "signup" | "verify-email" | "resend-otp",
+): string {
+  const errCode =
+    typeof error === "string"
+      ? error
+      : typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code: unknown }).code)
+        : typeof error === "object" && error !== null && "message" in error
+          ? String((error as { message: unknown }).message)
+          : "";
+
+  if (errCode === "EMAIL_NOT_VERIFIED") {
+    return "Please verify your email address to continue.";
+  }
+
+  if (
+    errCode === "CAPTCHA_VERIFICATION_FAILED" ||
+    errCode === "VERIFICATION_FAILED" ||
+    errCode === "MISSING_RESPONSE" ||
+    errCode === "UNKNOWN_ERROR" ||
+    errCode === "SERVICE_UNAVAILABLE" ||
+    errCode === "MISSING_SECRET_KEY"
+  ) {
+    return "Security verification failed. Please try again.";
+  }
+
+  if (errCode === "INVALID_OTP") {
+    return "Invalid verification code. Please check and try again.";
+  }
+
+  if (errCode === "OTP_EXPIRED") {
+    return "Verification code has expired. Please request a new code.";
+  }
+
+  if (errCode === "TOO_MANY_ATTEMPTS") {
+    return "Too many invalid attempts. Please request a new code.";
+  }
+
+  if (errCode === "TOO_MANY_REQUESTS" || errCode === "RATE_LIMITED") {
+    return "Too many requests. Please wait a moment before trying again.";
+  }
+
   if (mode === "login") {
     return "Invalid email or password";
   }
-  return "Unable to create user with provided details";
+
+  if (mode === "signup") {
+    return "Unable to create user with provided details";
+  }
+
+  if (mode === "verify-email") {
+    return "Failed to verify email. Please try again or request a new code.";
+  }
+
+  if (mode === "resend-otp") {
+    return "Failed to resend verification code. Please try again.";
+  }
+
+  return "An unexpected error occurred. Please try again.";
 }
 
 export function translateProfileError(_error: unknown): string {
@@ -104,7 +203,7 @@ export function getRouteRedirect({ pathname, hasSession }: RouteRedirectParams):
     return hasSession ? "/profile" : "/login";
   }
 
-  if (cleanPath === "/login" || cleanPath === "/signup") {
+  if (cleanPath === "/login" || cleanPath === "/signup" || cleanPath === "/verify-email") {
     return hasSession ? "/profile" : null;
   }
 
@@ -119,7 +218,17 @@ export function getPostLoginRedirect(): string {
   return "/profile";
 }
 
-export function getPostSignupRedirect(): string {
+export function getPostSignupDestination(email: string): {
+  to: "/verify-email";
+  search: { email: string };
+} {
+  return {
+    to: "/verify-email",
+    search: { email: normalizeEmail(email) },
+  };
+}
+
+export function getPostVerificationRedirect(): string {
   return "/profile";
 }
 
