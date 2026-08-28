@@ -24,7 +24,8 @@ export function PasswordResetEmail({ otp, expiresInMinutes = 5 }: PasswordResetE
         <Container style={containerStyle}>
           <Heading style={headingStyle}>Reset your password</Heading>
           <Text style={textStyle}>
-            Please use the following single-use code to set a new password for your Easy Auth user:
+            Please use the following single-use code to set a new password for your Easy Auth
+            account:
           </Text>
           <Section style={codeBoxStyle}>
             <Text style={codeStyle}>{otp}</Text>

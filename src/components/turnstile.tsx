@@ -1,5 +1,7 @@
 import * as React from "react";
 
+import { cn } from "@/lib/utils";
+
 const TURNSTILE_SCRIPT_ID = "cloudflare-turnstile-script";
 
 interface TurnstileApi {
@@ -9,6 +11,7 @@ interface TurnstileApi {
       sitekey: string;
       action?: string;
       theme?: "light" | "dark" | "auto";
+      size?: "normal" | "compact" | "flexible";
       callback?: (token: string) => void;
       "expired-callback"?: () => void;
       "error-callback"?: (errorCode?: string) => void;
@@ -120,6 +123,7 @@ export const Turnstile = React.forwardRef<TurnstileRef, TurnstileProps>(function
         widgetIdRef.current = window.turnstile.render(containerRef.current, {
           sitekey: siteKey,
           action,
+          size: "flexible",
           callback: (token) => callbacksRef.current.onSuccess(token),
           "expired-callback": () => {
             callbacksRef.current.onExpire?.();
@@ -151,8 +155,8 @@ export const Turnstile = React.forwardRef<TurnstileRef, TurnstileProps>(function
   }, [action, resetWidget, siteKey]);
 
   return (
-    <div className={className}>
-      <div ref={containerRef} className="flex min-h-[65px] justify-center" />
+    <div className={cn("w-full", className)}>
+      <div ref={containerRef} className="flex min-h-[65px] w-full justify-center" />
     </div>
   );
 });

@@ -77,8 +77,10 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
   return (
     <Card className={cn(className)} {...props}>
       <CardHeader>
-        <CardTitle>Create user</CardTitle>
-        <CardDescription>Enter your email and password below to create your user</CardDescription>
+        <CardTitle>Create account</CardTitle>
+        <CardDescription>
+          Enter your email and password below to create your account
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -101,7 +103,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
             <form.Field
               name="email"
               validators={{
-                onChange: ({ value }) => {
+                onBlur: ({ value }) => {
                   const res = v.safeParse(signupSchema.entries.email, value);
                   return res.success ? undefined : res.issues[0].message;
                 },
@@ -114,7 +116,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                     id="email"
                     name={field.name}
                     type="email"
-                    placeholder="user@example.com"
+                    placeholder="you@example.com"
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
@@ -130,7 +132,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
             <form.Field
               name="password"
               validators={{
-                onChange: ({ value }) => {
+                onBlur: ({ value }) => {
                   const res = v.safeParse(signupSchema.entries.password, value);
                   return res.success ? undefined : res.issues[0].message;
                 },
@@ -148,7 +150,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                     onChange={(e) => field.handleChange(e.target.value)}
                     required
                   />
-                  <FieldDescription>Must be at least 8 characters long.</FieldDescription>
                   {field.state.meta.errors.length > 0 && (
                     <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
                   )}
@@ -179,7 +180,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                     loading={isSubmitting}
                     disabled={!turnstileToken || isSubmitting}
                   >
-                    Create user
+                    Create account
                   </Button>
                   <FieldDescription className="text-center">
                     Already registered?{" "}

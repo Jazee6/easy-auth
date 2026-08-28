@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import {
   composeAuthRequestHeaders,
   derivePasswordResetPayload,
+  EMAIL_RESEND_COOLDOWN_SECONDS,
   emailSchema,
   getPasswordResetRequestSuccessMessage,
   getPostPasswordResetRedirect,
@@ -23,12 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/components/ui/toast";
 import { Turnstile, type TurnstileRef } from "@/components/turnstile";
 
@@ -48,10 +44,21 @@ export function ForgotPasswordForm({
   const [formError, setFormError] = React.useState<string | null>(null);
   const [infoMessage, setInfoMessage] = React.useState<string | null>(null);
   const [isRequesting, setIsRequesting] = React.useState(false);
+  const [resendCooldown, setResendCooldown] = React.useState(0);
   const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
   const turnstileRef = React.useRef<TurnstileRef>(null);
 
   const title = action === "set" ? "Set password" : "Reset password";
+
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setResendCooldown((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [resendCooldown]);
 
   const resetCaptcha = () => {
     setTurnstileToken(null);
@@ -111,6 +118,11 @@ export function ForgotPasswordForm({
     setFormError(null);
     setInfoMessage(null);
 
+    if (resendCooldown > 0) {
+      setFormError(`Please wait ${resendCooldown} seconds before requesting another code.`);
+      return;
+    }
+
     if (!turnstileToken) {
       setFormError("Please complete the security check to request a reset code.");
       return;
@@ -139,6 +151,7 @@ export function ForgotPasswordForm({
 
       form.setFieldValue("email", email);
       setStep("complete");
+      setResendCooldown(EMAIL_RESEND_COOLDOWN_SECONDS);
       setInfoMessage(getPasswordResetRequestSuccessMessage());
     } catch (error) {
       setFormError(translateAuthError(error, "request-password-reset"));
@@ -188,7 +201,7 @@ export function ForgotPasswordForm({
             <form.Field
               name="email"
               validators={{
-                onChange: ({ value }) => {
+                onBlur: ({ value }) => {
                   const result = v.safeParse(emailSchema, value);
                   return result.success ? undefined : result.issues[0].message;
                 },
@@ -202,7 +215,7 @@ export function ForgotPasswordForm({
                     name={field.name}
                     type="email"
                     autoComplete="email"
-                    placeholder="user@example.com"
+                    placeholder="you@example.com"
                     value={field.state.value}
                     readOnly={step === "complete"}
                     disabled={step === "complete"}
@@ -231,7 +244,7 @@ export function ForgotPasswordForm({
                 <form.Field
                   name="otp"
                   validators={{
-                    onChange: ({ value }) => {
+                    onBlur: ({ value }) => {
                       const result = v.safeParse(otpSchema, value);
                       return result.success ? undefined : result.issues[0].message;
                     },
@@ -257,9 +270,6 @@ export function ForgotPasswordForm({
                             <InputOTPSlot index={0} />
                             <InputOTPSlot index={1} />
                             <InputOTPSlot index={2} />
-                          </InputOTPGroup>
-                          <InputOTPSeparator />
-                          <InputOTPGroup>
                             <InputOTPSlot index={3} />
                             <InputOTPSlot index={4} />
                             <InputOTPSlot index={5} />
@@ -281,7 +291,7 @@ export function ForgotPasswordForm({
                 <form.Field
                   name="password"
                   validators={{
-                    onChange: ({ value }) => {
+                    onBlur: ({ value }) => {
                       const result = v.safeParse(passwordSchema, value);
                       return result.success ? undefined : result.issues[0].message;
                     },
@@ -312,8 +322,7 @@ export function ForgotPasswordForm({
                 <form.Field
                   name="confirmPassword"
                   validators={{
-                    onChangeListenTo: ["password"],
-                    onChange: ({ value, fieldApi }) => {
+                    onBlur: ({ value, fieldApi }) => {
                       if (value !== fieldApi.form.getFieldValue("password")) {
                         return "Passwords do not match";
                       }
@@ -382,10 +391,12 @@ export function ForgotPasswordForm({
                   type="button"
                   variant="outline"
                   loading={isRequesting}
-                  disabled={!turnstileToken || isRequesting}
+                  disabled={!turnstileToken || isRequesting || resendCooldown > 0}
                   onClick={() => handleRequestCode(form.getFieldValue("email"))}
                 >
-                  Send another code
+                  {resendCooldown > 0
+                    ? `Send another code (${resendCooldown}s)`
+                    : "Send another code"}
                 </Button>
               </>
             )}

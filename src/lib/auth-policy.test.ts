@@ -4,6 +4,7 @@ import * as v from "valibot";
 import {
   captchaProtectedAuthEndpoints,
   composeAuthRequestHeaders,
+  EMAIL_RESEND_COOLDOWN_SECONDS,
   credentialsSchema,
   deriveInitialName,
   derivePasswordResetPayload,
@@ -175,8 +176,12 @@ describe("auth-policy", () => {
 
     it("uses one non-enumerating success response for reset code requests", () => {
       expect(getPasswordResetRequestSuccessMessage()).toBe(
-        "If a user exists for this email, a password reset code has been sent. Check your inbox before continuing.",
+        "If an account exists for this email, a password reset code has been sent. Check your inbox before continuing.",
       );
+    });
+
+    it("uses a sixty-second cooldown for email code resends", () => {
+      expect(EMAIL_RESEND_COOLDOWN_SECONDS).toBe(60);
     });
 
     it("revokes existing sessions and returns to login without creating a session", () => {
@@ -471,7 +476,7 @@ describe("auth-policy", () => {
         "Verify your primary email in GitHub before signing in.",
       );
       expect(translateGithubOauthError("account_not_linked")).toBe(
-        "A user already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.",
+        "An account already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.",
       );
       expect(translateGithubOauthError("raw_provider_failure")).toBe(
         "Unable to sign in with GitHub. Please try again.",
@@ -550,7 +555,7 @@ describe("auth-policy", () => {
         "The verified GitHub email must match your login email.",
       );
       expect(translateSignInMethodsError("account_already_linked_to_different_user")).toBe(
-        "This GitHub identity is already linked to another user.",
+        "This GitHub identity is already linked to another account.",
       );
       expect(translateSignInMethodsError("unable_to_link_account")).toBe(
         "A GitHub identity is already linked, or the link could not be completed.",
@@ -578,13 +583,13 @@ describe("auth-policy", () => {
 
     it("maps duplicate registration or signup failure to generic error message", () => {
       expect(translateAuthError("USER_ALREADY_EXISTS", "signup")).toBe(
-        "Unable to create user with provided details",
+        "Unable to create account with provided details",
       );
       expect(translateAuthError("EMAIL_CANNOT_BE_USED", "signup")).toBe(
-        "Unable to create user with provided details",
+        "Unable to create account with provided details",
       );
       expect(translateAuthError(new Error("Database error"), "signup")).toBe(
-        "Unable to create user with provided details",
+        "Unable to create account with provided details",
       );
     });
 

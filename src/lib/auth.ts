@@ -11,6 +11,7 @@ import * as schema from "../db/schema";
 import { createResendEmailSender, deliverAuthEmail, scheduleBackgroundTask } from "./email-service";
 import {
   captchaProtectedAuthEndpoints,
+  EMAIL_RESEND_COOLDOWN_SECONDS,
   githubAuthPolicy,
   passwordResetPolicy,
   shouldRejectPasswordlessOtpRequest,
@@ -82,7 +83,18 @@ export const auth = betterAuth({
     },
   },
   rateLimit: {
+    enabled: true,
     storage: "database",
+    customRules: {
+      "/email-otp/send-verification-otp": {
+        window: EMAIL_RESEND_COOLDOWN_SECONDS,
+        max: 1,
+      },
+      "/email-otp/request-password-reset": {
+        window: EMAIL_RESEND_COOLDOWN_SECONDS,
+        max: 1,
+      },
+    },
   },
   advanced: {
     backgroundTasks: {

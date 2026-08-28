@@ -68,7 +68,12 @@ export function ProfileForm({
   });
 
   return (
-    <div className="w-full max-w-2xl">
+    <div className="w-full max-w-2xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Manage your account profile.</p>
+      </div>
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -89,7 +94,7 @@ export function ProfileForm({
           <form.Field
             name="name"
             validators={{
-              onChange: ({ value }) => {
+              onBlur: ({ value }) => {
                 const res = v.safeParse(profileSchema.entries.name, value);
                 return res.success ? undefined : res.issues[0].message;
               },
@@ -116,7 +121,7 @@ export function ProfileForm({
           <form.Field
             name="image"
             validators={{
-              onChange: ({ value }) => {
+              onBlur: ({ value }) => {
                 const res = v.safeParse(profileSchema.entries.image, value);
                 return res.success ? undefined : res.issues[0].message;
               },

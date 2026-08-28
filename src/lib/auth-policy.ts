@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+export const EMAIL_RESEND_COOLDOWN_SECONDS = 60;
+
 export const emailSchema = v.pipe(
   v.string("Email is required"),
   v.trim(),
@@ -208,7 +210,7 @@ export function translateSignInMethodsError(error: string): string {
     errorCode === "social_account_already_linked" ||
     errorCode === "identity_owned_by_another_user"
   ) {
-    return "This GitHub identity is already linked to another user.";
+    return "This GitHub identity is already linked to another account.";
   }
 
   if (
@@ -250,7 +252,7 @@ export function translateGithubOauthError(error?: string): string | null {
   }
 
   if (error === "account_not_linked") {
-    return "A user already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.";
+    return "An account already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.";
   }
 
   return "Unable to sign in with GitHub. Please try again.";
@@ -445,7 +447,7 @@ export function translateAuthError(
   }
 
   if (mode === "signup") {
-    return "Unable to create user with provided details";
+    return "Unable to create account with provided details";
   }
 
   if (mode === "verify-email") {
@@ -513,7 +515,7 @@ export function getPostVerificationRedirect(): string {
 }
 
 export function getPasswordResetRequestSuccessMessage(): string {
-  return "If a user exists for this email, a password reset code has been sent. Check your inbox before continuing.";
+  return "If an account exists for this email, a password reset code has been sent. Check your inbox before continuing.";
 }
 
 export function getPostPasswordResetRedirect(): string {

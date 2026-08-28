@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
 import {
   composeAuthRequestHeaders,
+  EMAIL_RESEND_COOLDOWN_SECONDS,
   getPostVerificationRedirect,
   normalizeEmail,
   otpSchema,
@@ -16,13 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { Turnstile, type TurnstileRef } from "@/components/turnstile";
 
@@ -35,10 +30,21 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
   const [formError, setFormError] = React.useState<string | null>(null);
   const [infoMessage, setInfoMessage] = React.useState<string | null>(null);
   const [isResending, setIsResending] = React.useState(false);
+  const [resendCooldown, setResendCooldown] = React.useState(EMAIL_RESEND_COOLDOWN_SECONDS);
   const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
   const turnstileRef = React.useRef<TurnstileRef>(null);
 
   const normalizedEmail = normalizeEmail(initialEmail);
+
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setResendCooldown((current) => Math.max(current - 1, 0));
+    }, 1000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [resendCooldown]);
 
   const resetCaptcha = () => {
     setTurnstileToken(null);
@@ -86,6 +92,11 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
     setFormError(null);
     setInfoMessage(null);
 
+    if (resendCooldown > 0) {
+      setFormError(`Please wait ${resendCooldown} seconds before requesting another code.`);
+      return;
+    }
+
     if (!turnstileToken) {
       setFormError("Please complete the security check to resend the code.");
       return;
@@ -113,6 +124,7 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
         return;
       }
 
+      setResendCooldown(EMAIL_RESEND_COOLDOWN_SECONDS);
       setInfoMessage("A new verification code has been sent to your email.");
     } catch {
       resetCaptcha();
@@ -158,23 +170,10 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
               </div>
             )}
 
-            <Field>
-              <FieldLabel htmlFor="email">Login email</FieldLabel>
-              <Input
-                id="email"
-                type="email"
-                value={normalizedEmail}
-                readOnly
-                disabled
-                className="bg-muted text-muted-foreground cursor-not-allowed"
-              />
-              <FieldDescription>Verification code was delivered to this address.</FieldDescription>
-            </Field>
-
             <form.Field
               name="otp"
               validators={{
-                onChange: ({ value }) => {
+                onBlur: ({ value }) => {
                   const res = v.safeParse(otpSchema, value);
                   return res.success ? undefined : res.issues[0].message;
                 },
@@ -200,9 +199,6 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
                         <InputOTPSlot index={2} />
-                      </InputOTPGroup>
-                      <InputOTPSeparator />
-                      <InputOTPGroup>
                         <InputOTPSlot index={3} />
                         <InputOTPSlot index={4} />
                         <InputOTPSlot index={5} />
@@ -252,11 +248,11 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
                 type="button"
                 variant="outline"
                 loading={isResending}
-                disabled={!turnstileToken || isResending}
+                disabled={!turnstileToken || isResending || resendCooldown > 0}
                 onClick={handleResendOtp}
                 className="w-full mt-2"
               >
-                Resend code
+                {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
               </Button>
             </div>
 

@@ -8,14 +8,8 @@ export const fetchSession = createServerFn({ method: "GET" }).handler(async () =
   });
 });
 
-export const fetchSignInMethods = createServerFn({ method: "GET" }).handler(async () => {
-  const headers = getRequestHeaders();
-  const session = await auth.api.getSession({ headers });
-
-  if (!session) {
-    return { session: null, accounts: [] };
-  }
-
-  const accounts = await auth.api.listUserAccounts({ headers });
-  return { session, accounts };
+export const fetchAccountSignInMethods = createServerFn({ method: "GET" }).handler(async () => {
+  return auth.api.listUserAccounts({
+    headers: getRequestHeaders(),
+  });
 });

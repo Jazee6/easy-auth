@@ -112,7 +112,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
               <form.Field
                 name="email"
                 validators={{
-                  onChange: ({ value }) => {
+                  onBlur: ({ value }) => {
                     const res = v.safeParse(loginSchema.entries.email, value);
                     return res.success ? undefined : res.issues[0].message;
                   },
@@ -125,7 +125,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                       id="email"
                       name={field.name}
                       type="email"
-                      placeholder="user@example.com"
+                      placeholder="you@example.com"
                       value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(e) => field.handleChange(e.target.value)}
@@ -141,7 +141,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
               <form.Field
                 name="password"
                 validators={{
-                  onChange: ({ value }) => {
+                  onBlur: ({ value }) => {
                     const res = v.safeParse(loginSchema.entries.password, value);
                     return res.success ? undefined : res.issues[0].message;
                   },
@@ -167,7 +167,6 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                       onChange={(e) => field.handleChange(e.target.value)}
                       required
                     />
-                    <FieldDescription>Must be at least 8 characters long.</FieldDescription>
                     {field.state.meta.errors.length > 0 && (
                       <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
                     )}
@@ -195,7 +194,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                       Continue with GitHub
                     </Button>
                     <FieldDescription className="text-center">
-                      Don&apos;t have a user?{" "}
+                      Don&apos;t have an account?{" "}
                       <Link
                         to="/signup"
                         className="underline underline-offset-4 hover:text-primary"
