@@ -22,6 +22,13 @@
       "when": 1787832999014,
       "tag": "0002_condemned_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787889892978,
+      "tag": "0003_slim_miss_america",
+      "breakpoints": true
     }
   ]
 }

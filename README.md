@@ -1,6 +1,6 @@
 # Easy Auth
 
-Easy Auth is a development-stage, self-hosted authentication foundation for an identity domain on the Cloudflare stack. OIDC Provider protocols and production deployment are not yet available.
+Easy Auth is a development-stage, self-hosted authentication foundation and OAuth 2.1/OpenID Connect Authorization Server for an identity domain on the Cloudflare stack. End-to-end OAuth/OIDC is available for development and integration testing; production operational guarantees are not yet available.
 
 ## Local development
 
@@ -42,5 +42,6 @@ Local automation must explicitly configure Cloudflare's official always-pass Tur
 - `bun run fmt:check` — formatting check
 - `bun run build` — production build
 - `bun run db:migrate:local` — apply migrations to local D1
+- `bun run generate-routes` — regenerate the TanStack Router route tree
 
-See [`docs/releases/0.2.0-acceptance.md`](docs/releases/0.2.0-acceptance.md) for release qualification and the remaining external-service acceptance pass.
+See [`docs/oauth-operations.md`](docs/oauth-operations.md) for issuer URLs, Administrator assignment, OAuth client ownership transfer, supported protocol behavior, and the reference client. See [`docs/releases/0.3.0-acceptance.md`](docs/releases/0.3.0-acceptance.md) for release qualification and residual risk.

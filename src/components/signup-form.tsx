@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import * as v from "valibot";
 
@@ -12,6 +12,7 @@ import {
   signupSchema,
   translateAuthError,
 } from "@/lib/auth-policy";
+import { getPendingOAuthVerificationUrl } from "@/lib/oauth-policy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -65,6 +66,14 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
           return;
         }
 
+        const oauthVerificationUrl =
+          typeof window === "undefined"
+            ? null
+            : getPendingOAuthVerificationUrl(window.location.search, payload.email);
+        if (oauthVerificationUrl) {
+          window.location.assign(oauthVerificationUrl);
+          return;
+        }
         await navigate(getPostSignupDestination(payload.email));
       } catch (error) {
         setFormError(translateAuthError(error, "signup"));
@@ -184,9 +193,12 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                   </Button>
                   <FieldDescription className="text-center">
                     Already registered?{" "}
-                    <Link to="/login" className="underline underline-offset-4 hover:text-primary">
+                    <a
+                      href={`/login${typeof window === "undefined" ? "" : window.location.search}`}
+                      className="underline underline-offset-4 hover:text-primary"
+                    >
                       Log in
-                    </Link>
+                    </a>
                   </FieldDescription>
                 </Field>
               )}

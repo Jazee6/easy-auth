@@ -11,13 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteRouteImport } from './routes/_account/route'
+import { Route as ConsentRouteImport } from './routes/consent'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known/oauth-authorization-server'
+import { Route as DotwellKnownOpenidConfigurationRouteImport } from './routes/[.]well-known/openid-configuration'
+import { Route as AccountAuthorizedApplicationsRouteImport } from './routes/_account/authorized-applications'
 import { Route as AccountProfileRouteImport } from './routes/_account/profile'
 import { Route as AccountSignInMethodsRouteImport } from './routes/_account/sign-in-methods'
+import { Route as AccountAdminManagementActivityRouteImport } from './routes/_account/admin/management-activity'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
+import { Route as AccountAdminOauthClientsIndexRouteImport } from './routes/_account/admin/oauth-clients/index'
+import { Route as AccountAdminOauthClientsClientIdRouteImport } from './routes/_account/admin/oauth-clients/$clientId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -26,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AccountRouteRoute = AccountRouteRouteImport.update({
   id: '/_account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsentRoute = ConsentRouteImport.update({
+  id: '/consent',
+  path: '/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -48,6 +61,24 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownOauthAuthorizationServerRoute =
+  DotwellKnownOauthAuthorizationServerRouteImport.update({
+    id: '/.well-known/oauth-authorization-server',
+    path: '/.well-known/oauth-authorization-server',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotwellKnownOpenidConfigurationRoute =
+  DotwellKnownOpenidConfigurationRouteImport.update({
+    id: '/.well-known/openid-configuration',
+    path: '/.well-known/openid-configuration',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AccountAuthorizedApplicationsRoute =
+  AccountAuthorizedApplicationsRouteImport.update({
+    id: '/authorized-applications',
+    path: '/authorized-applications',
+    getParentRoute: () => AccountRouteRoute,
+  } as any)
 const AccountProfileRoute = AccountProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -58,85 +89,160 @@ const AccountSignInMethodsRoute = AccountSignInMethodsRouteImport.update({
   path: '/sign-in-methods',
   getParentRoute: () => AccountRouteRoute,
 } as any)
+const AccountAdminManagementActivityRoute =
+  AccountAdminManagementActivityRouteImport.update({
+    id: '/admin/management-activity',
+    path: '/admin/management-activity',
+    getParentRoute: () => AccountRouteRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DotwellKnownOauthAuthorizationServerApiAuthRoute =
+  DotwellKnownOauthAuthorizationServerApiAuthRouteImport.update({
+    id: '/api/auth',
+    path: '/api/auth',
+    getParentRoute: () => DotwellKnownOauthAuthorizationServerRoute,
+  } as any)
+const AccountAdminOauthClientsIndexRoute =
+  AccountAdminOauthClientsIndexRouteImport.update({
+    id: '/admin/oauth-clients/',
+    path: '/admin/oauth-clients/',
+    getParentRoute: () => AccountRouteRoute,
+  } as any)
+const AccountAdminOauthClientsClientIdRoute =
+  AccountAdminOauthClientsClientIdRouteImport.update({
+    id: '/admin/oauth-clients/$clientId',
+    path: '/admin/oauth-clients/$clientId',
+    getParentRoute: () => AccountRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/consent': typeof ConsentRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
+  '/.well-known/openid-configuration': typeof DotwellKnownOpenidConfigurationRoute
+  '/authorized-applications': typeof AccountAuthorizedApplicationsRoute
   '/profile': typeof AccountProfileRoute
   '/sign-in-methods': typeof AccountSignInMethodsRoute
+  '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/admin/oauth-clients/$clientId': typeof AccountAdminOauthClientsClientIdRoute
+  '/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/consent': typeof ConsentRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
+  '/.well-known/openid-configuration': typeof DotwellKnownOpenidConfigurationRoute
+  '/authorized-applications': typeof AccountAuthorizedApplicationsRoute
   '/profile': typeof AccountProfileRoute
   '/sign-in-methods': typeof AccountSignInMethodsRoute
+  '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/admin/oauth-clients/$clientId': typeof AccountAdminOauthClientsClientIdRoute
+  '/admin/oauth-clients': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_account': typeof AccountRouteRouteWithChildren
+  '/consent': typeof ConsentRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
+  '/.well-known/openid-configuration': typeof DotwellKnownOpenidConfigurationRoute
+  '/_account/authorized-applications': typeof AccountAuthorizedApplicationsRoute
   '/_account/profile': typeof AccountProfileRoute
   '/_account/sign-in-methods': typeof AccountSignInMethodsRoute
+  '/_account/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/_account/admin/oauth-clients/$clientId': typeof AccountAdminOauthClientsClientIdRoute
+  '/_account/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/consent'
     | '/forgot-password'
     | '/login'
     | '/signup'
     | '/verify-email'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/openid-configuration'
+    | '/authorized-applications'
     | '/profile'
     | '/sign-in-methods'
+    | '/admin/management-activity'
     | '/api/auth/$'
+    | '/.well-known/oauth-authorization-server/api/auth'
+    | '/admin/oauth-clients/$clientId'
+    | '/admin/oauth-clients/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/consent'
     | '/forgot-password'
     | '/login'
     | '/signup'
     | '/verify-email'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/openid-configuration'
+    | '/authorized-applications'
     | '/profile'
     | '/sign-in-methods'
+    | '/admin/management-activity'
     | '/api/auth/$'
+    | '/.well-known/oauth-authorization-server/api/auth'
+    | '/admin/oauth-clients/$clientId'
+    | '/admin/oauth-clients'
   id:
     | '__root__'
     | '/'
     | '/_account'
+    | '/consent'
     | '/forgot-password'
     | '/login'
     | '/signup'
     | '/verify-email'
+    | '/.well-known/oauth-authorization-server'
+    | '/.well-known/openid-configuration'
+    | '/_account/authorized-applications'
     | '/_account/profile'
     | '/_account/sign-in-methods'
+    | '/_account/admin/management-activity'
     | '/api/auth/$'
+    | '/.well-known/oauth-authorization-server/api/auth'
+    | '/_account/admin/oauth-clients/$clientId'
+    | '/_account/admin/oauth-clients/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRouteRoute: typeof AccountRouteRouteWithChildren
+  ConsentRoute: typeof ConsentRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
+  DotwellKnownOpenidConfigurationRoute: typeof DotwellKnownOpenidConfigurationRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -154,6 +260,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AccountRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consent': {
+      id: '/consent'
+      path: '/consent'
+      fullPath: '/consent'
+      preLoaderRoute: typeof ConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -184,6 +297,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-authorization-server': {
+      id: '/.well-known/oauth-authorization-server'
+      path: '/.well-known/oauth-authorization-server'
+      fullPath: '/.well-known/oauth-authorization-server'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/openid-configuration': {
+      id: '/.well-known/openid-configuration'
+      path: '/.well-known/openid-configuration'
+      fullPath: '/.well-known/openid-configuration'
+      preLoaderRoute: typeof DotwellKnownOpenidConfigurationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_account/authorized-applications': {
+      id: '/_account/authorized-applications'
+      path: '/authorized-applications'
+      fullPath: '/authorized-applications'
+      preLoaderRoute: typeof AccountAuthorizedApplicationsRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/_account/profile': {
       id: '/_account/profile'
       path: '/profile'
@@ -198,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSignInMethodsRouteImport
       parentRoute: typeof AccountRouteRoute
     }
+    '/_account/admin/management-activity': {
+      id: '/_account/admin/management-activity'
+      path: '/admin/management-activity'
+      fullPath: '/admin/management-activity'
+      preLoaderRoute: typeof AccountAdminManagementActivityRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -205,30 +346,78 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-authorization-server/api/auth': {
+      id: '/.well-known/oauth-authorization-server/api/auth'
+      path: '/api/auth'
+      fullPath: '/.well-known/oauth-authorization-server/api/auth'
+      preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
+      parentRoute: typeof DotwellKnownOauthAuthorizationServerRoute
+    }
+    '/_account/admin/oauth-clients/': {
+      id: '/_account/admin/oauth-clients/'
+      path: '/admin/oauth-clients'
+      fullPath: '/admin/oauth-clients/'
+      preLoaderRoute: typeof AccountAdminOauthClientsIndexRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/_account/admin/oauth-clients/$clientId': {
+      id: '/_account/admin/oauth-clients/$clientId'
+      path: '/admin/oauth-clients/$clientId'
+      fullPath: '/admin/oauth-clients/$clientId'
+      preLoaderRoute: typeof AccountAdminOauthClientsClientIdRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
   }
 }
 
 interface AccountRouteRouteChildren {
+  AccountAuthorizedApplicationsRoute: typeof AccountAuthorizedApplicationsRoute
   AccountProfileRoute: typeof AccountProfileRoute
   AccountSignInMethodsRoute: typeof AccountSignInMethodsRoute
+  AccountAdminManagementActivityRoute: typeof AccountAdminManagementActivityRoute
+  AccountAdminOauthClientsClientIdRoute: typeof AccountAdminOauthClientsClientIdRoute
+  AccountAdminOauthClientsIndexRoute: typeof AccountAdminOauthClientsIndexRoute
 }
 
 const AccountRouteRouteChildren: AccountRouteRouteChildren = {
+  AccountAuthorizedApplicationsRoute: AccountAuthorizedApplicationsRoute,
   AccountProfileRoute: AccountProfileRoute,
   AccountSignInMethodsRoute: AccountSignInMethodsRoute,
+  AccountAdminManagementActivityRoute: AccountAdminManagementActivityRoute,
+  AccountAdminOauthClientsClientIdRoute: AccountAdminOauthClientsClientIdRoute,
+  AccountAdminOauthClientsIndexRoute: AccountAdminOauthClientsIndexRoute,
 }
 
 const AccountRouteRouteWithChildren = AccountRouteRoute._addFileChildren(
   AccountRouteRouteChildren,
 )
 
+interface DotwellKnownOauthAuthorizationServerRouteChildren {
+  DotwellKnownOauthAuthorizationServerApiAuthRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+}
+
+const DotwellKnownOauthAuthorizationServerRouteChildren: DotwellKnownOauthAuthorizationServerRouteChildren =
+  {
+    DotwellKnownOauthAuthorizationServerApiAuthRoute:
+      DotwellKnownOauthAuthorizationServerApiAuthRoute,
+  }
+
+const DotwellKnownOauthAuthorizationServerRouteWithChildren =
+  DotwellKnownOauthAuthorizationServerRoute._addFileChildren(
+    DotwellKnownOauthAuthorizationServerRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRouteRoute: AccountRouteRouteWithChildren,
+  ConsentRoute: ConsentRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  DotwellKnownOauthAuthorizationServerRoute:
+    DotwellKnownOauthAuthorizationServerRouteWithChildren,
+  DotwellKnownOpenidConfigurationRoute: DotwellKnownOpenidConfigurationRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

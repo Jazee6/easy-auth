@@ -1,10 +1,10 @@
 import * as React from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
 import * as v from "valibot";
 
 import { cn } from "@/lib/utils";
-import { authClient } from "@/lib/auth-client";
+import { authClient, continuePendingOAuth } from "@/lib/auth-client";
 import {
   composeAuthRequestHeaders,
   EMAIL_RESEND_COOLDOWN_SECONDS,
@@ -84,7 +84,9 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
         return;
       }
 
-      await navigate({ to: getPostVerificationRedirect() });
+      if (!(await continuePendingOAuth({ created: true }))) {
+        await navigate({ to: getPostVerificationRedirect() });
+      }
     },
   });
 
@@ -258,9 +260,12 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
 
             <FieldDescription className="text-center">
               Back to{" "}
-              <Link to="/login" className="underline underline-offset-4 hover:text-primary">
+              <a
+                href={`/login${typeof window === "undefined" ? "" : window.location.search}`}
+                className="underline underline-offset-4 hover:text-primary"
+              >
                 Log in
-              </Link>
+              </a>
             </FieldDescription>
           </FieldGroup>
         </form>

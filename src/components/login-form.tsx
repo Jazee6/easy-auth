@@ -4,7 +4,7 @@ import { useForm } from "@tanstack/react-form";
 import * as v from "valibot";
 
 import { cn } from "@/lib/utils";
-import { authClient } from "@/lib/auth-client";
+import { authClient, continuePendingOAuth } from "@/lib/auth-client";
 import {
   getGithubSignInOptions,
   getLoginFailureResolution,
@@ -14,6 +14,7 @@ import {
   translateAuthError,
   translateGithubOauthError,
 } from "@/lib/auth-policy";
+import { getPendingOAuthVerificationUrl } from "@/lib/oauth-policy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
@@ -69,6 +70,14 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
         if (res.error) {
           const failure = getLoginFailureResolution(res.error, email);
           if (failure.destination) {
+            const oauthVerificationUrl =
+              typeof window === "undefined"
+                ? null
+                : getPendingOAuthVerificationUrl(window.location.search, email);
+            if (oauthVerificationUrl) {
+              window.location.assign(oauthVerificationUrl);
+              return;
+            }
             await navigate(failure.destination);
             return;
           }
@@ -77,7 +86,9 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
           return;
         }
 
-        await navigate({ to: getPostLoginRedirect() });
+        if (!(await continuePendingOAuth())) {
+          await navigate({ to: getPostLoginRedirect() });
+        }
       } catch (error) {
         setFormError(translateAuthError(error, "login"));
       }
@@ -195,12 +206,12 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                     </Button>
                     <FieldDescription className="text-center">
                       Don&apos;t have an account?{" "}
-                      <Link
-                        to="/signup"
+                      <a
+                        href={`/signup${typeof window === "undefined" ? "" : window.location.search}`}
                         className="underline underline-offset-4 hover:text-primary"
                       >
                         Sign up
-                      </Link>
+                      </a>
                     </FieldDescription>
                   </Field>
                 )}
