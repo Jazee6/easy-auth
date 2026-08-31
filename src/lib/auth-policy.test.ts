@@ -276,11 +276,6 @@ describe("auth-policy", () => {
         image: "",
       });
       expect(result.success).toBe(true);
-
-      const resultUndefined = v.safeParse(profileSchema, {
-        name: "Alice Doe",
-      });
-      expect(resultUndefined.success).toBe(true);
     });
 
     it("accepts valid profile with required name and valid HTTPS avatar URL", () => {

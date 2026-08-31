@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
-import * as v from "valibot";
 
 import { authClient } from "@/lib/auth-client";
 import { getInitials, profileSchema, translateProfileError } from "@/lib/auth-policy";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -27,12 +27,10 @@ export function ProfileForm({
       name: user.name,
       image: user.image ?? "",
     },
+    validators: {
+      onBlur: profileSchema,
+    },
     onSubmit: async ({ value }) => {
-      const validation = v.safeParse(profileSchema, value);
-      if (!validation.success) {
-        return;
-      }
-
       const trimmedImage = value.image?.trim() || null;
 
       try {
@@ -69,10 +67,7 @@ export function ProfileForm({
 
   return (
     <div className="w-full max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your account profile.</p>
-      </div>
+      <PageHeader title="Profile" description="Manage your account profile." />
 
       <form
         onSubmit={(e) => {
@@ -91,15 +86,7 @@ export function ProfileForm({
             </Avatar>
           </div>
 
-          <form.Field
-            name="name"
-            validators={{
-              onBlur: ({ value }) => {
-                const res = v.safeParse(profileSchema.entries.name, value);
-                return res.success ? undefined : res.issues[0].message;
-              },
-            }}
-          >
+          <form.Field name="name">
             {(field) => (
               <Field>
                 <FieldLabel htmlFor="name">Nick Name</FieldLabel>
@@ -111,22 +98,12 @@ export function ProfileForm({
                   onChange={(e) => field.handleChange(e.target.value)}
                   required
                 />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                )}
+                <FieldError errors={field.state.meta.errors} />
               </Field>
             )}
           </form.Field>
 
-          <form.Field
-            name="image"
-            validators={{
-              onBlur: ({ value }) => {
-                const res = v.safeParse(profileSchema.entries.image, value);
-                return res.success ? undefined : res.issues[0].message;
-              },
-            }}
-          >
+          <form.Field name="image">
             {(field) => (
               <Field>
                 <FieldLabel htmlFor="image">Avatar URL (Optional)</FieldLabel>
@@ -145,9 +122,7 @@ export function ProfileForm({
                     setPreviewImage(e.target.value);
                   }}
                 />
-                {field.state.meta.errors.length > 0 && (
-                  <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                )}
+                <FieldError errors={field.state.meta.errors} />
               </Field>
             )}
           </form.Field>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
-import * as v from "valibot";
+import { useForm, revalidateLogic } from "@tanstack/react-form";
+import { CircleAlertIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { authClient, continuePendingOAuth } from "@/lib/auth-client";
@@ -16,6 +16,8 @@ import {
 } from "@/lib/auth-policy";
 import { getPendingOAuthVerificationUrl } from "@/lib/oauth-policy";
 import { Button } from "@/components/ui/button";
+import { GithubIcon } from "@/components/github-icon";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -48,16 +50,16 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
   };
 
   const form = useForm({
+    validationLogic: revalidateLogic(),
+    validators: {
+      onDynamic: loginSchema,
+    },
     defaultValues: {
       email: "",
       password: "",
     },
     onSubmit: async ({ value }) => {
       setFormError(null);
-      const validation = v.safeParse(loginSchema, value);
-      if (!validation.success) {
-        return;
-      }
 
       const email = normalizeEmail(value.email);
 
@@ -112,23 +114,13 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
           >
             <FieldGroup>
               {formError && (
-                <div
-                  role="alert"
-                  className="rounded-md bg-destructive/15 p-3 text-sm text-destructive font-medium"
-                >
-                  {formError}
-                </div>
+                <Alert variant="destructive" className="border-destructive/25 bg-destructive/15">
+                  <CircleAlertIcon />
+                  <AlertTitle>{formError}</AlertTitle>
+                </Alert>
               )}
 
-              <form.Field
-                name="email"
-                validators={{
-                  onBlur: ({ value }) => {
-                    const res = v.safeParse(loginSchema.entries.email, value);
-                    return res.success ? undefined : res.issues[0].message;
-                  },
-                }}
-              >
+              <form.Field name="email">
                 {(field) => (
                   <Field>
                     <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -142,22 +134,12 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                       onChange={(e) => field.handleChange(e.target.value)}
                       required
                     />
-                    {field.state.meta.errors.length > 0 && (
-                      <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                    )}
+                    <FieldError errors={field.state.meta.errors} />
                   </Field>
                 )}
               </form.Field>
 
-              <form.Field
-                name="password"
-                validators={{
-                  onBlur: ({ value }) => {
-                    const res = v.safeParse(loginSchema.entries.password, value);
-                    return res.success ? undefined : res.issues[0].message;
-                  },
-                }}
-              >
+              <form.Field name="password">
                 {(field) => (
                   <Field>
                     <div className="flex items-center justify-between">
@@ -178,9 +160,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                       onChange={(e) => field.handleChange(e.target.value)}
                       required
                     />
-                    {field.state.meta.errors.length > 0 && (
-                      <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                    )}
+                    <FieldError errors={field.state.meta.errors} />
                   </Field>
                 )}
               </form.Field>
@@ -202,16 +182,18 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                       disabled={isSubmitting || isGithubPending}
                       onClick={signInWithGithub}
                     >
+                      <GithubIcon />
                       Continue with GitHub
                     </Button>
                     <FieldDescription className="text-center">
                       Don&apos;t have an account?{" "}
-                      <a
-                        href={`/signup${typeof window === "undefined" ? "" : window.location.search}`}
+                      <Link
+                        to="/signup"
+                        search={true}
                         className="underline underline-offset-4 hover:text-primary"
                       >
                         Sign up
-                      </a>
+                      </Link>
                     </FieldDescription>
                   </Field>
                 )}

@@ -9,6 +9,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -99,7 +100,7 @@ export function AppSidebar({
         </SidebarGroup>
         {isAdministrator && (
           <SidebarGroup>
-            <div className="px-2 pb-2 text-xs font-medium text-muted-foreground">Admin</div>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>

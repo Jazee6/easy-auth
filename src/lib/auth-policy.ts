@@ -260,20 +260,18 @@ export function translateGithubOauthError(error?: string): string | null {
 
 export const profileSchema = v.object({
   name: v.pipe(v.string("Name is required"), v.trim(), v.nonEmpty("Name is required")),
-  image: v.optional(
-    v.pipe(
-      v.string(),
-      v.trim(),
-      v.check((val) => {
-        if (!val) return true;
-        try {
-          const url = new URL(val);
-          return url.protocol === "https:";
-        } catch {
-          return false;
-        }
-      }, "Avatar must be a valid HTTPS URL"),
-    ),
+  image: v.pipe(
+    v.string(),
+    v.trim(),
+    v.check((val) => {
+      if (!val) return true;
+      try {
+        const url = new URL(val);
+        return url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, "Avatar must be a valid HTTPS URL"),
   ),
 });
 

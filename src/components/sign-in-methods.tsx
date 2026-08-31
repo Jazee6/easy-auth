@@ -1,14 +1,16 @@
 import * as React from "react";
 import { Link, useRouter } from "@tanstack/react-router";
-import { GitBranch, KeyRound } from "lucide-react";
+import { KeyRound } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
+import { GithubIcon } from "@/components/github-icon";
 import {
   deriveSignInMethodState,
   getGithubLinkOptions,
   translateSignInMethodsError,
   type SignInMethodAccount,
 } from "@/lib/auth-policy";
+import { PageHeader } from "@/components/page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,12 +128,10 @@ export function SignInMethods({ user, accounts, status, error }: SignInMethodsPr
 
   return (
     <div className="w-full max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Sign-in methods</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage the ways you can sign in to Easy Auth.
-        </p>
-      </div>
+      <PageHeader
+        title="Sign-in methods"
+        description="Manage the ways you can sign in to Easy Auth."
+      />
 
       <ItemGroup>
         <Item variant="outline">
@@ -162,7 +162,7 @@ export function SignInMethods({ user, accounts, status, error }: SignInMethodsPr
 
         <Item variant="outline">
           <ItemMedia variant="icon">
-            <GitBranch />
+            <GithubIcon />
           </ItemMedia>
           <ItemContent>
             <ItemTitle>GitHub</ItemTitle>

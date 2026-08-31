@@ -1,4 +1,8 @@
+import { Inbox } from "lucide-react";
+
 import { tableFeatures, useTable, type ColumnDef, type RowData } from "@tanstack/react-table";
+
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 const features = tableFeatures({});
 export type DataTableColumnDef<TData extends RowData> = ColumnDef<typeof features, TData, unknown>;
@@ -14,39 +18,48 @@ export function DataTable<TData extends RowData>({
 }) {
   const table = useTable({ data, columns, features });
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b text-muted-foreground">
-          {table.getHeaderGroups().map((group) => (
-            <tr key={group.id}>
-              {group.headers.map((header) => (
-                <th key={header.id} className="py-2 pr-4 font-medium">
-                  {header.isPlaceholder ? null : <table.FlexRender header={header} />}
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="border-b last:border-0">
-                {row.getAllCells().map((cell) => (
-                  <td key={cell.id} className="py-3 pr-4 align-top">
-                    <table.FlexRender cell={cell} />
-                  </td>
+    <div className="rounded-md border">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b text-muted-foreground">
+            {table.getHeaderGroups().map((group) => (
+              <tr key={group.id}>
+                {group.headers.map((header) => (
+                  <th key={header.id} className="px-4 py-2 font-medium">
+                    {header.isPlaceholder ? null : <table.FlexRender header={header} />}
+                  </th>
                 ))}
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={columns.length} className="py-8 text-center text-muted-foreground">
-                {emptyMessage}
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.length ? (
+              table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="border-b last:border-0">
+                  {row.getAllCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3 align-top">
+                      <table.FlexRender cell={cell} />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length}>
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Inbox />
+                      </EmptyMedia>
+                      <EmptyTitle>{emptyMessage}</EmptyTitle>
+                    </EmptyHeader>
+                  </Empty>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -142,3 +142,8 @@ body {
     @apply font-sans;
   }
 }
+
+/* Cloudflare Turnstile (flexible): 注入的 widget wrapper 撑满容器宽度 */
+[data-slot="turnstile-container"] > div {
+  width: 100%;
+}

@@ -1,7 +1,8 @@
 import * as React from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
+import { useForm, revalidateLogic } from "@tanstack/react-form";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
+import { CircleAlertIcon } from "lucide-react";
 import * as v from "valibot";
 
 import { authClient } from "@/lib/auth-client";
@@ -13,14 +14,12 @@ import {
   getPasswordResetRequestSuccessMessage,
   getPostPasswordResetRedirect,
   normalizeEmail,
-  otpSchema,
   passwordResetCompletionSchema,
-  passwordResetRequestSchema,
-  passwordSchema,
   translateAuthError,
 } from "@/lib/auth-policy";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,19 @@ export interface ForgotPasswordFormProps extends React.ComponentProps<typeof Car
   initialEmail?: string;
   action?: "set" | "reset";
 }
+
+// Request 步只需校验 email，其余字段交给 complete 步的 completion schema
+const passwordResetRequestFormSchema: v.GenericSchema<{
+  email: string;
+  otp: string;
+  password: string;
+  confirmPassword: string;
+}> = v.object({
+  email: emailSchema,
+  otp: v.string(),
+  password: v.string(),
+  confirmPassword: v.string(),
+});
 
 export function ForgotPasswordForm({
   initialEmail = "",
@@ -66,6 +78,11 @@ export function ForgotPasswordForm({
   };
 
   const form = useForm({
+    validationLogic: revalidateLogic(),
+    validators: {
+      onDynamic:
+        step === "request" ? passwordResetRequestFormSchema : passwordResetCompletionSchema,
+    },
     defaultValues: {
       email: normalizeEmail(initialEmail),
       otp: "",
@@ -80,21 +97,13 @@ export function ForgotPasswordForm({
         return;
       }
 
-      const email = normalizeEmail(value.email);
-      const validation = v.safeParse(passwordResetCompletionSchema, {
-        email,
-        otp: value.otp,
-        password: value.password,
-        confirmPassword: value.confirmPassword,
-      });
-
-      if (!validation.success) {
-        return;
-      }
-
       try {
         const res = await authClient.emailOtp.resetPassword(
-          derivePasswordResetPayload(validation.output),
+          derivePasswordResetPayload({
+            email: value.email,
+            otp: value.otp,
+            password: value.password,
+          }),
         );
 
         if (res.error) {
@@ -125,12 +134,6 @@ export function ForgotPasswordForm({
 
     if (!turnstileToken) {
       setFormError("Please complete the security check to request a reset code.");
-      return;
-    }
-
-    const validation = v.safeParse(passwordResetRequestSchema, { email: emailValue });
-    if (!validation.success) {
-      resetCaptcha();
       return;
     }
 
@@ -180,76 +183,43 @@ export function ForgotPasswordForm({
           }}
         >
           <FieldGroup>
-            {formError && (
-              <div
-                role="alert"
-                className="rounded-md bg-destructive/15 p-3 text-sm font-medium text-destructive"
-              >
-                {formError}
-              </div>
-            )}
+            {formError ? (
+              <Alert variant="destructive" className="border-destructive/25 bg-destructive/15">
+                <CircleAlertIcon />
+                <AlertTitle>{formError}</AlertTitle>
+              </Alert>
+            ) : infoMessage ? (
+              <Alert className="border-primary/20 bg-primary/10 text-primary">
+                <AlertTitle>{infoMessage}</AlertTitle>
+              </Alert>
+            ) : null}
 
-            {infoMessage && (
-              <div
-                role="status"
-                className="rounded-md bg-primary/10 p-3 text-sm font-medium text-primary"
-              >
-                {infoMessage}
-              </div>
+            {step === "request" && (
+              <form.Field name="email">
+                {(field) => (
+                  <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
+                    <FieldLabel htmlFor="reset-email">Login email</FieldLabel>
+                    <Input
+                      id="reset-email"
+                      name={field.name}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      aria-invalid={field.state.meta.errors.length > 0}
+                      required
+                    />
+                    <FieldError errors={field.state.meta.errors} />
+                  </Field>
+                )}
+              </form.Field>
             )}
-
-            <form.Field
-              name="email"
-              validators={{
-                onBlur: ({ value }) => {
-                  const result = v.safeParse(emailSchema, value);
-                  return result.success ? undefined : result.issues[0].message;
-                },
-              }}
-            >
-              {(field) => (
-                <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
-                  <FieldLabel htmlFor="reset-email">Login email</FieldLabel>
-                  <Input
-                    id="reset-email"
-                    name={field.name}
-                    type="email"
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    value={field.state.value}
-                    readOnly={step === "complete"}
-                    disabled={step === "complete"}
-                    className={cn(
-                      step === "complete" && "cursor-not-allowed bg-muted text-muted-foreground",
-                    )}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    aria-invalid={field.state.meta.errors.length > 0}
-                    required
-                  />
-                  {step === "complete" && (
-                    <FieldDescription>
-                      The reset code was requested for this address.
-                    </FieldDescription>
-                  )}
-                  {field.state.meta.errors.length > 0 && (
-                    <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                  )}
-                </Field>
-              )}
-            </form.Field>
 
             {step === "complete" && (
               <>
-                <form.Field
-                  name="otp"
-                  validators={{
-                    onBlur: ({ value }) => {
-                      const result = v.safeParse(otpSchema, value);
-                      return result.success ? undefined : result.issues[0].message;
-                    },
-                  }}
-                >
+                <form.Field name="otp">
                   {(field) => (
                     <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
                       <FieldLabel htmlFor="reset-otp">Password reset code</FieldLabel>
@@ -279,24 +249,12 @@ export function ForgotPasswordForm({
                       <FieldDescription className="text-center">
                         Code is valid for 5 minutes.
                       </FieldDescription>
-                      {field.state.meta.errors.length > 0 && (
-                        <FieldError className="text-center">
-                          {field.state.meta.errors[0]?.toString()}
-                        </FieldError>
-                      )}
+                      <FieldError className="text-center" errors={field.state.meta.errors} />
                     </Field>
                   )}
                 </form.Field>
 
-                <form.Field
-                  name="password"
-                  validators={{
-                    onBlur: ({ value }) => {
-                      const result = v.safeParse(passwordSchema, value);
-                      return result.success ? undefined : result.issues[0].message;
-                    },
-                  }}
-                >
+                <form.Field name="password">
                   {(field) => (
                     <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
                       <FieldLabel htmlFor="new-password">New password</FieldLabel>
@@ -312,24 +270,12 @@ export function ForgotPasswordForm({
                         required
                       />
                       <FieldDescription>Must be between 8 and 128 characters.</FieldDescription>
-                      {field.state.meta.errors.length > 0 && (
-                        <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                      )}
+                      <FieldError errors={field.state.meta.errors} />
                     </Field>
                   )}
                 </form.Field>
 
-                <form.Field
-                  name="confirmPassword"
-                  validators={{
-                    onBlur: ({ value, fieldApi }) => {
-                      if (value !== fieldApi.form.getFieldValue("password")) {
-                        return "Passwords do not match";
-                      }
-                      return undefined;
-                    },
-                  }}
-                >
+                <form.Field name="confirmPassword">
                   {(field) => (
                     <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
                       <FieldLabel htmlFor="confirm-password">Confirm new password</FieldLabel>
@@ -344,16 +290,14 @@ export function ForgotPasswordForm({
                         aria-invalid={field.state.meta.errors.length > 0}
                         required
                       />
-                      {field.state.meta.errors.length > 0 && (
-                        <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                      )}
+                      <FieldError errors={field.state.meta.errors} />
                     </Field>
                   )}
                 </form.Field>
               </>
             )}
 
-            <div className="py-1">
+            <div className="flex flex-col gap-4">
               <Turnstile
                 ref={turnstileRef}
                 action="password-reset-request"
@@ -364,49 +308,49 @@ export function ForgotPasswordForm({
                   setFormError("Security verification encountered an error. Please try again.");
                 }}
               />
-            </div>
 
-            {step === "request" ? (
-              <form.Subscribe selector={(state) => state.isSubmitting}>
-                {(isSubmitting) => (
-                  <Button
-                    type="submit"
-                    loading={isSubmitting || isRequesting}
-                    disabled={!turnstileToken || isSubmitting || isRequesting}
-                  >
-                    Send reset code
-                  </Button>
-                )}
-              </form.Subscribe>
-            ) : (
-              <>
+              {step === "request" ? (
                 <form.Subscribe selector={(state) => state.isSubmitting}>
                   {(isSubmitting) => (
-                    <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
-                      {action === "set" ? "Set password" : "Reset password"}
+                    <Button
+                      type="submit"
+                      loading={isSubmitting || isRequesting}
+                      disabled={!turnstileToken || isSubmitting || isRequesting}
+                    >
+                      Send reset code
                     </Button>
                   )}
                 </form.Subscribe>
-                <Button
-                  type="button"
-                  variant="outline"
-                  loading={isRequesting}
-                  disabled={!turnstileToken || isRequesting || resendCooldown > 0}
-                  onClick={() => handleRequestCode(form.getFieldValue("email"))}
-                >
-                  {resendCooldown > 0
-                    ? `Send another code (${resendCooldown}s)`
-                    : "Send another code"}
-                </Button>
-              </>
-            )}
+              ) : (
+                <div className="flex flex-col gap-2.5">
+                  <form.Subscribe selector={(state) => state.isSubmitting}>
+                    {(isSubmitting) => (
+                      <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
+                        {action === "set" ? "Set password" : "Reset password"}
+                      </Button>
+                    )}
+                  </form.Subscribe>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    loading={isRequesting}
+                    disabled={!turnstileToken || isRequesting || resendCooldown > 0}
+                    onClick={() => handleRequestCode(form.getFieldValue("email"))}
+                  >
+                    {resendCooldown > 0
+                      ? `Send another code (${resendCooldown}s)`
+                      : "Send another code"}
+                  </Button>
+                </div>
+              )}
 
-            <FieldDescription className="text-center">
-              Back to{" "}
-              <Link to="/login" className="underline underline-offset-4 hover:text-primary">
-                Log in
-              </Link>
-            </FieldDescription>
+              <FieldDescription className="text-center">
+                Back to{" "}
+                <Link to="/login" className="underline underline-offset-4 hover:text-primary">
+                  Log in
+                </Link>
+              </FieldDescription>
+            </div>
           </FieldGroup>
         </form>
       </CardContent>

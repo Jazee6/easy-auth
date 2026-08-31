@@ -1,5 +1,5 @@
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
 
 interface ActivityItem {
   id: string;
@@ -41,17 +41,17 @@ export function ManagementActivity({ activity }: { activity: ActivityItem[] }) {
     },
   ];
   return (
-    <Card className="w-full max-w-5xl">
-      <CardHeader>
-        <CardTitle>Management activity</CardTitle>
-        <CardDescription>
-          Application-mediated changes to OAuth clients you own. Deleted-client snapshots remain
-          here.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="w-full max-w-5xl space-y-6">
+      <PageHeader
+        title="Management activity"
+        description="Application-mediated changes to OAuth clients you own. Deleted-client snapshots remain here."
+      />
+      <section className="space-y-4" aria-labelledby="management-activity-list-title">
+        <h2 id="management-activity-list-title" className="text-lg font-semibold tracking-tight">
+          Activity
+        </h2>
         <DataTable data={activity} columns={columns} emptyMessage="No management activity yet." />
-      </CardContent>
-    </Card>
+      </section>
+    </div>
   );
 }

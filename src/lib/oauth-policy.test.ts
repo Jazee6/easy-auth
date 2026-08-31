@@ -34,7 +34,7 @@ describe("OAuth management policy", () => {
       expect(
         v.safeParse(clientRegistrationSchema, {
           ...input,
-          redirectUris: "https://client.example/callback",
+          redirectUris: ["https://client.example/callback"],
         }).success,
       ).toBe(true);
     }
@@ -46,7 +46,18 @@ describe("OAuth management policy", () => {
         name: "Native secret",
         applicationType: "native",
         authentication: "confidential",
-        redirectUris: "com.example.app:/callback",
+        redirectUris: ["com.example.app:/callback"],
+      }).success,
+    ).toBe(false);
+  });
+
+  test("rejects redirect URIs that are not absolute URIs", () => {
+    expect(
+      v.safeParse(clientRegistrationSchema, {
+        name: "Web app",
+        applicationType: "web",
+        authentication: "confidential",
+        redirectUris: ["app.example/callback"],
       }).success,
     ).toBe(false);
   });
@@ -57,7 +68,11 @@ describe("OAuth management policy", () => {
         name: " Example App ",
         applicationType: "web",
         authentication: "confidential",
-        redirectUris: "https://client.example/callback\nhttps://client.example/second",
+        redirectUris: [
+          "https://client.example/callback",
+          "https://client.example/second",
+          "https://client.example/callback",
+        ],
       }),
     ).toEqual({
       client_name: "Example App",

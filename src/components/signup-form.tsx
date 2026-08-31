@@ -1,7 +1,7 @@
 import * as React from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
-import * as v from "valibot";
+import { useNavigate, Link } from "@tanstack/react-router";
+import { useForm, revalidateLogic } from "@tanstack/react-form";
+import { CircleAlertIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { authClient } from "@/lib/auth-client";
@@ -14,6 +14,7 @@ import {
 } from "@/lib/auth-policy";
 import { getPendingOAuthVerificationUrl } from "@/lib/oauth-policy";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,10 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
   };
 
   const form = useForm({
+    validationLogic: revalidateLogic(),
+    validators: {
+      onDynamic: signupSchema,
+    },
     defaultValues: {
       email: "",
       password: "",
@@ -39,12 +44,6 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
       setFormError(null);
       if (!turnstileToken) {
         setFormError("Please complete the security check to continue.");
-        return;
-      }
-
-      const validation = v.safeParse(signupSchema, value);
-      if (!validation.success) {
-        resetCaptcha();
         return;
       }
 
@@ -101,23 +100,13 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
         >
           <FieldGroup>
             {formError && (
-              <div
-                role="alert"
-                className="rounded-md bg-destructive/15 p-3 text-sm text-destructive font-medium"
-              >
-                {formError}
-              </div>
+              <Alert variant="destructive" className="border-destructive/25 bg-destructive/15">
+                <CircleAlertIcon />
+                <AlertTitle>{formError}</AlertTitle>
+              </Alert>
             )}
 
-            <form.Field
-              name="email"
-              validators={{
-                onBlur: ({ value }) => {
-                  const res = v.safeParse(signupSchema.entries.email, value);
-                  return res.success ? undefined : res.issues[0].message;
-                },
-              }}
-            >
+            <form.Field name="email">
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -131,22 +120,12 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                     onChange={(e) => field.handleChange(e.target.value)}
                     required
                   />
-                  {field.state.meta.errors.length > 0 && (
-                    <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                  )}
+                  <FieldError errors={field.state.meta.errors} />
                 </Field>
               )}
             </form.Field>
 
-            <form.Field
-              name="password"
-              validators={{
-                onBlur: ({ value }) => {
-                  const res = v.safeParse(signupSchema.entries.password, value);
-                  return res.success ? undefined : res.issues[0].message;
-                },
-              }}
-            >
+            <form.Field name="password">
               {(field) => (
                 <Field>
                   <FieldLabel htmlFor="password">Password</FieldLabel>
@@ -159,27 +138,23 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                     onChange={(e) => field.handleChange(e.target.value)}
                     required
                   />
-                  {field.state.meta.errors.length > 0 && (
-                    <FieldError>{field.state.meta.errors[0]?.toString()}</FieldError>
-                  )}
+                  <FieldError errors={field.state.meta.errors} />
                 </Field>
               )}
             </form.Field>
 
-            <div className="py-1">
-              <Turnstile
-                ref={turnstileRef}
-                action="signup"
-                onSuccess={(token) => setTurnstileToken(token)}
-                onExpire={() => setTurnstileToken(null)}
-                onError={() => {
-                  resetCaptcha();
-                  setFormError(
-                    "Security verification encountered an error. Please refresh and try again.",
-                  );
-                }}
-              />
-            </div>
+            <Turnstile
+              ref={turnstileRef}
+              action="signup"
+              onSuccess={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => {
+                resetCaptcha();
+                setFormError(
+                  "Security verification encountered an error. Please refresh and try again.",
+                );
+              }}
+            />
 
             <form.Subscribe selector={(state) => state.isSubmitting}>
               {(isSubmitting) => (
@@ -193,12 +168,13 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                   </Button>
                   <FieldDescription className="text-center">
                     Already registered?{" "}
-                    <a
-                      href={`/login${typeof window === "undefined" ? "" : window.location.search}`}
+                    <Link
+                      to="/login"
+                      search={true}
                       className="underline underline-offset-4 hover:text-primary"
                     >
                       Log in
-                    </a>
+                    </Link>
                   </FieldDescription>
                 </Field>
               )}

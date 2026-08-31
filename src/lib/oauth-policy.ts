@@ -16,23 +16,48 @@ export const scopeDescriptions: Record<(typeof supportedScopes)[number], string>
   offline_access: "Keep access after you leave or sign out of Easy Auth.",
 };
 
-const baseClientRegistrationSchema = v.object({
-  name: v.pipe(
-    v.string("Application name is required"),
-    v.trim(),
-    v.nonEmpty("Application name is required"),
-  ),
-  applicationType: v.picklist(["web", "native"]),
-  authentication: v.picklist(["confidential", "public"]),
-  redirectUris: v.pipe(
-    v.string("At least one redirect URI is required"),
-    v.trim(),
-    v.nonEmpty("At least one redirect URI is required"),
-  ),
-});
+export const clientNameSchema = v.pipe(
+  v.string("Application name is required"),
+  v.trim(),
+  v.nonEmpty("Application name is required"),
+);
+
+const applicationTypeSchema = v.picklist(["web", "native"]);
+
+const redirectUriTextSchema = v.pipe(
+  v.string("At least one redirect URI is required"),
+  v.trim(),
+  v.nonEmpty("At least one redirect URI is required"),
+);
+
+function isAbsoluteUri(value: string): boolean {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const redirectUriItemSchema = v.pipe(
+  v.string("Redirect URI is required"),
+  v.trim(),
+  v.nonEmpty("Redirect URI cannot be empty"),
+  v.check(isAbsoluteUri, "Redirect URI must be an absolute URI."),
+);
+
+export const redirectUriListSchema = v.pipe(
+  v.array(redirectUriItemSchema),
+  v.minLength(1, "At least one redirect URI is required"),
+);
 
 export const clientRegistrationSchema = v.pipe(
-  baseClientRegistrationSchema,
+  v.object({
+    name: clientNameSchema,
+    applicationType: applicationTypeSchema,
+    authentication: v.picklist(["confidential", "public"]),
+    redirectUris: redirectUriListSchema,
+  }),
   v.check(
     (input) => !(input.applicationType === "native" && input.authentication === "confidential"),
     "Native applications must be public clients",
@@ -41,9 +66,9 @@ export const clientRegistrationSchema = v.pipe(
 
 export const clientUpdateSchema = v.object({
   clientId: v.pipe(v.string(), v.trim(), v.nonEmpty("Client ID is required")),
-  name: baseClientRegistrationSchema.entries.name,
-  applicationType: baseClientRegistrationSchema.entries.applicationType,
-  redirectUris: baseClientRegistrationSchema.entries.redirectUris,
+  name: clientNameSchema,
+  applicationType: applicationTypeSchema,
+  redirectUris: redirectUriTextSchema,
 });
 
 export type ClientRegistrationInput = v.InferOutput<typeof clientRegistrationSchema>;
@@ -221,7 +246,7 @@ export function oauthClientCreatePayload(input: ClientRegistrationInput) {
   return {
     client_name: input.name.trim(),
     application_type: input.applicationType,
-    redirect_uris: parseRedirectUris(input.redirectUris),
+    redirect_uris: [...new Set(input.redirectUris.map((uri) => uri.trim()).filter(Boolean))],
     token_endpoint_auth_method:
       input.authentication === "confidential" ? "client_secret_basic" : "none",
     grant_types: ["authorization_code", "refresh_token"] as const,

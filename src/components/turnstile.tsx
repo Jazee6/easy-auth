@@ -156,7 +156,7 @@ export const Turnstile = React.forwardRef<TurnstileRef, TurnstileProps>(function
 
   return (
     <div className={cn("w-full", className)}>
-      <div ref={containerRef} className="flex min-h-[65px] w-full justify-center" />
+      <div data-slot="turnstile-container" ref={containerRef} className="w-full min-h-[65px]" />
     </div>
   );
 });

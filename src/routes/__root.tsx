@@ -1,9 +1,20 @@
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
+import { FileQuestionIcon } from "lucide-react";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { Toaster } from "@/components/ui/toast";
+import { RouteProgress } from "@/components/route-progress";
+import { Button } from "@/components/ui/button";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 import appCss from "../styles.css?url";
 
@@ -40,7 +51,27 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ],
   }),
   shellComponent: RootDocument,
+  notFoundComponent: NotFound,
 });
+
+function NotFound() {
+  return (
+    <main className="flex min-h-svh items-center justify-center p-4">
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <FileQuestionIcon />
+          </EmptyMedia>
+          <EmptyTitle>页面不存在</EmptyTitle>
+          <EmptyDescription>你访问的页面不存在或已被移动</EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button variant="outline" render={<Link to="/" />}>返回首页</Button>
+        </EmptyContent>
+      </Empty>
+    </main>
+  );
+}
 
 function RootDocument({ children }: { children?: React.ReactNode }) {
   return (
@@ -50,6 +81,7 @@ function RootDocument({ children }: { children?: React.ReactNode }) {
       </head>
       <body>
         {children ?? <Outlet />}
+        <RouteProgress />
         <Toaster />
         <TanStackDevtools
           config={{

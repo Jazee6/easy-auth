@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
+import { AppWindow } from "lucide-react";
 
 import {
   AlertDialog,
@@ -12,8 +13,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { revokeApplicationAuthorization } from "@/lib/oauth-server";
 
 interface AuthorizationItem {
@@ -43,22 +45,32 @@ export function AuthorizedApplications({ applications }: { applications: Authori
   };
 
   return (
-    <Card className="w-full max-w-4xl">
-      <CardHeader>
-        <CardTitle>Authorized applications</CardTitle>
-        <CardDescription>
-          Revocation prevents future token use and silent reauthorization. It cannot recall an ID
-          token already delivered or end a relying application&apos;s own local session.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="w-full max-w-4xl space-y-6">
+      <PageHeader
+        title="Authorized applications"
+        description="Revocation prevents future token use and silent reauthorization. It cannot recall an ID token already delivered or end a relying application's own local session."
+      />
+      <section className="space-y-4" aria-labelledby="authorized-applications-list-title">
+        <h2
+          id="authorized-applications-list-title"
+          className="text-lg font-semibold tracking-tight"
+        >
+          Applications
+        </h2>
         {error && (
           <div role="alert" className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
             {error}
           </div>
         )}
         {applications.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No applications are authorized.</p>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <AppWindow />
+              </EmptyMedia>
+              <EmptyTitle>No applications are authorized.</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           applications.map((application) => (
             <div
@@ -109,7 +121,7 @@ export function AuthorizedApplications({ applications }: { applications: Authori
             </div>
           ))
         )}
-      </CardContent>
-    </Card>
+      </section>
+    </div>
   );
 }

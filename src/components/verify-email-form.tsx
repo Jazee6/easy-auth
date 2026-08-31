@@ -1,7 +1,7 @@
 import * as React from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { useForm } from "@tanstack/react-form";
-import * as v from "valibot";
+import { useNavigate, Link } from "@tanstack/react-router";
+import { useForm, revalidateLogic } from "@tanstack/react-form";
+import { CircleAlertIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { authClient, continuePendingOAuth } from "@/lib/auth-client";
@@ -10,11 +10,11 @@ import {
   EMAIL_RESEND_COOLDOWN_SECONDS,
   getPostVerificationRedirect,
   normalizeEmail,
-  otpSchema,
   translateAuthError,
   verifyEmailFormSchema,
 } from "@/lib/auth-policy";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -52,6 +52,10 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
   };
 
   const form = useForm({
+    validationLogic: revalidateLogic(),
+    validators: {
+      onDynamic: verifyEmailFormSchema,
+    },
     defaultValues: {
       email: normalizedEmail,
       otp: "",
@@ -62,15 +66,6 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
 
       if (!normalizedEmail) {
         setFormError("A valid login email is required to verify your email.");
-        return;
-      }
-
-      const validation = v.safeParse(verifyEmailFormSchema, {
-        email: normalizedEmail,
-        otp: value.otp,
-      });
-
-      if (!validation.success) {
         return;
       }
 
@@ -154,33 +149,18 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
           }}
         >
           <FieldGroup>
-            {formError && (
-              <div
-                role="alert"
-                className="rounded-md bg-destructive/15 p-3 text-sm text-destructive font-medium"
-              >
-                {formError}
-              </div>
-            )}
+            {formError ? (
+              <Alert variant="destructive" className="border-destructive/25 bg-destructive/15">
+                <CircleAlertIcon />
+                <AlertTitle>{formError}</AlertTitle>
+              </Alert>
+            ) : infoMessage ? (
+              <Alert className="border-primary/20 bg-primary/10 text-primary">
+                <AlertTitle>{infoMessage}</AlertTitle>
+              </Alert>
+            ) : null}
 
-            {infoMessage && (
-              <div
-                role="status"
-                className="rounded-md bg-primary/10 p-3 text-sm text-primary font-medium"
-              >
-                {infoMessage}
-              </div>
-            )}
-
-            <form.Field
-              name="otp"
-              validators={{
-                onBlur: ({ value }) => {
-                  const res = v.safeParse(otpSchema, value);
-                  return res.success ? undefined : res.issues[0].message;
-                },
-              }}
-            >
+            <form.Field name="otp">
               {(field) => (
                 <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
                   <FieldLabel htmlFor="otp">Verification code</FieldLabel>
@@ -210,11 +190,7 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
                   <FieldDescription className="text-center">
                     Code is valid for 5 minutes.
                   </FieldDescription>
-                  {field.state.meta.errors.length > 0 && (
-                    <FieldError className="text-center">
-                      {field.state.meta.errors[0]?.toString()}
-                    </FieldError>
-                  )}
+                  <FieldError className="text-center" errors={field.state.meta.errors} />
                 </Field>
               )}
             </form.Field>
@@ -234,18 +210,16 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
                 Didn't receive the code or it expired? Complete the check below to request a new
                 code.
               </FieldDescription>
-              <div className="py-1">
-                <Turnstile
-                  ref={turnstileRef}
-                  action="resend-otp"
-                  onSuccess={(token) => setTurnstileToken(token)}
-                  onExpire={() => setTurnstileToken(null)}
-                  onError={() => {
-                    resetCaptcha();
-                    setFormError("Security verification encountered an error. Please try again.");
-                  }}
-                />
-              </div>
+              <Turnstile
+                ref={turnstileRef}
+                action="resend-otp"
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => {
+                  resetCaptcha();
+                  setFormError("Security verification encountered an error. Please try again.");
+                }}
+              />
               <Button
                 type="button"
                 variant="outline"
@@ -260,12 +234,13 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
 
             <FieldDescription className="text-center">
               Back to{" "}
-              <a
-                href={`/login${typeof window === "undefined" ? "" : window.location.search}`}
+              <Link
+                to="/login"
+                search={true}
                 className="underline underline-offset-4 hover:text-primary"
               >
                 Log in
-              </a>
+              </Link>
             </FieldDescription>
           </FieldGroup>
         </form>
