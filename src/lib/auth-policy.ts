@@ -56,6 +56,14 @@ export const passwordResetCompletionSchema = v.pipe(
   ),
 );
 
+export function getPasswordConfirmationError(
+  password: string,
+  confirmPassword: string,
+): string | undefined {
+  if (!confirmPassword || password.startsWith(confirmPassword)) return undefined;
+  return "Passwords do not match";
+}
+
 export const passwordResetPolicy = {
   revokeSessions: true,
   establishSession: false,

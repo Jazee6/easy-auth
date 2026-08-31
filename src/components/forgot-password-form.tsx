@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useForm, revalidateLogic } from "@tanstack/react-form";
+import { useForm } from "@tanstack/react-form";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { CircleAlertIcon } from "lucide-react";
 import * as v from "valibot";
@@ -11,6 +11,7 @@ import {
   derivePasswordResetPayload,
   EMAIL_RESEND_COOLDOWN_SECONDS,
   emailSchema,
+  getPasswordConfirmationError,
   getPasswordResetRequestSuccessMessage,
   getPostPasswordResetRedirect,
   normalizeEmail,
@@ -78,10 +79,8 @@ export function ForgotPasswordForm({
   };
 
   const form = useForm({
-    validationLogic: revalidateLogic(),
     validators: {
-      onDynamic:
-        step === "request" ? passwordResetRequestFormSchema : passwordResetCompletionSchema,
+      onSubmit: step === "request" ? passwordResetRequestFormSchema : passwordResetCompletionSchema,
     },
     defaultValues: {
       email: normalizeEmail(initialEmail),
@@ -176,6 +175,7 @@ export function ForgotPasswordForm({
       </CardHeader>
       <CardContent>
         <form
+          noValidate
           onSubmit={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -207,9 +207,11 @@ export function ForgotPasswordForm({
                       placeholder="you@example.com"
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(event) => field.handleChange(event.target.value)}
+                      onChange={(event) => {
+                        setFormError(null);
+                        field.handleChange(event.target.value);
+                      }}
                       aria-invalid={field.state.meta.errors.length > 0}
-                      required
                     />
                     <FieldError errors={field.state.meta.errors} />
                   </Field>
@@ -232,9 +234,11 @@ export function ForgotPasswordForm({
                           autoComplete="one-time-code"
                           value={field.state.value}
                           onBlur={field.handleBlur}
-                          onChange={field.handleChange}
+                          onChange={(value) => {
+                            setFormError(null);
+                            field.handleChange(value);
+                          }}
                           aria-invalid={field.state.meta.errors.length > 0}
-                          required
                         >
                           <InputOTPGroup>
                             <InputOTPSlot index={0} />
@@ -265,9 +269,11 @@ export function ForgotPasswordForm({
                         autoComplete="new-password"
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(event) => field.handleChange(event.target.value)}
+                        onChange={(event) => {
+                          setFormError(null);
+                          field.handleChange(event.target.value);
+                        }}
                         aria-invalid={field.state.meta.errors.length > 0}
-                        required
                       />
                       <FieldDescription>Must be between 8 and 128 characters.</FieldDescription>
                       <FieldError errors={field.state.meta.errors} />
@@ -275,7 +281,16 @@ export function ForgotPasswordForm({
                   )}
                 </form.Field>
 
-                <form.Field name="confirmPassword">
+                <form.Field
+                  name="confirmPassword"
+                  validators={{
+                    onChangeListenTo: ["password"],
+                    onChange: ({ value, fieldApi }) => {
+                      const password = fieldApi.form.getFieldValue("password");
+                      return getPasswordConfirmationError(password, value);
+                    },
+                  }}
+                >
                   {(field) => (
                     <Field data-invalid={field.state.meta.errors.length > 0 ? true : undefined}>
                       <FieldLabel htmlFor="confirm-password">Confirm new password</FieldLabel>
@@ -286,11 +301,17 @@ export function ForgotPasswordForm({
                         autoComplete="new-password"
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(event) => field.handleChange(event.target.value)}
+                        onChange={(event) => {
+                          setFormError(null);
+                          field.handleChange(event.target.value);
+                        }}
                         aria-invalid={field.state.meta.errors.length > 0}
-                        required
                       />
-                      <FieldError errors={field.state.meta.errors} />
+                      <FieldError
+                        errors={field.state.meta.errors.map((error) =>
+                          typeof error === "string" ? { message: error } : error,
+                        )}
+                      />
                     </Field>
                   )}
                 </form.Field>

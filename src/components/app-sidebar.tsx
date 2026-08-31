@@ -3,6 +3,7 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { Activity, AppWindow, IdCard, KeyRound, ShieldCheck, User } from "lucide-react";
 
 import { NavUser } from "@/components/nav-user";
+import { hasAdministratorRole } from "@/lib/oauth-policy";
 import {
   Sidebar,
   SidebarContent,
@@ -34,7 +35,7 @@ export function AppSidebar({
   const isAuthorizationsActive = location.pathname === "/authorized-applications";
   const isOAuthClientsActive = location.pathname.startsWith("/admin/oauth-clients");
   const isActivityActive = location.pathname === "/admin/management-activity";
-  const isAdministrator = user.role?.split(",").includes("admin") ?? false;
+  const isAdministrator = hasAdministratorRole(user.role);
 
   return (
     <Sidebar collapsible="icon" {...props}>

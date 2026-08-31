@@ -1,4 +1,10 @@
-import { HeadContent, Link, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Link,
+  Outlet,
+  Scripts,
+  createRootRouteWithContext,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { FileQuestionIcon } from "lucide-react";
@@ -6,7 +12,7 @@ import { FileQuestionIcon } from "lucide-react";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { Toaster } from "@/components/ui/toast";
 import { RouteProgress } from "@/components/route-progress";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Empty,
   EmptyContent,
@@ -66,7 +72,9 @@ function NotFound() {
           <EmptyDescription>你访问的页面不存在或已被移动</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Button variant="outline" render={<Link to="/" />}>返回首页</Button>
+          <Link data-slot="button" className={buttonVariants({ variant: "outline" })} to="/">
+            返回首页
+          </Link>
         </EmptyContent>
       </Empty>
     </main>

@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Item,
   ItemActions,
@@ -143,20 +143,17 @@ export function SignInMethods({ user, accounts, status, error }: SignInMethodsPr
             <ItemDescription>{methodState.password.isSet ? "Set" : "Not set"}</ItemDescription>
           </ItemContent>
           <ItemActions>
-            <Button
-              variant="outline"
-              render={
-                <Link
-                  to="/forgot-password"
-                  search={{
-                    email: user.email,
-                    action: methodState.password.isSet ? "reset" : "set",
-                  }}
-                />
-              }
+            <Link
+              data-slot="button"
+              className={buttonVariants({ variant: "outline" })}
+              to="/forgot-password"
+              search={{
+                email: user.email,
+                action: methodState.password.isSet ? "reset" : "set",
+              }}
             >
               {methodState.password.isSet ? "Reset password" : "Set password"}
-            </Button>
+            </Link>
           </ItemActions>
         </Item>
 

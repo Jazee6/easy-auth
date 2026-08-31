@@ -1,23 +1,16 @@
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
+import { ActivityCell, RelativeTime } from "@/components/oauth-client-activity";
 import { PageHeader } from "@/components/page-header";
+import type { OAuthClientActivityRecord } from "@/lib/oauth-activity";
 
-interface ActivityItem {
-  id: string;
-  clientId: string;
-  clientName: string;
-  action: string;
-  summary: string;
-  createdAt: Date;
-}
-
-export function ManagementActivity({ activity }: { activity: ActivityItem[] }) {
-  const columns: DataTableColumnDef<ActivityItem>[] = [
+export function ManagementActivity({ activity }: { activity: OAuthClientActivityRecord[] }) {
+  const columns: DataTableColumnDef<OAuthClientActivityRecord>[] = [
     {
       accessorKey: "createdAt",
       header: "When",
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">
-          {new Date(row.original.createdAt).toLocaleString()}
+        <span className="whitespace-nowrap text-sm">
+          <RelativeTime value={row.original.createdAt} />
         </span>
       ),
     },
@@ -25,26 +18,24 @@ export function ManagementActivity({ activity }: { activity: ActivityItem[] }) {
       accessorKey: "clientName",
       header: "Application",
       cell: ({ row }) => (
-        <div>
+        <div className="min-w-36">
           <div>{row.original.clientName}</div>
           <div className="font-mono text-xs text-muted-foreground">{row.original.clientId}</div>
         </div>
       ),
     },
-    { accessorKey: "action", header: "Action" },
     {
-      accessorKey: "summary",
-      header: "Summary",
-      cell: ({ row }) => (
-        <span className="max-w-sm break-words font-mono text-xs">{row.original.summary}</span>
-      ),
+      id: "activity",
+      header: "Activity",
+      cell: ({ row }) => <ActivityCell record={row.original} />,
     },
   ];
+
   return (
-    <div className="w-full max-w-5xl space-y-6">
+    <div className="w-full max-w-6xl space-y-6">
       <PageHeader
         title="Management activity"
-        description="Application-mediated changes to OAuth clients you own. Deleted-client snapshots remain here."
+        description="Changes to OAuth clients you own. Deleted-client snapshots remain here."
       />
       <section className="space-y-4" aria-labelledby="management-activity-list-title">
         <h2 id="management-activity-list-title" className="text-lg font-semibold tracking-tight">

@@ -28,7 +28,7 @@ export function ProfileForm({
       image: user.image ?? "",
     },
     validators: {
-      onBlur: profileSchema,
+      onSubmit: profileSchema,
     },
     onSubmit: async ({ value }) => {
       const trimmedImage = value.image?.trim() || null;
@@ -70,6 +70,7 @@ export function ProfileForm({
       <PageHeader title="Profile" description="Manage your account profile." />
 
       <form
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -96,7 +97,6 @@ export function ProfileForm({
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  required
                 />
                 <FieldError errors={field.state.meta.errors} />
               </Field>

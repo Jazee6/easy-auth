@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   clientRegistrationSchema,
+  clientUpdateSchema,
   getBannedUserId,
   getOAuthContinuationPayload,
   getOAuthManagementActionError,
@@ -21,6 +22,7 @@ describe("OAuth management policy", () => {
   test("recognizes only the administrator role", () => {
     expect(hasAdministratorRole("admin")).toBe(true);
     expect(hasAdministratorRole("user,admin")).toBe(true);
+    expect(hasAdministratorRole("user, admin")).toBe(true);
     expect(hasAdministratorRole("user")).toBe(false);
     expect(hasAdministratorRole(undefined)).toBe(false);
   });
@@ -175,6 +177,34 @@ describe("OAuth management policy", () => {
     expect(validateOAuthRedirectUris(["http://127.0.0.1:4000/callback"], "native")).toBeNull();
     expect(validateOAuthRedirectUris(["http://127.0.0.2:4000/callback"], "native")).toBe(
       "Native HTTP redirects must use an exact loopback host.",
+    );
+  });
+
+  test("shares provider-compatible native redirect URI validation between registration and updates", () => {
+    const nativeRedirect = "com.example-app:/callback";
+    expect(
+      v.safeParse(clientRegistrationSchema, {
+        name: "Native app",
+        applicationType: "native",
+        authentication: "public",
+        redirectUris: [nativeRedirect],
+      }).success,
+    ).toBe(true);
+    expect(
+      v.safeParse(clientUpdateSchema, {
+        clientId: "client-native",
+        name: "Native app",
+        applicationType: "native",
+        authentication: "public",
+        redirectUris: [nativeRedirect],
+      }).success,
+    ).toBe(true);
+    expect(validateOAuthRedirectUris([nativeRedirect], "native")).toBeNull();
+    expect(validateOAuthRedirectUris(["com.example:foo"], "native")).toBe(
+      "Native private-use redirect schemes must be authority-free reverse-domain names.",
+    );
+    expect(validateOAuthRedirectUris([nativeRedirect], "web")).toBe(
+      "Web clients require HTTPS redirect URIs on non-loopback hosts.",
     );
   });
 

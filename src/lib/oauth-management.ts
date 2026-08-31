@@ -37,18 +37,16 @@ export async function updateOAuthClientAtomically(
   database: D1Database,
   mutation: OwnedOAuthClientMutation & {
     name: string;
-    applicationType: "web" | "native";
     redirectUris: string[];
   },
 ): Promise<void> {
   await database.batch([
     database
       .prepare(
-        "UPDATE oauth_client SET name = ?, application_type = ?, redirect_uris = ?, updated_at = ? WHERE client_id = ? AND user_id = ?",
+        "UPDATE oauth_client SET name = ?, redirect_uris = ?, updated_at = ? WHERE client_id = ? AND user_id = ?",
       )
       .bind(
         mutation.name,
-        mutation.applicationType,
         JSON.stringify(mutation.redirectUris),
         mutation.audit.createdAt,
         mutation.clientId,
@@ -97,5 +95,27 @@ export async function deleteOAuthClientAtomically(
     database
       .prepare("DELETE FROM oauth_client WHERE client_id = ? AND user_id = ?")
       .bind(mutation.clientId, mutation.ownerUserId),
+  ]);
+}
+
+export async function revokeApplicationAuthorizationAtomically(
+  database: D1Database,
+  input: { accountId: string; clientId: string },
+): Promise<void> {
+  await database.batch([
+    database
+      .prepare(
+        "DELETE FROM verification WHERE json_valid(value) AND json_extract(value, '$.type') = 'authorization_code' AND json_extract(value, '$.userId') = ? AND json_extract(value, '$.query.client_id') = ?",
+      )
+      .bind(input.accountId, input.clientId),
+    database
+      .prepare("DELETE FROM oauth_access_token WHERE user_id = ? AND client_id = ?")
+      .bind(input.accountId, input.clientId),
+    database
+      .prepare("DELETE FROM oauth_refresh_token WHERE user_id = ? AND client_id = ?")
+      .bind(input.accountId, input.clientId),
+    database
+      .prepare("DELETE FROM oauth_consent WHERE user_id = ? AND client_id = ?")
+      .bind(input.accountId, input.clientId),
   ]);
 }

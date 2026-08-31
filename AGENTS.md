@@ -16,6 +16,7 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
 - 简单且繁琐的任务交给子Agent，固定模型为5.6 luna max
 - 表单使用shadcn Field + Tanstack Form + Valibot
+- 数据表单统一使用 `noValidate` + Valibot 提交时校验，字段变更只清除旧错误；确认密码一致性使用前缀容忍的即时校验，Turnstile/cooldown/输入约束/预览等即时行为保留
 - 表格使用Data Table + Tanstack Table
 - 空状态使用shadcn Empty组件
 - 账户/管理面板页面统一使用 PageHeader
@@ -28,3 +29,6 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
 - `bunx shadcn add` 遇到已存在文件会交互式询问覆盖，用 `yes n | bunx shadcn add ...` 拒绝（button.tsx 等含自定义修改，不可覆盖）
 - FieldLabel 内嵌 Field 即 choice-card（选中态高亮内置），RadioGroup/Checkbox 卡片直接用此模式，勿手写卡片样式
+- Better Auth Native private-use Redirect URI 的 scheme-specific part 必须以单个 `/` 开头（如 `com.example:/callback`）；Create/Edit 共用 provider-compatible 校验规则
+- 导航链接直接用 TanStack `Link` + `buttonVariants`；不要通过 Base UI `Button.render` 输出 `<a>`，避免按钮原生语义警告并保留链接语义
+- Base UI Dialog/Sheet 退出动画期间保留内容；关闭后清理状态用 `onOpenChangeComplete(false)`，不要在 `open=false` 时立即清空

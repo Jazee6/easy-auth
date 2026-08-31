@@ -8,6 +8,7 @@ import { oauthClient, oauthClientAudit, oauthConsent } from "@/db/schema";
 import { auth } from "./auth";
 import {
   deleteOAuthClientAtomically,
+  revokeApplicationAuthorizationAtomically,
   setOAuthClientDisabledAtomically,
   updateOAuthClientAtomically,
 } from "./oauth-management";
@@ -15,8 +16,8 @@ import {
   clientRegistrationSchema,
   clientUpdateSchema,
   hasAdministratorRole,
+  normalizeOAuthRedirectUris,
   oauthClientCreatePayload,
-  parseRedirectUris,
   redactAuditSummary,
   validateOAuthRedirectUris,
 } from "./oauth-policy";
@@ -102,13 +103,20 @@ export const listOAuthClients = createServerFn({ method: "GET" }).handler(async 
   }));
 });
 
-export const getOAuthClientDetail = createServerFn({ method: "GET" })
+export const getOAuthClientActivity = createServerFn({ method: "GET" })
   .validator((input: unknown) => v.parse(clientIdSchema, input))
   .handler(async ({ data }) => {
     const { session } = await requireAdministrator();
-    const client = await findOwnedClient(data.clientId, session.user.id);
-    const activity = await db
-      .select()
+    await findOwnedClient(data.clientId, session.user.id);
+    return db
+      .select({
+        id: oauthClientAudit.id,
+        clientId: oauthClientAudit.clientId,
+        clientName: oauthClientAudit.clientName,
+        action: oauthClientAudit.action,
+        summary: oauthClientAudit.summary,
+        createdAt: oauthClientAudit.createdAt,
+      })
       .from(oauthClientAudit)
       .where(
         and(
@@ -117,31 +125,15 @@ export const getOAuthClientDetail = createServerFn({ method: "GET" })
         ),
       )
       .orderBy(desc(oauthClientAudit.createdAt), desc(oauthClientAudit.id));
-
-    return {
-      client: {
-        clientId: client.clientId,
-        ownerUserId: client.userId,
-        name: client.name,
-        applicationType: client.applicationType,
-        tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
-        redirectUris: stringArray(client.redirectUris),
-        disabled: client.disabled,
-        requirePKCE: client.requirePKCE,
-        grantTypes: stringArray(client.grantTypes),
-        responseTypes: stringArray(client.responseTypes),
-        scopes: stringArray(client.scopes),
-        createdAt: client.createdAt,
-        updatedAt: client.updatedAt,
-      },
-      activity,
-    };
   });
 
 export const createOAuthClient = createServerFn({ method: "POST" })
   .validator((input: unknown) => v.parse(clientRegistrationSchema, input))
   .handler(async ({ data }) => {
     const { headers, session } = await requireAdministrator();
+    const redirectError = validateOAuthRedirectUris(data.redirectUris, data.applicationType);
+    if (redirectError) throw new Error(redirectError);
+
     const payload = oauthClientCreatePayload(data);
     const created = await auth.api.adminCreateOAuthClient({
       headers,
@@ -182,26 +174,30 @@ export const updateOAuthClient = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { session } = await requireAdministrator();
     const existing = await findOwnedClient(data.clientId, session.user.id);
-    if (existing.tokenEndpointAuthMethod !== "none" && data.applicationType === "native") {
-      throw new Error("Native applications must be public clients");
+    const existingApplicationType = existing.applicationType === "native" ? "native" : "web";
+    const existingAuthentication =
+      existing.tokenEndpointAuthMethod === "none" ? "public" : "confidential";
+    if (existingApplicationType !== data.applicationType) {
+      throw new Error("Application type cannot be changed after registration");
     }
-    const redirectUris = parseRedirectUris(data.redirectUris);
-    const redirectError = validateOAuthRedirectUris(redirectUris, data.applicationType);
+    if (existingAuthentication !== data.authentication) {
+      throw new Error("Authentication capability cannot be changed after registration");
+    }
+    const redirectUris = normalizeOAuthRedirectUris(data.redirectUris);
+    const redirectError = validateOAuthRedirectUris(redirectUris, existingApplicationType);
     if (redirectError) throw new Error(redirectError);
+    const existingRedirectUris = stringArray(existing.redirectUris);
     const changed = [
       existing.name !== data.name.trim() ? "name" : null,
-      existing.applicationType !== data.applicationType ? "applicationType" : null,
-      JSON.stringify(existing.redirectUris) !== JSON.stringify(redirectUris)
-        ? "redirectUris"
-        : null,
+      JSON.stringify(existingRedirectUris) !== JSON.stringify(redirectUris) ? "redirectUris" : null,
     ].filter((value): value is string => Boolean(value));
-    const now = Date.now();
+    if (changed.length === 0) return { updated: false };
 
+    const now = Date.now();
     await updateOAuthClientAtomically(db.$client, {
       clientId: data.clientId,
       ownerUserId: session.user.id,
       name: data.name.trim(),
-      applicationType: data.applicationType,
       redirectUris,
       audit: {
         id: crypto.randomUUID(),
@@ -302,7 +298,14 @@ export const deleteOAuthClient = createServerFn({ method: "POST" })
 export const listManagementActivity = createServerFn({ method: "GET" }).handler(async () => {
   const { session } = await requireAdministrator();
   return db
-    .select()
+    .select({
+      id: oauthClientAudit.id,
+      clientId: oauthClientAudit.clientId,
+      clientName: oauthClientAudit.clientName,
+      action: oauthClientAudit.action,
+      summary: oauthClientAudit.summary,
+      createdAt: oauthClientAudit.createdAt,
+    })
     .from(oauthClientAudit)
     .where(eq(oauthClientAudit.ownerUserId, session.user.id))
     .orderBy(desc(oauthClientAudit.createdAt), desc(oauthClientAudit.id));
@@ -343,17 +346,9 @@ export const revokeApplicationAuthorization = createServerFn({ method: "POST" })
   .validator((input: unknown) => v.parse(clientIdSchema, input))
   .handler(async ({ data }) => {
     const { session } = await requireSession();
-    const database = db.$client;
-    await database.batch([
-      database
-        .prepare("DELETE FROM oauth_access_token WHERE user_id = ? AND client_id = ?")
-        .bind(session.user.id, data.clientId),
-      database
-        .prepare("DELETE FROM oauth_refresh_token WHERE user_id = ? AND client_id = ?")
-        .bind(session.user.id, data.clientId),
-      database
-        .prepare("DELETE FROM oauth_consent WHERE user_id = ? AND client_id = ?")
-        .bind(session.user.id, data.clientId),
-    ]);
+    await revokeApplicationAuthorizationAtomically(db.$client, {
+      accountId: session.user.id,
+      clientId: data.clientId,
+    });
     return { revoked: true };
   });

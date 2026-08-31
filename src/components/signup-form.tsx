@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
-import { useForm, revalidateLogic } from "@tanstack/react-form";
+import { useForm } from "@tanstack/react-form";
 import { CircleAlertIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -32,9 +32,8 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
   };
 
   const form = useForm({
-    validationLogic: revalidateLogic(),
     validators: {
-      onDynamic: signupSchema,
+      onSubmit: signupSchema,
     },
     defaultValues: {
       email: "",
@@ -92,6 +91,7 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
       </CardHeader>
       <CardContent>
         <form
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -114,11 +114,14 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                     id="email"
                     name={field.name}
                     type="email"
+                    autoComplete="email"
                     placeholder="you@example.com"
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    required
+                    onChange={(e) => {
+                      setFormError(null);
+                      field.handleChange(e.target.value);
+                    }}
                   />
                   <FieldError errors={field.state.meta.errors} />
                 </Field>
@@ -133,10 +136,13 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
                     id="password"
                     name={field.name}
                     type="password"
+                    autoComplete="new-password"
                     value={field.state.value}
                     onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    required
+                    onChange={(e) => {
+                      setFormError(null);
+                      field.handleChange(e.target.value);
+                    }}
                   />
                   <FieldError errors={field.state.meta.errors} />
                 </Field>

@@ -1,8 +1,13 @@
-import { Link } from "@tanstack/react-router";
-
-import { CreateOAuthClientDialog } from "@/components/create-oauth-client-dialog";
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
+import {
+  AuthenticationBadge,
+  ClientTypeBadge,
+  OAuthClientDialog,
+} from "@/components/oauth-client-dialog";
+import { OAuthClientActions } from "@/components/oauth-client-actions";
 import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { CircleCheck, CircleOff } from "lucide-react";
 
 export interface OAuthClientListItem {
   clientId: string;
@@ -12,6 +17,7 @@ export interface OAuthClientListItem {
   redirectUris: string[];
   disabled: boolean | null;
   createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export function OAuthClients({ clients }: { clients: OAuthClientListItem[] }) {
@@ -20,41 +26,61 @@ export function OAuthClients({ clients }: { clients: OAuthClientListItem[] }) {
       accessorKey: "name",
       header: "Name",
       cell: ({ row }) => (
-        <Link
-          to="/admin/oauth-clients/$clientId"
-          params={{ clientId: row.original.clientId }}
-          className="font-medium hover:underline"
-        >
-          {row.original.name || "Unnamed application"}
-        </Link>
+        <span className="font-medium">{row.original.name || "Unnamed application"}</span>
       ),
     },
     {
       id: "type",
       header: "Type",
-      cell: ({ row }) =>
-        `${row.original.applicationType} / ${row.original.tokenEndpointAuthMethod === "none" ? "public" : "confidential"}`,
+      cell: ({ row }) => <ClientTypeBadge applicationType={row.original.applicationType} />,
+    },
+    {
+      id: "authentication",
+      header: "Authentication",
+      cell: ({ row }) => <AuthenticationBadge authMethod={row.original.tokenEndpointAuthMethod} />,
     },
     {
       id: "status",
       header: "Status",
-      cell: ({ row }) => (row.original.disabled ? "Disabled" : "Enabled"),
+      cell: ({ row }) => <StatusBadge disabled={Boolean(row.original.disabled)} />,
     },
     {
       accessorKey: "clientId",
       header: "Client ID",
-      cell: ({ row }) => <span className="font-mono text-xs">{row.original.clientId}</span>,
+      cell: ({ row }) => (
+        <span className="font-mono text-xs break-all">{row.original.clientId}</span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => <OAuthClientActions client={row.original} />,
     },
   ];
 
   return (
-    <div className="w-full max-w-5xl space-y-6">
+    <div className="w-full max-w-6xl space-y-6">
       <PageHeader
         title="OAuth clients"
         description="Only clients created by your administrator account are shown."
-        actions={<CreateOAuthClientDialog />}
+        actions={<OAuthClientDialog />}
       />
-      <DataTable data={clients} columns={columns} emptyMessage="No OAuth clients registered." />
+      <DataTable
+        data={clients}
+        columns={columns}
+        emptyMessage="No OAuth clients registered."
+        emptyDescription="Register a client to let a trusted application request authorization."
+      />
     </div>
+  );
+}
+
+function StatusBadge({ disabled }: { disabled: boolean }) {
+  const Icon = disabled ? CircleOff : CircleCheck;
+  return (
+    <Badge variant="outline">
+      <Icon aria-hidden="true" />
+      {disabled ? "Disabled" : "Enabled"}
+    </Badge>
   );
 }

@@ -7,6 +7,7 @@ import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 import { createEasyAuth } from "./auth-factory";
 import {
   deleteOAuthClientAtomically,
+  revokeApplicationAuthorizationAtomically,
   setOAuthClientDisabledAtomically,
   updateOAuthClientAtomically,
 } from "./oauth-management";
@@ -185,7 +186,6 @@ describe("OAuth HTTP integration", () => {
       clientId: "client-lifecycle",
       ownerUserId: "owner-lifecycle",
       name: "New name",
-      applicationType: "web",
       redirectUris: ["https://new.example/callback"],
       audit: {
         id: "audit-lifecycle-update",
@@ -203,6 +203,12 @@ describe("OAuth HTTP integration", () => {
         .bind("client-lifecycle")
         .first<string>("name"),
     ).toBe("New name");
+    expect(
+      await database
+        .prepare("SELECT application_type FROM oauth_client WHERE client_id = ?")
+        .bind("client-lifecycle")
+        .first<string>("application_type"),
+    ).toBe("web");
 
     let rollbackError: unknown;
     try {
@@ -537,6 +543,133 @@ describe("OAuth HTTP integration", () => {
         .bind(client.client_id)
         .first<number>("count"),
     ).toBe(0);
+
+    await database
+      .prepare("UPDATE oauth_client SET disabled = 1 WHERE client_id = ?")
+      .bind(client.client_id)
+      .run();
+    const disabledUserInfoResponse = await getAuth("/oauth2/userinfo", {
+      authorization: `Bearer ${tokens.access_token}`,
+    });
+    expect(disabledUserInfoResponse.status).toBe(401);
+
+    await database
+      .prepare("UPDATE oauth_client SET disabled = 0 WHERE client_id = ?")
+      .bind(client.client_id)
+      .run();
+    const restoredUserInfoResponse = await getAuth("/oauth2/userinfo", {
+      authorization: `Bearer ${tokens.access_token}`,
+    });
+    expect(restoredUserInfoResponse.status).toBe(200);
+  });
+
+  test("revokes pending authorization codes with an account application authorization", async () => {
+    const ownerId = await createVerifiedAccount("owner-revoke@example.com", "admin");
+    const accountId = await createVerifiedAccount("account-revoke@example.com");
+    const now = Date.now();
+
+    await database.batch([
+      database
+        .prepare(
+          "INSERT INTO oauth_client (id, client_id, user_id, redirect_uris, name) VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "client-row-revoke",
+          "client-revoke",
+          ownerId,
+          '["https://client.example/callback"]',
+          "Client",
+        ),
+      database
+        .prepare(
+          "INSERT INTO oauth_refresh_token (id, token, client_id, user_id, expires_at, created_at, scopes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "refresh-row-revoke",
+          "ea_rt_revoke",
+          "client-revoke",
+          accountId,
+          now + 60_000,
+          now,
+          '["openid","offline_access"]',
+        ),
+      database
+        .prepare(
+          "INSERT INTO oauth_access_token (id, token, client_id, user_id, expires_at, created_at, scopes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "access-row-revoke",
+          "ea_at_revoke",
+          "client-revoke",
+          accountId,
+          now + 60_000,
+          now,
+          '["openid"]',
+        ),
+      database
+        .prepare(
+          "INSERT INTO oauth_consent (id, client_id, user_id, scopes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind("consent-row-revoke", "client-revoke", accountId, '["openid"]', now, now),
+      database
+        .prepare(
+          "INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "verification-revoke",
+          "authorization-code-revoke",
+          JSON.stringify({
+            type: "authorization_code",
+            userId: accountId,
+            query: { client_id: "client-revoke" },
+          }),
+          now + 60_000,
+          now,
+          now,
+        ),
+      database
+        .prepare(
+          "INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "verification-revoke-unrelated",
+          "authorization-code-revoke-unrelated",
+          JSON.stringify({
+            type: "authorization_code",
+            userId: accountId,
+            query: { client_id: "other-client" },
+          }),
+          now + 60_000,
+          now,
+          now,
+        ),
+    ]);
+
+    await revokeApplicationAuthorizationAtomically(database, {
+      accountId,
+      clientId: "client-revoke",
+    });
+
+    expect(
+      await database
+        .prepare(
+          "SELECT (SELECT count(*) FROM oauth_access_token WHERE user_id = ? AND client_id = ?) + (SELECT count(*) FROM oauth_refresh_token WHERE user_id = ? AND client_id = ?) + (SELECT count(*) FROM oauth_consent WHERE user_id = ? AND client_id = ?) AS count",
+        )
+        .bind(accountId, "client-revoke", accountId, "client-revoke", accountId, "client-revoke")
+        .first<number>("count"),
+    ).toBe(0);
+    expect(
+      await database
+        .prepare("SELECT count(*) AS count FROM verification WHERE id = ?")
+        .bind("verification-revoke")
+        .first<number>("count"),
+    ).toBe(0);
+    expect(
+      await database
+        .prepare("SELECT count(*) AS count FROM verification WHERE id = ?")
+        .bind("verification-revoke-unrelated")
+        .first<number>("count"),
+    ).toBe(1);
   });
 
   test("revokes OAuth token families when an administrator uses generic banned-state update", async () => {

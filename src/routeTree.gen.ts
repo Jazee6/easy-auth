@@ -25,7 +25,6 @@ import { Route as AccountAdminManagementActivityRouteImport } from './routes/_ac
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
 import { Route as AccountAdminOauthClientsIndexRouteImport } from './routes/_account/admin/oauth-clients/index'
-import { Route as AccountAdminOauthClientsClientIdRouteImport } from './routes/_account/admin/oauth-clients/$clientId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -112,12 +111,6 @@ const AccountAdminOauthClientsIndexRoute =
     path: '/admin/oauth-clients/',
     getParentRoute: () => AccountRouteRoute,
   } as any)
-const AccountAdminOauthClientsClientIdRoute =
-  AccountAdminOauthClientsClientIdRouteImport.update({
-    id: '/admin/oauth-clients/$clientId',
-    path: '/admin/oauth-clients/$clientId',
-    getParentRoute: () => AccountRouteRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -134,7 +127,6 @@ export interface FileRoutesByFullPath {
   '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
-  '/admin/oauth-clients/$clientId': typeof AccountAdminOauthClientsClientIdRoute
   '/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -152,7 +144,6 @@ export interface FileRoutesByTo {
   '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
-  '/admin/oauth-clients/$clientId': typeof AccountAdminOauthClientsClientIdRoute
   '/admin/oauth-clients': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRoutesById {
@@ -172,7 +163,6 @@ export interface FileRoutesById {
   '/_account/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
-  '/_account/admin/oauth-clients/$clientId': typeof AccountAdminOauthClientsClientIdRoute
   '/_account/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRouteTypes {
@@ -192,7 +182,6 @@ export interface FileRouteTypes {
     | '/admin/management-activity'
     | '/api/auth/$'
     | '/.well-known/oauth-authorization-server/api/auth'
-    | '/admin/oauth-clients/$clientId'
     | '/admin/oauth-clients/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -210,7 +199,6 @@ export interface FileRouteTypes {
     | '/admin/management-activity'
     | '/api/auth/$'
     | '/.well-known/oauth-authorization-server/api/auth'
-    | '/admin/oauth-clients/$clientId'
     | '/admin/oauth-clients'
   id:
     | '__root__'
@@ -229,7 +217,6 @@ export interface FileRouteTypes {
     | '/_account/admin/management-activity'
     | '/api/auth/$'
     | '/.well-known/oauth-authorization-server/api/auth'
-    | '/_account/admin/oauth-clients/$clientId'
     | '/_account/admin/oauth-clients/'
   fileRoutesById: FileRoutesById
 }
@@ -360,13 +347,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountAdminOauthClientsIndexRouteImport
       parentRoute: typeof AccountRouteRoute
     }
-    '/_account/admin/oauth-clients/$clientId': {
-      id: '/_account/admin/oauth-clients/$clientId'
-      path: '/admin/oauth-clients/$clientId'
-      fullPath: '/admin/oauth-clients/$clientId'
-      preLoaderRoute: typeof AccountAdminOauthClientsClientIdRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
   }
 }
 
@@ -375,7 +355,6 @@ interface AccountRouteRouteChildren {
   AccountProfileRoute: typeof AccountProfileRoute
   AccountSignInMethodsRoute: typeof AccountSignInMethodsRoute
   AccountAdminManagementActivityRoute: typeof AccountAdminManagementActivityRoute
-  AccountAdminOauthClientsClientIdRoute: typeof AccountAdminOauthClientsClientIdRoute
   AccountAdminOauthClientsIndexRoute: typeof AccountAdminOauthClientsIndexRoute
 }
 
@@ -384,7 +363,6 @@ const AccountRouteRouteChildren: AccountRouteRouteChildren = {
   AccountProfileRoute: AccountProfileRoute,
   AccountSignInMethodsRoute: AccountSignInMethodsRoute,
   AccountAdminManagementActivityRoute: AccountAdminManagementActivityRoute,
-  AccountAdminOauthClientsClientIdRoute: AccountAdminOauthClientsClientIdRoute,
   AccountAdminOauthClientsIndexRoute: AccountAdminOauthClientsIndexRoute,
 }
 

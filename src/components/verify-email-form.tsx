@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
-import { useForm, revalidateLogic } from "@tanstack/react-form";
+import { useForm } from "@tanstack/react-form";
 import { CircleAlertIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -52,9 +52,8 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
   };
 
   const form = useForm({
-    validationLogic: revalidateLogic(),
     validators: {
-      onDynamic: verifyEmailFormSchema,
+      onSubmit: verifyEmailFormSchema,
     },
     defaultValues: {
       email: normalizedEmail,
@@ -142,6 +141,7 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
       </CardHeader>
       <CardContent>
         <form
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -173,9 +173,12 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
                       autoComplete="one-time-code"
                       value={field.state.value}
                       onBlur={field.handleBlur}
-                      onChange={(value) => field.handleChange(value)}
+                      onChange={(value) => {
+                        setFormError(null);
+                        setInfoMessage(null);
+                        field.handleChange(value);
+                      }}
                       aria-invalid={field.state.meta.errors.length > 0}
-                      required
                     >
                       <InputOTPGroup>
                         <InputOTPSlot index={0} />

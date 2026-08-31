@@ -15,6 +15,7 @@ import {
   getGithubSignInOptions,
   getInitials,
   getLoginFailureResolution,
+  getPasswordConfirmationError,
   getPostLoginRedirect,
   getPasswordResetRequestSuccessMessage,
   getPostLogoutRedirect,
@@ -114,6 +115,18 @@ describe("auth-policy", () => {
   });
 
   describe("password reset validation and policy", () => {
+    it("keeps password confirmation tolerant while the confirmation is a prefix", () => {
+      expect(getPasswordConfirmationError("new-password", "")).toBeUndefined();
+      expect(getPasswordConfirmationError("new-password", "new-")).toBeUndefined();
+      expect(getPasswordConfirmationError("new-password", "new-password")).toBeUndefined();
+      expect(getPasswordConfirmationError("new-password", "new-passw0rd")).toBe(
+        "Passwords do not match",
+      );
+      expect(getPasswordConfirmationError("new-password", "new-password-extra")).toBe(
+        "Passwords do not match",
+      );
+    });
+
     it("accepts a normalized reset request email and a complete matching reset payload", () => {
       expect(v.safeParse(passwordResetRequestSchema, { email: " User@Example.COM " }).success).toBe(
         true,

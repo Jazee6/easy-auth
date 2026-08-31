@@ -23,12 +23,7 @@ export const clientNameSchema = v.pipe(
 );
 
 const applicationTypeSchema = v.picklist(["web", "native"]);
-
-const redirectUriTextSchema = v.pipe(
-  v.string("At least one redirect URI is required"),
-  v.trim(),
-  v.nonEmpty("At least one redirect URI is required"),
-);
+const authenticationSchema = v.picklist(["confidential", "public"]);
 
 function isAbsoluteUri(value: string): boolean {
   try {
@@ -55,7 +50,7 @@ export const clientRegistrationSchema = v.pipe(
   v.object({
     name: clientNameSchema,
     applicationType: applicationTypeSchema,
-    authentication: v.picklist(["confidential", "public"]),
+    authentication: authenticationSchema,
     redirectUris: redirectUriListSchema,
   }),
   v.check(
@@ -68,7 +63,8 @@ export const clientUpdateSchema = v.object({
   clientId: v.pipe(v.string(), v.trim(), v.nonEmpty("Client ID is required")),
   name: clientNameSchema,
   applicationType: applicationTypeSchema,
-  redirectUris: redirectUriTextSchema,
+  authentication: authenticationSchema,
+  redirectUris: redirectUriListSchema,
 });
 
 export type ClientRegistrationInput = v.InferOutput<typeof clientRegistrationSchema>;
@@ -146,6 +142,20 @@ function isExactNativeLoopbackHostname(hostname: string): boolean {
   return normalized === "localhost" || normalized === "::1" || normalized === "127.0.0.1";
 }
 
+const reverseDomainPrivateUseScheme =
+  /^[a-z](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i;
+
+function isReverseDomainPrivateUseRedirectUri(url: URL): boolean {
+  const scheme = url.protocol.slice(0, -1);
+  const schemeSpecificPart = url.href.slice(url.protocol.length);
+  return (
+    url.host.length === 0 &&
+    schemeSpecificPart.startsWith("/") &&
+    !schemeSpecificPart.startsWith("//") &&
+    reverseDomainPrivateUseScheme.test(scheme)
+  );
+}
+
 export function validateOAuthRedirectUris(
   redirectUris: string[],
   applicationType: "web" | "native",
@@ -184,9 +194,7 @@ export function validateOAuthRedirectUris(
       continue;
     }
 
-    const scheme = url.protocol.slice(0, -1);
-    const reverseDomainScheme = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$/i.test(scheme);
-    if (url.host || !reverseDomainScheme) {
+    if (!isReverseDomainPrivateUseRedirectUri(url)) {
       return "Native private-use redirect schemes must be authority-free reverse-domain names.";
     }
   }
@@ -228,25 +236,24 @@ export function translateOAuthManagementError(error: unknown): string {
   if (text.includes("native applications must be public")) {
     return "Native applications must be public clients.";
   }
+  if (text.includes("application type cannot be changed")) {
+    return "Application type cannot be changed after registration. Register a new client instead.";
+  }
+  if (text.includes("authentication capability cannot be changed")) {
+    return "Authentication capability cannot be changed after registration. Register a new client instead.";
+  }
   return "Unable to save the OAuth client. Check the application type and exact redirect URIs.";
 }
 
-export function parseRedirectUris(value: string): string[] {
-  return [
-    ...new Set(
-      value
-        .split(/\r?\n/)
-        .map((uri) => uri.trim())
-        .filter(Boolean),
-    ),
-  ];
+export function normalizeOAuthRedirectUris(redirectUris: string[]): string[] {
+  return [...new Set(redirectUris.map((uri) => uri.trim()).filter(Boolean))];
 }
 
 export function oauthClientCreatePayload(input: ClientRegistrationInput) {
   return {
     client_name: input.name.trim(),
     application_type: input.applicationType,
-    redirect_uris: [...new Set(input.redirectUris.map((uri) => uri.trim()).filter(Boolean))],
+    redirect_uris: normalizeOAuthRedirectUris(input.redirectUris),
     token_endpoint_auth_method:
       input.authentication === "confidential" ? "client_secret_basic" : "none",
     grant_types: ["authorization_code", "refresh_token"] as const,
