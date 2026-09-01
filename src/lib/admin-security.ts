@@ -173,6 +173,20 @@ function errorText(error: unknown): string {
   return `${String(candidate.code ?? "")} ${String(candidate.message ?? "")}`.toLowerCase();
 }
 
+export function translateUnbanAccountError(error: unknown): string {
+  const text = errorText(error);
+  if (text.includes("security_cleanup_incomplete")) {
+    return "Credential cleanup is incomplete. Retry the Ban action before Unbanning this Account.";
+  }
+  if (text.includes("security_action_invalid_state")) {
+    return "This Account is already unrestricted.";
+  }
+  if (text.includes("administrator_target_prohibited")) {
+    return "Administrator security is operations-only.";
+  }
+  return "Unable to Unban this Account. Refresh its security state and try again.";
+}
+
 export function translateBanAccountError(error: unknown): string {
   const text = errorText(error);
   if (text.includes("security_action_invalid_state")) {

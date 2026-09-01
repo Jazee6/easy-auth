@@ -7,11 +7,22 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: "short",
 });
 
+const actionLabels: Record<SecurityActivityItem["action"], string> = {
+  ban: "Ban",
+  unban: "Unban",
+  "revoke-session": "Revoke Session",
+  "revoke-all-sessions": "Revoke all Sessions",
+};
+
 const columns: DataTableColumnDef<SecurityActivityItem>[] = [
   {
     accessorKey: "action",
     header: "Action",
-    cell: () => <Badge variant="destructive">Ban</Badge>,
+    cell: ({ row }) => (
+      <Badge variant={row.original.action === "ban" ? "destructive" : "outline"}>
+        {actionLabels[row.original.action]}
+      </Badge>
+    ),
   },
   {
     id: "details",
@@ -20,7 +31,10 @@ const columns: DataTableColumnDef<SecurityActivityItem>[] = [
       const details = row.original.details;
       return (
         <div className="min-w-48">
-          <p className="font-medium">{details.reason ?? "No reason recorded"}</p>
+          <p className="font-medium">
+            {details.reason ??
+              (row.original.action === "unban" ? "Ban removed" : "Security action completed")}
+          </p>
           {details.duration && (
             <p className="text-xs text-muted-foreground">
               {formatBanDuration(details.duration)}

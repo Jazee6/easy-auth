@@ -5,6 +5,7 @@ import { Check, Copy, FileQuestion } from "lucide-react";
 import { BanAccountAction } from "@/components/ban-account-action";
 import { PageHeader } from "@/components/page-header";
 import { SecurityActivityTable } from "@/components/security-activity-table";
+import { UnbanAccountAction } from "@/components/unban-account-action";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -102,6 +103,13 @@ export function AccountDetail({
         description={account.email}
         actions={
           <>
+            {account.role === "standard" && account.banState !== "none" && (
+              <UnbanAccountAction
+                accountId={account.accountId}
+                accountName={account.name}
+                accountEmail={account.email}
+              />
+            )}
             {account.role === "standard" && (
               <BanAccountAction
                 accountId={account.accountId}
@@ -202,7 +210,7 @@ export function AccountDetail({
           <p className="text-sm text-muted-foreground" aria-live="polite">
             {account.role === "administrator"
               ? "Administrator security is operations-only. Sessions and security controls are not available here."
-              : "Security operations in the Admin Panel apply only to Standard Accounts."}
+              : "Security operations in the Admin Panel apply only to Standard Accounts. Unban never restores previously revoked Sessions or OAuth tokens."}
           </p>
         </CardContent>
       </Card>

@@ -55,5 +55,5 @@ export function isDirectAdminPluginPath(path: string | undefined): boolean {
 }
 
 export function isAllowedDirectAdminPluginPath(path: string | undefined): boolean {
-  return path === "/admin/ban-user";
+  return path === "/admin/ban-user" || path === "/admin/unban-user";
 }

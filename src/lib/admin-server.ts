@@ -57,6 +57,14 @@ export const getAccountSecurityActivity = createServerFn({ method: "GET" })
     return listAccountSecurityActivity(db.$client, data.accountId);
   });
 
+export const unbanAccount = createServerFn({ method: "POST" })
+  .validator((input: unknown) => v.parse(accountIdSchema, input))
+  .handler(async ({ data }) => {
+    const { headers } = await requireAdministrator();
+    await auth.api.unbanUser({ headers, body: { userId: data.accountId } });
+    return { unbanned: true };
+  });
+
 export const banAccount = createServerFn({ method: "POST" })
   .validator((input: unknown) => v.parse(banAccountInputSchema, input))
   .handler(async ({ data }) => {

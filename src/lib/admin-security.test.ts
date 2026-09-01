@@ -9,6 +9,7 @@ import {
   getBanDurationFromSeconds,
   getBanDurationSeconds,
   translateBanAccountError,
+  translateUnbanAccountError,
 } from "./admin-security";
 
 describe("Account Ban policy", () => {
@@ -70,6 +71,12 @@ describe("Account Ban policy", () => {
     );
     expect(translateBanAccountError(new Error("database token abc-secret"))).toBe(
       "Unable to Ban this Account. Refresh its security state and try again.",
+    );
+    expect(translateUnbanAccountError({ code: "SECURITY_CLEANUP_INCOMPLETE" })).toContain(
+      "cleanup is incomplete",
+    );
+    expect(translateUnbanAccountError({ code: "SECURITY_ACTION_INVALID_STATE" })).toContain(
+      "already unrestricted",
     );
   });
 });

@@ -3,7 +3,7 @@ import { createAuthMiddleware } from "@better-auth/core/api";
 import { getAuthoritativeSessionFromCtx, isAPIError } from "better-auth/api";
 import * as v from "valibot";
 
-import { hasAdministratorRole } from "./admin-policy";
+import { hasAdministratorRole, isAllowedDirectAdminPluginPath } from "./admin-policy";
 import {
   banAccountInputSchema,
   getBanDurationFromSeconds,
@@ -27,12 +27,12 @@ export const ADMINISTRATOR_TARGET_PROHIBITED = {
 
 export const SECURITY_ACTION_INVALID_INPUT = {
   code: "SECURITY_ACTION_INVALID_INPUT",
-  message: "Invalid Ban reason or duration",
+  message: "Invalid security action input",
 } as const;
 
 export const SECURITY_ACTION_INVALID_STATE = {
   code: "SECURITY_ACTION_INVALID_STATE",
-  message: "Account is already banned and credential cleanup is complete",
+  message: "Account security state does not allow this operation",
 } as const;
 
 export const SECURITY_ACTION_TARGET_NOT_FOUND = {
@@ -45,18 +45,33 @@ export const SECURITY_CLEANUP_FAILED = {
   message: "Account restriction succeeded but credential cleanup is incomplete",
 } as const;
 
+export const SECURITY_CLEANUP_INCOMPLETE = {
+  code: "SECURITY_CLEANUP_INCOMPLETE",
+  message: "Credential cleanup must complete before this Account can be unrestricted",
+} as const;
+
 interface SecurityIdentitySnapshot {
   id: string;
   name: string;
   email: string;
 }
 
-interface BanOperationContext {
+interface SecurityOperationBase {
   actor: SecurityIdentitySnapshot;
   target: SecurityIdentitySnapshot;
+}
+
+interface BanOperationContext extends SecurityOperationBase {
+  action: "ban";
   reason: string;
   duration: BanDuration;
 }
+
+interface UnbanOperationContext extends SecurityOperationBase {
+  action: "unban";
+}
+
+type SecurityOperationContext = BanOperationContext | UnbanOperationContext;
 
 interface AccountSecurityRow {
   id: string;
@@ -79,7 +94,7 @@ interface BanStateRow {
 
 interface EasyAuthSecurityContext {
   returned?: unknown;
-  easyAuthBanOperation?: BanOperationContext;
+  easyAuthSecurityOperation?: SecurityOperationContext;
   logger: { error(message: string, details?: unknown): void };
 }
 
@@ -92,6 +107,8 @@ export interface SecurityActivityFailureEvent {
 export interface AdminSecurityPluginOptions {
   onSecurityActivityFailure?: (event: SecurityActivityFailureEvent) => void;
 }
+
+const accountIdSchema = v.pipe(v.string(), v.trim(), v.nonEmpty());
 
 function isSuccessfulEndpointResult(result: unknown): boolean {
   if (result === undefined || result === null || isAPIError(result)) return false;
@@ -110,6 +127,10 @@ async function getTargetResidue(database: D1Database, accountId: string): Promis
       .bind(accountId, accountId, accountId)
       .first<ResidueRow>()) ?? { session_count: 0, refresh_count: 0, access_count: 0 }
   );
+}
+
+function hasCredentialResidue(residue: ResidueRow): boolean {
+  return residue.session_count > 0 || residue.refresh_count > 0 || residue.access_count > 0;
 }
 
 function reportActivityFailure(
@@ -135,7 +156,7 @@ export function createAdminSecurityPlugin(
       before: [
         {
           matcher(ctx: { path?: string }) {
-            return ctx.path === "/admin/ban-user";
+            return isAllowedDirectAdminPluginPath(ctx.path);
           },
           handler: createAuthMiddleware(async (ctx) => {
             const session = await getAuthoritativeSessionFromCtx(ctx);
@@ -144,51 +165,71 @@ export function createAdminSecurityPlugin(
               throw APIError.from("FORBIDDEN", ADMINISTRATOR_ACCESS_REQUIRED);
             }
 
-            const duration = getBanDurationFromSeconds(ctx.body?.banExpiresIn);
-            const parsed = v.safeParse(banAccountInputSchema, {
-              accountId: ctx.body?.userId,
-              reason: ctx.body?.banReason,
-              duration,
-            });
-            if (!parsed.success) {
+            const accountId = v.safeParse(accountIdSchema, ctx.body?.userId);
+            if (!accountId.success) {
               throw APIError.from("BAD_REQUEST", SECURITY_ACTION_INVALID_INPUT);
             }
-
             const target = await database
               .prepare("SELECT id, name, email, role, banned, ban_expires FROM user WHERE id = ?")
-              .bind(parsed.output.accountId)
+              .bind(accountId.output)
               .first<AccountSecurityRow>();
             if (!target) throw APIError.from("NOT_FOUND", SECURITY_ACTION_TARGET_NOT_FOUND);
             if (hasAdministratorRole(target.role)) {
               throw APIError.from("FORBIDDEN", ADMINISTRATOR_TARGET_PROHIBITED);
             }
 
-            const now = Date.now();
-            const effectivelyBanned =
-              target.banned === 1 && (target.ban_expires === null || target.ban_expires > now);
-            if (effectivelyBanned) {
-              const residue = await getTargetResidue(database, target.id);
-              if (
-                residue.session_count === 0 &&
-                residue.refresh_count === 0 &&
-                residue.access_count === 0
-              ) {
-                throw APIError.from("CONFLICT", SECURITY_ACTION_INVALID_STATE);
+            const actor = {
+              id: session.user.id,
+              name: session.user.name,
+              email: session.user.email,
+            };
+            const targetSnapshot = { id: target.id, name: target.name, email: target.email };
+            const securityContext = ctx.context as typeof ctx.context & EasyAuthSecurityContext;
+            ctx.body.userId = accountId.output;
+
+            if (ctx.path === "/admin/ban-user") {
+              const duration = getBanDurationFromSeconds(ctx.body?.banExpiresIn);
+              const parsed = v.safeParse(banAccountInputSchema, {
+                accountId: accountId.output,
+                reason: ctx.body?.banReason,
+                duration,
+              });
+              if (!parsed.success) {
+                throw APIError.from("BAD_REQUEST", SECURITY_ACTION_INVALID_INPUT);
               }
+
+              const now = Date.now();
+              const effectivelyBanned =
+                target.banned === 1 && (target.ban_expires === null || target.ban_expires > now);
+              if (effectivelyBanned) {
+                const residue = await getTargetResidue(database, target.id);
+                if (!hasCredentialResidue(residue)) {
+                  throw APIError.from("CONFLICT", SECURITY_ACTION_INVALID_STATE);
+                }
+              }
+
+              ctx.body.banReason = parsed.output.reason;
+              securityContext.easyAuthSecurityOperation = {
+                action: "ban",
+                actor,
+                target: targetSnapshot,
+                reason: parsed.output.reason,
+                duration: parsed.output.duration,
+              };
+              return;
             }
 
-            ctx.body.userId = parsed.output.accountId;
-            ctx.body.banReason = parsed.output.reason;
-            const securityContext = ctx.context as typeof ctx.context & EasyAuthSecurityContext;
-            securityContext.easyAuthBanOperation = {
-              actor: {
-                id: session.user.id,
-                name: session.user.name,
-                email: session.user.email,
-              },
-              target: { id: target.id, name: target.name, email: target.email },
-              reason: parsed.output.reason,
-              duration: parsed.output.duration,
+            if (target.banned !== 1) {
+              throw APIError.from("CONFLICT", SECURITY_ACTION_INVALID_STATE);
+            }
+            const residue = await getTargetResidue(database, target.id);
+            if (hasCredentialResidue(residue)) {
+              throw APIError.from("CONFLICT", SECURITY_CLEANUP_INCOMPLETE);
+            }
+            securityContext.easyAuthSecurityOperation = {
+              action: "unban",
+              actor,
+              target: targetSnapshot,
             };
           }),
         },
@@ -196,32 +237,42 @@ export function createAdminSecurityPlugin(
       after: [
         {
           matcher(ctx: { path?: string }) {
-            return ctx.path === "/admin/ban-user";
+            return isAllowedDirectAdminPluginPath(ctx.path);
           },
           handler: createAuthMiddleware(async (ctx) => {
             const securityContext = ctx.context as typeof ctx.context & EasyAuthSecurityContext;
-            const operation = securityContext.easyAuthBanOperation;
+            const operation = securityContext.easyAuthSecurityOperation;
             if (!operation || !isSuccessfulEndpointResult(securityContext.returned)) return;
 
-            try {
-              await database.batch([
-                database
-                  .prepare("DELETE FROM oauth_access_token WHERE user_id = ?")
-                  .bind(operation.target.id),
-                database
-                  .prepare("DELETE FROM oauth_refresh_token WHERE user_id = ?")
-                  .bind(operation.target.id),
-              ]);
-            } catch {
-              throw APIError.from("INTERNAL_SERVER_ERROR", SECURITY_CLEANUP_FAILED);
+            if (operation.action === "ban") {
+              try {
+                await database.batch([
+                  database
+                    .prepare("DELETE FROM oauth_access_token WHERE user_id = ?")
+                    .bind(operation.target.id),
+                  database
+                    .prepare("DELETE FROM oauth_refresh_token WHERE user_id = ?")
+                    .bind(operation.target.id),
+                ]);
+              } catch {
+                throw APIError.from("INTERNAL_SERVER_ERROR", SECURITY_CLEANUP_FAILED);
+              }
             }
 
             const activityId = crypto.randomUUID();
             try {
-              const state = await database
-                .prepare("SELECT ban_expires FROM user WHERE id = ?")
-                .bind(operation.target.id)
-                .first<BanStateRow>();
+              let details = "{}";
+              if (operation.action === "ban") {
+                const state = await database
+                  .prepare("SELECT ban_expires FROM user WHERE id = ?")
+                  .bind(operation.target.id)
+                  .first<BanStateRow>();
+                details = JSON.stringify({
+                  reason: operation.reason,
+                  duration: operation.duration,
+                  expiresAt: state?.ban_expires ?? null,
+                });
+              }
               await database
                 .prepare(
                   `INSERT INTO security_activity (
@@ -235,7 +286,7 @@ export function createAdminSecurityPlugin(
                     action,
                     details,
                     created_at
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ban', ?, ?)`,
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 )
                 .bind(
                   activityId,
@@ -245,11 +296,8 @@ export function createAdminSecurityPlugin(
                   operation.target.id,
                   operation.target.name,
                   operation.target.email,
-                  JSON.stringify({
-                    reason: operation.reason,
-                    duration: operation.duration,
-                    expiresAt: state?.ban_expires ?? null,
-                  }),
+                  operation.action,
+                  details,
                   Date.now(),
                 )
                 .run();

@@ -295,7 +295,7 @@ describe("Standard Account Ban integration", () => {
       expect(response.status).toBe(400);
       expect((await response.json()) as unknown).toEqual({
         code: "SECURITY_ACTION_INVALID_INPUT",
-        message: "Invalid Ban reason or duration",
+        message: "Invalid security action input",
       });
     }
 
@@ -431,6 +431,199 @@ describe("Standard Account Ban integration", () => {
 
     await database.prepare("DROP TRIGGER fail_security_activity").run();
     const duplicate = await postAuth("/admin/ban-user", body, adminCookie);
+    expect(duplicate.status).toBe(409);
+    expect(await count("security_activity", "target_user_id = ?", target.id)).toBe(0);
+  });
+});
+
+describe("Standard Account Unban integration", () => {
+  test("clears active Ban state without restoring credentials and records an isolated activity", async () => {
+    const admin = await createAccount("unban-active-admin", "admin");
+    const target = await createAccount("unban-active-target");
+    const unrelated = await createAccount("unban-active-unrelated");
+    const adminCookie = await signInCookie(admin.email);
+    await signInCookie(target.email);
+    await signInCookie(unrelated.email);
+    const targetOAuth = await seedOAuthState("unban-active-target", target.id, admin.id);
+    await seedOAuthState("unban-active-unrelated", unrelated.id, admin.id);
+
+    const banResponse = await postAuth(
+      "/admin/ban-user",
+      { userId: target.id, banReason: "Compromised account", banExpiresIn: 604_800 },
+      adminCookie,
+    );
+    expect(banResponse.status).toBe(200);
+    const unbanResponse = await postAuth("/admin/unban-user", { userId: target.id }, adminCookie);
+    expect(unbanResponse.status).toBe(200);
+
+    expect(
+      await database
+        .prepare("SELECT banned, ban_reason, ban_expires FROM user WHERE id = ?")
+        .bind(target.id)
+        .first(),
+    ).toEqual({ banned: 0, ban_reason: null, ban_expires: null });
+    expect(await count("session", "user_id = ?", target.id)).toBe(0);
+    expect(await count("oauth_refresh_token", "user_id = ?", target.id)).toBe(0);
+    expect(await count("oauth_access_token", "user_id = ?", target.id)).toBe(0);
+    expect(await count("oauth_consent", "user_id = ?", target.id)).toBe(1);
+    expect(await count("oauth_client", "client_id = ?", targetOAuth.clientId)).toBe(1);
+    expect(await count("session", "user_id = ?", unrelated.id)).toBe(1);
+    expect(await count("oauth_refresh_token", "user_id = ?", unrelated.id)).toBe(1);
+    expect(await count("oauth_access_token", "user_id = ?", unrelated.id)).toBe(1);
+
+    const activity = await listAccountSecurityActivity(database, target.id);
+    expect(activity.map((item) => item.action)).toEqual(["unban", "ban"]);
+    expect({
+      actorAccountId: activity[0]?.actorAccountId,
+      actorName: activity[0]?.actorName,
+      actorEmail: activity[0]?.actorEmail,
+      targetAccountId: activity[0]?.targetAccountId,
+      targetName: activity[0]?.targetName,
+      targetEmail: activity[0]?.targetEmail,
+      action: activity[0]?.action,
+      details: activity[0]?.details,
+    }).toEqual({
+      actorAccountId: admin.id,
+      actorName: admin.name,
+      actorEmail: admin.email,
+      targetAccountId: target.id,
+      targetName: target.name,
+      targetEmail: target.email,
+      action: "unban",
+      details: {},
+    });
+    const serialized = JSON.stringify(activity[0]);
+    for (const sensitive of ["secret", "token", "password", "ipAddress", "userAgent"]) {
+      expect(serialized.includes(sensitive)).toBe(false);
+    }
+  });
+
+  test("clears an expired stored Ban without mutating unrelated state", async () => {
+    const admin = await createAccount("unban-expired-admin", "admin");
+    const target = await createAccount("unban-expired-target");
+    const adminCookie = await signInCookie(admin.email);
+    await database
+      .prepare(
+        "UPDATE user SET banned = 1, ban_reason = 'Policy violation', ban_expires = ? WHERE id = ?",
+      )
+      .bind(Date.now() - 60_000, target.id)
+      .run();
+
+    const response = await postAuth("/admin/unban-user", { userId: target.id }, adminCookie);
+    expect(response.status).toBe(200);
+    expect(
+      await database
+        .prepare("SELECT banned, ban_reason, ban_expires FROM user WHERE id = ?")
+        .bind(target.id)
+        .first(),
+    ).toEqual({ banned: 0, ban_reason: null, ban_expires: null });
+    expect(
+      (await listAccountSecurityActivity(database, target.id)).map((item) => item.action),
+    ).toEqual(["unban"]);
+  });
+
+  test("rejects unrestricted and Administrator targets without activity", async () => {
+    const admin = await createAccount("unban-guard-admin", "admin");
+    const unrestricted = await createAccount("unban-guard-unrestricted");
+    const administratorTarget = await createAccount("unban-guard-target", "user, admin");
+    const adminCookie = await signInCookie(admin.email);
+    await database
+      .prepare(
+        "UPDATE user SET banned = 1, ban_reason = 'Operations', ban_expires = NULL WHERE id = ?",
+      )
+      .bind(administratorTarget.id)
+      .run();
+
+    const unrestrictedResponse = await postAuth(
+      "/admin/unban-user",
+      { userId: unrestricted.id },
+      adminCookie,
+    );
+    expect(unrestrictedResponse.status).toBe(409);
+    expect(((await unrestrictedResponse.json()) as { code: string }).code).toBe(
+      "SECURITY_ACTION_INVALID_STATE",
+    );
+
+    const administratorResponse = await postAuth(
+      "/admin/unban-user",
+      { userId: administratorTarget.id },
+      adminCookie,
+    );
+    expect(administratorResponse.status).toBe(403);
+    expect(((await administratorResponse.json()) as { code: string }).code).toBe(
+      "ADMINISTRATOR_TARGET_PROHIBITED",
+    );
+    expect(await count("security_activity", "target_user_id = ?", unrestricted.id)).toBe(0);
+    expect(await count("security_activity", "target_user_id = ?", administratorTarget.id)).toBe(0);
+  });
+
+  test("blocks Unban while incomplete Ban cleanup residue remains", async () => {
+    const admin = await createAccount("unban-residue-admin", "admin");
+    const target = await createAccount("unban-residue-target");
+    const adminCookie = await signInCookie(admin.email);
+    await signInCookie(target.email);
+    await seedOAuthState("unban-residue", target.id, admin.id);
+    await database
+      .prepare(
+        "UPDATE user SET banned = 1, ban_reason = 'Compromised account', ban_expires = NULL WHERE id = ?",
+      )
+      .bind(target.id)
+      .run();
+
+    const response = await postAuth("/admin/unban-user", { userId: target.id }, adminCookie);
+    expect(response.status).toBe(409);
+    expect(((await response.json()) as { code: string }).code).toBe("SECURITY_CLEANUP_INCOMPLETE");
+    expect(
+      await database
+        .prepare("SELECT banned FROM user WHERE id = ?")
+        .bind(target.id)
+        .first<number>("banned"),
+    ).toBe(1);
+    expect(await count("session", "user_id = ?", target.id)).toBe(1);
+    expect(await count("oauth_refresh_token", "user_id = ?", target.id)).toBe(1);
+    expect(await count("oauth_access_token", "user_id = ?", target.id)).toBe(1);
+    expect(await count("security_activity", "target_user_id = ?", target.id)).toBe(0);
+  });
+
+  test("keeps Unban successful when Security activity persistence fails", async () => {
+    const admin = await createAccount("unban-activity-failure-admin", "admin");
+    const target = await createAccount("unban-activity-failure-target");
+    const adminCookie = await signInCookie(admin.email);
+    await database
+      .prepare("UPDATE user SET banned = 1, ban_reason = 'Abuse', ban_expires = NULL WHERE id = ?")
+      .bind(target.id)
+      .run();
+    await database
+      .prepare(
+        `CREATE TRIGGER fail_unban_activity
+        BEFORE INSERT ON security_activity
+        WHEN NEW.target_user_id = '${target.id}' AND NEW.action = 'unban'
+        BEGIN
+          SELECT RAISE(FAIL, 'forced unban activity failure');
+        END`,
+      )
+      .run();
+
+    const failureCount = activityFailures.length;
+    const response = await postAuth("/admin/unban-user", { userId: target.id }, adminCookie);
+    expect(response.status).toBe(200);
+    expect(
+      await database
+        .prepare("SELECT banned FROM user WHERE id = ?")
+        .bind(target.id)
+        .first<number>("banned"),
+    ).toBe(0);
+    expect(await count("security_activity", "target_user_id = ?", target.id)).toBe(0);
+    expect(activityFailures.length).toBe(failureCount + 1);
+    const logged = activityFailures.at(-1);
+    expect(logged?.code).toBe("SECURITY_ACTIVITY_WRITE_FAILED");
+    const serializedLog = JSON.stringify(logged);
+    for (const sensitive of [target.id, target.email, "Abuse", "secret", "token"]) {
+      expect(serializedLog.includes(sensitive)).toBe(false);
+    }
+
+    await database.prepare("DROP TRIGGER fail_unban_activity").run();
+    const duplicate = await postAuth("/admin/unban-user", { userId: target.id }, adminCookie);
     expect(duplicate.status).toBe(409);
     expect(await count("security_activity", "target_user_id = ?", target.id)).toBe(0);
   });
