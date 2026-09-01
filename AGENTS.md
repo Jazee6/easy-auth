@@ -14,7 +14,7 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
 ## 项目规则
 
-- 简单且繁琐的任务交给子Agent，固定模型为5.6 luna max
+- 子Agent固定模型为3.7 flash high，fallback为5.6 luna max
 - 表单使用shadcn Field + Tanstack Form + Valibot
 - 数据表单统一使用 `noValidate` + Valibot 提交时校验，字段变更只清除旧错误；确认密码一致性使用前缀容忍的即时校验，Turnstile/cooldown/输入约束/预览等即时行为保留
 - 表格使用Data Table + Tanstack Table
