@@ -15,6 +15,9 @@ import {
   banAccountInputSchema,
   getBanDurationSeconds,
   listAccountSecurityActivity,
+  listGlobalSecurityActivity,
+  normalizeSecurityActivitySearch,
+  type SecurityActivitySearch,
 } from "./admin-security";
 import {
   ADMINISTRATOR_TARGET_PROHIBITED,
@@ -72,6 +75,15 @@ export const listAccountSessions = createServerFn({ method: "GET" })
     await requireAdministrator();
     await requireStandardAccount(data.accountId);
     return listActiveAccountSessions(db.$client, data.accountId);
+  });
+
+export const listSecurityActivity = createServerFn({ method: "GET" })
+  .validator((input: Record<string, unknown>): SecurityActivitySearch =>
+    normalizeSecurityActivitySearch(input),
+  )
+  .handler(async ({ data }) => {
+    await requireAdministrator();
+    return listGlobalSecurityActivity(db.$client, data);
   });
 
 export const getAccountSecurityActivity = createServerFn({ method: "GET" })

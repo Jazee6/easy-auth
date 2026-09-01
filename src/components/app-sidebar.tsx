@@ -1,6 +1,15 @@
 import * as React from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { Activity, AppWindow, IdCard, KeyRound, ShieldCheck, User, Users } from "lucide-react";
+import {
+  Activity,
+  AppWindow,
+  IdCard,
+  KeyRound,
+  ShieldAlert,
+  ShieldCheck,
+  User,
+  Users,
+} from "lucide-react";
 
 import { NavUser } from "@/components/nav-user";
 import { hasAdministratorRole } from "@/lib/oauth-policy";
@@ -35,7 +44,8 @@ export function AppSidebar({
   const isAuthorizationsActive = location.pathname === "/authorized-applications";
   const isAccountsActive = location.pathname.startsWith("/admin/accounts");
   const isOAuthClientsActive = location.pathname.startsWith("/admin/oauth-clients");
-  const isActivityActive = location.pathname === "/admin/management-activity";
+  const isSecurityActivityActive = location.pathname === "/admin/security-activity";
+  const isManagementActivityActive = location.pathname === "/admin/management-activity";
   const isAdministrator = hasAdministratorRole(user.role);
 
   return (
@@ -134,7 +144,19 @@ export function AppSidebar({
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    isActive={isActivityActive}
+                    isActive={isSecurityActivityActive}
+                    tooltip="Security activity"
+                    render={
+                      <Link to="/admin/security-activity" search={{ q: "", page: 1 }}>
+                        <ShieldAlert className="size-4" />
+                        <span>Security activity</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isManagementActivityActive}
                     tooltip="Management activity"
                     render={
                       <Link to="/admin/management-activity">

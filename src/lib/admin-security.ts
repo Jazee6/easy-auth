@@ -82,6 +82,15 @@ export interface SecurityActivityDetails {
   scope?: "all";
 }
 
+export const SECURITY_ACTIVITY_ACTIONS = [
+  "ban",
+  "unban",
+  "revoke-session",
+  "revoke-all-sessions",
+] as const;
+
+export type SecurityActivityAction = (typeof SECURITY_ACTIVITY_ACTIONS)[number];
+
 export interface SecurityActivityItem {
   activityId: string;
   actorAccountId: string;
@@ -90,9 +99,27 @@ export interface SecurityActivityItem {
   targetAccountId: string;
   targetName: string;
   targetEmail: string;
-  action: "ban" | "unban" | "revoke-session" | "revoke-all-sessions";
+  action: SecurityActivityAction;
   details: SecurityActivityDetails;
   createdAt: number;
+}
+
+export const SECURITY_ACTIVITY_PAGE_SIZE = 20;
+
+export interface SecurityActivitySearch {
+  q: string;
+  action?: SecurityActivityAction;
+  start?: string;
+  end?: string;
+  page: number;
+}
+
+export interface SecurityActivityListResult {
+  activity: SecurityActivityItem[];
+  total: number;
+  page: number;
+  pageSize: typeof SECURITY_ACTIVITY_PAGE_SIZE;
+  totalPages: number;
 }
 
 interface SecurityActivityRow {
@@ -127,32 +154,8 @@ function parseDetails(value: string): SecurityActivityDetails {
   }
 }
 
-export async function listAccountSecurityActivity(
-  database: D1Database,
-  targetAccountId: string,
-  limit = 20,
-): Promise<SecurityActivityItem[]> {
-  const rows = await database
-    .prepare(
-      `SELECT id AS activity_id,
-        actor_user_id AS actor_account_id,
-        actor_name,
-        actor_email,
-        target_user_id AS target_account_id,
-        target_name,
-        target_email,
-        action,
-        details,
-        created_at
-      FROM security_activity
-      WHERE target_user_id = ?
-      ORDER BY created_at DESC, id DESC
-      LIMIT ?`,
-    )
-    .bind(targetAccountId, limit)
-    .all<SecurityActivityRow>();
-
-  return rows.results.map((row) => ({
+function projectSecurityActivity(row: SecurityActivityRow): SecurityActivityItem {
+  return {
     activityId: row.activity_id,
     actorAccountId: row.actor_account_id,
     actorName: row.actor_name,
@@ -163,7 +166,140 @@ export async function listAccountSecurityActivity(
     action: row.action,
     details: parseDetails(row.details),
     createdAt: row.created_at,
-  }));
+  };
+}
+
+const securityActivityColumns = `id AS activity_id,
+  actor_user_id AS actor_account_id,
+  actor_name,
+  actor_email,
+  target_user_id AS target_account_id,
+  target_name,
+  target_email,
+  action,
+  details,
+  created_at`;
+
+function validDateOnly(value: unknown, field: "start" | "end"): string | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`Invalid Security activity ${field} date`);
+  }
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    throw new Error(`Invalid Security activity ${field} date`);
+  }
+  return value;
+}
+
+export function normalizeSecurityActivitySearch(
+  input: Record<string, unknown>,
+): SecurityActivitySearch {
+  const action = SECURITY_ACTIVITY_ACTIONS.find((value) => value === input.action);
+  let start = validDateOnly(input.start, "start");
+  let end = validDateOnly(input.end, "end");
+  if (start && end && start > end) [start, end] = [end, start];
+  const page =
+    typeof input.page === "number" && Number.isSafeInteger(input.page) && input.page > 0
+      ? input.page
+      : 1;
+
+  return {
+    q: typeof input.q === "string" ? input.q.trim() : "",
+    ...(action ? { action } : {}),
+    ...(start ? { start } : {}),
+    ...(end ? { end } : {}),
+    page,
+  };
+}
+
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, "\\$&");
+}
+
+function dateStart(value: string): number {
+  const [year, month, day] = value.split("-").map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+export async function listGlobalSecurityActivity(
+  database: D1Database,
+  search: SecurityActivitySearch,
+): Promise<SecurityActivityListResult> {
+  const conditions: string[] = [];
+  const bindings: unknown[] = [];
+
+  if (search.action) {
+    conditions.push("action = ?");
+    bindings.push(search.action);
+  }
+  if (search.q) {
+    const term = `%${escapeLike(search.q.toLowerCase())}%`;
+    conditions.push(`(lower(actor_name) LIKE ? ESCAPE '\\'
+      OR lower(actor_email) LIKE ? ESCAPE '\\'
+      OR lower(target_name) LIKE ? ESCAPE '\\'
+      OR lower(target_email) LIKE ? ESCAPE '\\')`);
+    bindings.push(term, term, term, term);
+  }
+  if (search.start) {
+    conditions.push("created_at >= ?");
+    bindings.push(dateStart(search.start));
+  }
+  if (search.end) {
+    conditions.push("created_at < ?");
+    bindings.push(dateStart(search.end) + 86_400_000);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const count = await database
+    .prepare(`SELECT count(*) AS total FROM security_activity ${where}`)
+    .bind(...bindings)
+    .first<number>("total");
+  const total = count ?? 0;
+  const totalPages = Math.ceil(total / SECURITY_ACTIVITY_PAGE_SIZE);
+  const page = Math.min(search.page, Math.max(totalPages, 1));
+  const rows = await database
+    .prepare(
+      `SELECT ${securityActivityColumns}
+      FROM security_activity
+      ${where}
+      ORDER BY created_at DESC, id DESC
+      LIMIT ? OFFSET ?`,
+    )
+    .bind(...bindings, SECURITY_ACTIVITY_PAGE_SIZE, (page - 1) * SECURITY_ACTIVITY_PAGE_SIZE)
+    .all<SecurityActivityRow>();
+
+  return {
+    activity: rows.results.map(projectSecurityActivity),
+    total,
+    page,
+    pageSize: SECURITY_ACTIVITY_PAGE_SIZE,
+    totalPages,
+  };
+}
+
+export async function listAccountSecurityActivity(
+  database: D1Database,
+  targetAccountId: string,
+  limit = SECURITY_ACTIVITY_PAGE_SIZE,
+): Promise<SecurityActivityItem[]> {
+  const rows = await database
+    .prepare(
+      `SELECT ${securityActivityColumns}
+      FROM security_activity
+      WHERE target_user_id = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT ?`,
+    )
+    .bind(targetAccountId, limit)
+    .all<SecurityActivityRow>();
+
+  return rows.results.map(projectSecurityActivity);
 }
 
 function errorText(error: unknown): string {

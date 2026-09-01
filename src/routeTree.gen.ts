@@ -28,6 +28,7 @@ import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from 
 import { Route as AccountAdminAccountsIndexRouteImport } from './routes/_account/admin/accounts/index'
 import { Route as AccountAdminAccountsAccountIdRouteImport } from './routes/_account/admin/accounts/$accountId'
 import { Route as AccountAdminOauthClientsIndexRouteImport } from './routes/_account/admin/oauth-clients/index'
+import { Route as AccountAdminSecurityActivityIndexRouteImport } from './routes/_account/admin/security-activity/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -131,6 +132,12 @@ const AccountAdminOauthClientsIndexRoute =
     path: '/oauth-clients/',
     getParentRoute: () => AccountAdminRouteRoute,
   } as any)
+const AccountAdminSecurityActivityIndexRoute =
+  AccountAdminSecurityActivityIndexRouteImport.update({
+    id: '/security-activity/',
+    path: '/security-activity/',
+    getParentRoute: () => AccountAdminRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
   '/admin/accounts/': typeof AccountAdminAccountsIndexRoute
   '/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
+  '/admin/security-activity/': typeof AccountAdminSecurityActivityIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -171,6 +179,7 @@ export interface FileRoutesByTo {
   '/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
   '/admin/accounts': typeof AccountAdminAccountsIndexRoute
   '/admin/oauth-clients': typeof AccountAdminOauthClientsIndexRoute
+  '/admin/security-activity': typeof AccountAdminSecurityActivityIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -193,6 +202,7 @@ export interface FileRoutesById {
   '/_account/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
   '/_account/admin/accounts/': typeof AccountAdminAccountsIndexRoute
   '/_account/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
+  '/_account/admin/security-activity/': typeof AccountAdminSecurityActivityIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/admin/accounts/$accountId'
     | '/admin/accounts/'
     | '/admin/oauth-clients/'
+    | '/admin/security-activity/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/admin/accounts/$accountId'
     | '/admin/accounts'
     | '/admin/oauth-clients'
+    | '/admin/security-activity'
   id:
     | '__root__'
     | '/'
@@ -256,6 +268,7 @@ export interface FileRouteTypes {
     | '/_account/admin/accounts/$accountId'
     | '/_account/admin/accounts/'
     | '/_account/admin/oauth-clients/'
+    | '/_account/admin/security-activity/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -406,6 +419,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountAdminOauthClientsIndexRouteImport
       parentRoute: typeof AccountAdminRouteRoute
     }
+    '/_account/admin/security-activity/': {
+      id: '/_account/admin/security-activity/'
+      path: '/security-activity'
+      fullPath: '/admin/security-activity/'
+      preLoaderRoute: typeof AccountAdminSecurityActivityIndexRouteImport
+      parentRoute: typeof AccountAdminRouteRoute
+    }
   }
 }
 
@@ -414,6 +434,7 @@ interface AccountAdminRouteRouteChildren {
   AccountAdminAccountsAccountIdRoute: typeof AccountAdminAccountsAccountIdRoute
   AccountAdminAccountsIndexRoute: typeof AccountAdminAccountsIndexRoute
   AccountAdminOauthClientsIndexRoute: typeof AccountAdminOauthClientsIndexRoute
+  AccountAdminSecurityActivityIndexRoute: typeof AccountAdminSecurityActivityIndexRoute
 }
 
 const AccountAdminRouteRouteChildren: AccountAdminRouteRouteChildren = {
@@ -421,6 +442,8 @@ const AccountAdminRouteRouteChildren: AccountAdminRouteRouteChildren = {
   AccountAdminAccountsAccountIdRoute: AccountAdminAccountsAccountIdRoute,
   AccountAdminAccountsIndexRoute: AccountAdminAccountsIndexRoute,
   AccountAdminOauthClientsIndexRoute: AccountAdminOauthClientsIndexRoute,
+  AccountAdminSecurityActivityIndexRoute:
+    AccountAdminSecurityActivityIndexRoute,
 }
 
 const AccountAdminRouteRouteWithChildren =
