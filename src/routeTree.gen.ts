@@ -25,6 +25,8 @@ import { Route as AccountSignInMethodsRouteImport } from './routes/_account/sign
 import { Route as AccountAdminManagementActivityRouteImport } from './routes/_account/admin/management-activity'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
+import { Route as AccountAdminAccountsIndexRouteImport } from './routes/_account/admin/accounts/index'
+import { Route as AccountAdminAccountsAccountIdRouteImport } from './routes/_account/admin/accounts/$accountId'
 import { Route as AccountAdminOauthClientsIndexRouteImport } from './routes/_account/admin/oauth-clients/index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -111,6 +113,18 @@ const DotwellKnownOauthAuthorizationServerApiAuthRoute =
     path: '/api/auth',
     getParentRoute: () => DotwellKnownOauthAuthorizationServerRoute,
   } as any)
+const AccountAdminAccountsIndexRoute =
+  AccountAdminAccountsIndexRouteImport.update({
+    id: '/accounts/',
+    path: '/accounts/',
+    getParentRoute: () => AccountAdminRouteRoute,
+  } as any)
+const AccountAdminAccountsAccountIdRoute =
+  AccountAdminAccountsAccountIdRouteImport.update({
+    id: '/accounts/$accountId',
+    path: '/accounts/$accountId',
+    getParentRoute: () => AccountAdminRouteRoute,
+  } as any)
 const AccountAdminOauthClientsIndexRoute =
   AccountAdminOauthClientsIndexRouteImport.update({
     id: '/oauth-clients/',
@@ -134,6 +148,8 @@ export interface FileRoutesByFullPath {
   '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
+  '/admin/accounts/': typeof AccountAdminAccountsIndexRoute
   '/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -152,6 +168,8 @@ export interface FileRoutesByTo {
   '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
+  '/admin/accounts': typeof AccountAdminAccountsIndexRoute
   '/admin/oauth-clients': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRoutesById {
@@ -172,6 +190,8 @@ export interface FileRoutesById {
   '/_account/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
+  '/_account/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
+  '/_account/admin/accounts/': typeof AccountAdminAccountsIndexRoute
   '/_account/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
 }
 export interface FileRouteTypes {
@@ -192,6 +212,8 @@ export interface FileRouteTypes {
     | '/admin/management-activity'
     | '/api/auth/$'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/admin/accounts/$accountId'
+    | '/admin/accounts/'
     | '/admin/oauth-clients/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -210,6 +232,8 @@ export interface FileRouteTypes {
     | '/admin/management-activity'
     | '/api/auth/$'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/admin/accounts/$accountId'
+    | '/admin/accounts'
     | '/admin/oauth-clients'
   id:
     | '__root__'
@@ -229,6 +253,8 @@ export interface FileRouteTypes {
     | '/_account/admin/management-activity'
     | '/api/auth/$'
     | '/.well-known/oauth-authorization-server/api/auth'
+    | '/_account/admin/accounts/$accountId'
+    | '/_account/admin/accounts/'
     | '/_account/admin/oauth-clients/'
   fileRoutesById: FileRoutesById
 }
@@ -359,6 +385,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotwellKnownOauthAuthorizationServerApiAuthRouteImport
       parentRoute: typeof DotwellKnownOauthAuthorizationServerRoute
     }
+    '/_account/admin/accounts/': {
+      id: '/_account/admin/accounts/'
+      path: '/accounts'
+      fullPath: '/admin/accounts/'
+      preLoaderRoute: typeof AccountAdminAccountsIndexRouteImport
+      parentRoute: typeof AccountAdminRouteRoute
+    }
+    '/_account/admin/accounts/$accountId': {
+      id: '/_account/admin/accounts/$accountId'
+      path: '/accounts/$accountId'
+      fullPath: '/admin/accounts/$accountId'
+      preLoaderRoute: typeof AccountAdminAccountsAccountIdRouteImport
+      parentRoute: typeof AccountAdminRouteRoute
+    }
     '/_account/admin/oauth-clients/': {
       id: '/_account/admin/oauth-clients/'
       path: '/oauth-clients'
@@ -371,11 +411,15 @@ declare module '@tanstack/react-router' {
 
 interface AccountAdminRouteRouteChildren {
   AccountAdminManagementActivityRoute: typeof AccountAdminManagementActivityRoute
+  AccountAdminAccountsAccountIdRoute: typeof AccountAdminAccountsAccountIdRoute
+  AccountAdminAccountsIndexRoute: typeof AccountAdminAccountsIndexRoute
   AccountAdminOauthClientsIndexRoute: typeof AccountAdminOauthClientsIndexRoute
 }
 
 const AccountAdminRouteRouteChildren: AccountAdminRouteRouteChildren = {
   AccountAdminManagementActivityRoute: AccountAdminManagementActivityRoute,
+  AccountAdminAccountsAccountIdRoute: AccountAdminAccountsAccountIdRoute,
+  AccountAdminAccountsIndexRoute: AccountAdminAccountsIndexRoute,
   AccountAdminOauthClientsIndexRoute: AccountAdminOauthClientsIndexRoute,
 }
 
