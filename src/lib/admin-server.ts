@@ -10,6 +10,7 @@ import {
   normalizeAccountListSearch,
   type AccountListSearch,
 } from "./admin-accounts";
+import { getAdminDashboard } from "./admin-dashboard";
 import { assertAdministratorRouteAccess } from "./admin-policy";
 import {
   banAccountInputSchema,
@@ -52,6 +53,11 @@ async function requireStandardAccount(accountId: string) {
   }
   return account;
 }
+
+export const getDashboard = createServerFn({ method: "GET" }).handler(async () => {
+  await requireAdministrator();
+  return getAdminDashboard(db.$client);
+});
 
 export const listAccounts = createServerFn({ method: "GET" })
   .validator((input: Record<string, unknown>): AccountListSearch =>

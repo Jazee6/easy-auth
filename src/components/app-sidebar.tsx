@@ -5,6 +5,7 @@ import {
   AppWindow,
   IdCard,
   KeyRound,
+  LayoutDashboard,
   ShieldAlert,
   ShieldCheck,
   User,
@@ -42,6 +43,7 @@ export function AppSidebar({
   const isProfileActive = location.pathname === "/profile";
   const isSignInMethodsActive = location.pathname === "/sign-in-methods";
   const isAuthorizationsActive = location.pathname === "/authorized-applications";
+  const isDashboardActive = location.pathname === "/admin" || location.pathname === "/admin/";
   const isAccountsActive = location.pathname.startsWith("/admin/accounts");
   const isOAuthClientsActive = location.pathname.startsWith("/admin/oauth-clients");
   const isSecurityActivityActive = location.pathname === "/admin/security-activity";
@@ -115,6 +117,18 @@ export function AppSidebar({
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isDashboardActive}
+                    tooltip="Dashboard"
+                    render={
+                      <Link to="/admin">
+                        <LayoutDashboard className="size-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={isAccountsActive}

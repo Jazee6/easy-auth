@@ -283,6 +283,23 @@ export async function listGlobalSecurityActivity(
   };
 }
 
+export async function listRecentSecurityActivity(
+  database: D1Database,
+  limit: number,
+): Promise<SecurityActivityItem[]> {
+  const rows = await database
+    .prepare(
+      `SELECT ${securityActivityColumns}
+      FROM security_activity
+      ORDER BY created_at DESC, id DESC
+      LIMIT ?`,
+    )
+    .bind(limit)
+    .all<SecurityActivityRow>();
+
+  return rows.results.map(projectSecurityActivity);
+}
+
 export async function listAccountSecurityActivity(
   database: D1Database,
   targetAccountId: string,
