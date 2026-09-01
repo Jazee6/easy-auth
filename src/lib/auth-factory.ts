@@ -8,7 +8,15 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
 
 import * as schema from "../db/schema";
-import { ADMIN_PLUGIN_ENDPOINT_PROHIBITED, isDirectAdminPluginPath } from "./admin-policy";
+import {
+  ADMIN_PLUGIN_ENDPOINT_PROHIBITED,
+  isAllowedDirectAdminPluginPath,
+  isDirectAdminPluginPath,
+} from "./admin-policy";
+import {
+  createAdminSecurityPlugin,
+  type SecurityActivityFailureEvent,
+} from "./admin-security-plugin";
 import {
   captchaProtectedAuthEndpoints,
   EMAIL_RESEND_COOLDOWN_SECONDS,
@@ -23,7 +31,7 @@ import {
   scheduleBackgroundTask,
   type AuthEmailSender,
 } from "./email-service";
-import { getBannedUserId, hasAdministratorRole, isDirectOAuthManagementPath } from "./oauth-policy";
+import { hasAdministratorRole, isDirectOAuthManagementPath } from "./oauth-policy";
 
 export interface AuthEnvironment {
   DB: D1Database;
@@ -42,6 +50,7 @@ export interface EasyAuthFactoryOptions {
   sendAuthEmail?: AuthEmailSender;
   captchaEnabled?: boolean;
   tanstackCookiesEnabled?: boolean;
+  onSecurityActivityFailure?: (event: SecurityActivityFailureEvent) => void;
 }
 
 const defaultDenyAdminPlugin = () => ({
@@ -50,7 +59,7 @@ const defaultDenyAdminPlugin = () => ({
     before: [
       {
         matcher(ctx: { path?: string }) {
-          return isDirectAdminPluginPath(ctx.path);
+          return isDirectAdminPluginPath(ctx.path) && !isAllowedDirectAdminPluginPath(ctx.path);
         },
         handler: createAuthMiddleware(async () => {
           throw APIError.from("FORBIDDEN", ADMIN_PLUGIN_ENDPOINT_PROHIBITED);
@@ -73,27 +82,6 @@ const constrainOAuthManagementPlugin = () => ({
             code: "OAUTH_MANAGEMENT_SERVER_ONLY",
             message: "Use the Easy Auth management interface",
           });
-        }),
-      },
-    ],
-  },
-});
-
-const revokeOAuthTokensAfterBanPlugin = (database: D1Database) => ({
-  id: "revoke-oauth-tokens-after-ban",
-  hooks: {
-    after: [
-      {
-        matcher(ctx: { path?: string; body?: unknown }) {
-          return getBannedUserId(ctx.path, ctx.body) !== null;
-        },
-        handler: createAuthMiddleware(async (ctx) => {
-          const userId = getBannedUserId(ctx.path, ctx.body);
-          if (!userId) return;
-          await database.batch([
-            database.prepare("DELETE FROM oauth_access_token WHERE user_id = ?").bind(userId),
-            database.prepare("DELETE FROM oauth_refresh_token WHERE user_id = ?").bind(userId),
-          ]);
         }),
       },
     ],
@@ -125,6 +113,7 @@ export function createEasyAuth({
   sendAuthEmail,
   captchaEnabled = true,
   tanstackCookiesEnabled = true,
+  onSecurityActivityFailure,
 }: EasyAuthFactoryOptions) {
   const database = drizzle(environment.DB, { schema });
 
@@ -251,9 +240,9 @@ export function createEasyAuth({
             }),
           ]
         : []),
+      createAdminSecurityPlugin(environment.DB, { onSecurityActivityFailure }),
       defaultDenyAdminPlugin(),
       constrainOAuthManagementPlugin(),
-      revokeOAuthTokensAfterBanPlugin(environment.DB),
       rejectPasswordlessOtpSignInPlugin(),
       ...(tanstackCookiesEnabled ? [tanstackStartCookies()] : []),
     ],

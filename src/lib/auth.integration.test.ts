@@ -157,11 +157,6 @@ describe("Admin boundary HTTP integration", () => {
       { method: "POST", path: "/admin/remove-user", body: { userId: targetId } },
       { method: "POST", path: "/admin/impersonate-user", body: { userId: targetId } },
       { method: "POST", path: "/admin/stop-impersonating", body: {} },
-      {
-        method: "POST",
-        path: "/admin/ban-user",
-        body: { userId: targetId, banReason: "Not yet productized" },
-      },
       { method: "POST", path: "/admin/unban-user", body: { userId: targetId } },
       {
         method: "POST",

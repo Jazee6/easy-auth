@@ -34,3 +34,4 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 - Base UI Dialog/Sheet 退出动画期间保留内容；关闭后清理状态用 `onOpenChangeComplete(false)`，不要在 `open=false` 时立即清空
 - Better Auth OAuth Provider 也使用 `/admin/*` 路径；Admin Plugin 默认拒绝必须匹配其精确端点清单，不能按 `/admin/` 前缀拦截
 - Identity Domain Account 查询直接在 D1 中分页；角色过滤需按逗号分隔角色识别 `admin`，排序始终追加 User ID 作为确定性 tie-breaker
+- Better Auth 全局 before hook 早于端点 middleware；放行 Admin 安全端点时用 `getAuthoritativeSessionFromCtx` 自行鉴权，after hook 先确认 `ctx.context.returned` 成功再做清理与 Security activity

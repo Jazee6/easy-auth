@@ -29,6 +29,13 @@
       "when": 1787889892978,
       "tag": "0003_slim_miss_america",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788247969629,
+      "tag": "0004_curly_blockbuster",
+      "breakpoints": true
     }
   ]
 }

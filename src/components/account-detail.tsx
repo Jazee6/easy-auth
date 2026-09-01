@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Check, Copy, FileQuestion } from "lucide-react";
 
+import { BanAccountAction } from "@/components/ban-account-action";
 import { PageHeader } from "@/components/page-header";
+import { SecurityActivityTable } from "@/components/security-activity-table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -24,6 +26,7 @@ import {
 } from "@/components/ui/empty";
 import { toast } from "@/components/ui/toast";
 import type { AccountListItem } from "@/lib/admin-accounts";
+import type { SecurityActivityItem } from "@/lib/admin-security";
 import { getInitials } from "@/lib/auth-policy";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -74,7 +77,13 @@ export function AccountNotFound() {
   );
 }
 
-export function AccountDetail({ account }: { account: AccountListItem }) {
+export function AccountDetail({
+  account,
+  securityActivity,
+}: {
+  account: AccountListItem;
+  securityActivity: SecurityActivityItem[];
+}) {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -93,6 +102,14 @@ export function AccountDetail({ account }: { account: AccountListItem }) {
         description={account.email}
         actions={
           <>
+            {account.role === "standard" && (
+              <BanAccountAction
+                accountId={account.accountId}
+                accountName={account.name}
+                accountEmail={account.email}
+                retry={account.banState === "active"}
+              />
+            )}
             <Badge variant={account.role === "administrator" ? "default" : "secondary"}>
               {account.role === "administrator" ? "Administrator" : "Standard"}
             </Badge>
@@ -133,6 +150,20 @@ export function AccountDetail({ account }: { account: AccountListItem }) {
           </dl>
         </CardContent>
       </Card>
+
+      {account.role === "standard" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Security activity</CardTitle>
+            <CardDescription>
+              Best-effort operational history for this Standard Account.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SecurityActivityTable activity={securityActivity} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

@@ -325,6 +325,40 @@ export const oauthClientAudit = sqliteTable(
   ],
 );
 
+export const securityActivity = sqliteTable(
+  "security_activity",
+  {
+    id: text("id").primaryKey(),
+    actorUserId: text("actor_user_id").notNull(),
+    actorName: text("actor_name").notNull(),
+    actorEmail: text("actor_email").notNull(),
+    targetUserId: text("target_user_id").notNull(),
+    targetName: text("target_name").notNull(),
+    targetEmail: text("target_email").notNull(),
+    action: text("action", {
+      enum: ["ban", "unban", "revoke-session", "revoke-all-sessions"],
+    }).notNull(),
+    details: text("details", { mode: "json" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" })
+      .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+      .notNull(),
+  },
+  (table) => [
+    index("securityActivity_createdAt_id_idx").on(table.createdAt, table.id),
+    index("securityActivity_action_createdAt_id_idx").on(table.action, table.createdAt, table.id),
+    index("securityActivity_targetUserId_createdAt_id_idx").on(
+      table.targetUserId,
+      table.createdAt,
+      table.id,
+    ),
+    index("securityActivity_actorUserId_createdAt_id_idx").on(
+      table.actorUserId,
+      table.createdAt,
+      table.id,
+    ),
+  ],
+);
+
 export const rateLimit = sqliteTable("rate_limit", {
   id: text("id").primaryKey(),
   key: text("key").notNull().unique(),

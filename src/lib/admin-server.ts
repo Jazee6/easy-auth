@@ -10,6 +10,11 @@ import {
   type AccountListSearch,
 } from "./admin-accounts";
 import { assertAdministratorRouteAccess } from "./admin-policy";
+import {
+  banAccountInputSchema,
+  getBanDurationSeconds,
+  listAccountSecurityActivity,
+} from "./admin-security";
 import { auth } from "./auth";
 
 const accountIdSchema = v.object({
@@ -17,9 +22,11 @@ const accountIdSchema = v.object({
 });
 
 async function requireAdministrator() {
-  const session = await auth.api.getSession({ headers: getRequestHeaders() });
+  const headers = getRequestHeaders();
+  const session = await auth.api.getSession({ headers });
   if (!session) throw new Error("Authentication required");
   assertAdministratorRouteAccess(session.user.role);
+  return { headers, session };
 }
 
 export const listAccounts = createServerFn({ method: "GET" })
@@ -36,4 +43,32 @@ export const getAccount = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     await requireAdministrator();
     return getIdentityDomainAccount(db.$client, data.accountId);
+  });
+
+export const getAccountSecurityActivity = createServerFn({ method: "GET" })
+  .validator((input: unknown) => v.parse(accountIdSchema, input))
+  .handler(async ({ data }) => {
+    await requireAdministrator();
+    const account = await getIdentityDomainAccount(db.$client, data.accountId);
+    if (!account) return [];
+    if (account.role === "administrator") {
+      throw new Error("Administrator security activity is operations-only");
+    }
+    return listAccountSecurityActivity(db.$client, data.accountId);
+  });
+
+export const banAccount = createServerFn({ method: "POST" })
+  .validator((input: unknown) => v.parse(banAccountInputSchema, input))
+  .handler(async ({ data }) => {
+    const { headers } = await requireAdministrator();
+    const banExpiresIn = getBanDurationSeconds(data.duration);
+    await auth.api.banUser({
+      headers,
+      body: {
+        userId: data.accountId,
+        banReason: data.reason,
+        ...(banExpiresIn === undefined ? {} : { banExpiresIn }),
+      },
+    });
+    return { banned: true };
   });

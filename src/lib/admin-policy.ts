@@ -53,3 +53,7 @@ const directAdminPluginPaths = new Set([
 export function isDirectAdminPluginPath(path: string | undefined): boolean {
   return directAdminPluginPaths.has(path ?? "");
 }
+
+export function isAllowedDirectAdminPluginPath(path: string | undefined): boolean {
+  return path === "/admin/ban-user";
+}
