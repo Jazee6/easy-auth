@@ -28,7 +28,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import {
@@ -39,6 +39,7 @@ import {
   type OAuthClientActivityRecord,
 } from "@/lib/oauth-activity";
 import { getOAuthClientActivity, rotateOAuthClientSecret } from "@/lib/oauth-server";
+import { cn } from "@/lib/utils";
 
 const activityIcons: Record<OAuthClientActivityIcon, typeof ClipboardPlus> = {
   registered: ClipboardPlus,
@@ -129,6 +130,38 @@ export function ActivityTimeline({ activity }: { activity: OAuthClientActivityRe
   );
 }
 
+const timelineSkeletonRows = [
+  ["w-2/5", "w-4/5"],
+  ["w-1/3", "w-3/5"],
+  ["w-2/5", "w-11/12"],
+  ["w-1/4", "w-3/4"],
+] as const;
+
+export function ActivityTimelineSkeleton() {
+  return (
+    <div role="status" aria-label="Loading management activity" className="space-y-8">
+      {timelineSkeletonRows.map(([titleWidth, summaryWidth], index) => (
+        <div key={index} className="relative pl-9">
+          {index < timelineSkeletonRows.length - 1 && (
+            <span
+              aria-hidden="true"
+              className="absolute top-7 bottom-[-2rem] left-3.5 w-px bg-border"
+            />
+          )}
+          <span className="absolute top-0 left-0 flex size-7 items-center justify-center rounded-full border bg-background">
+            <Skeleton className="size-3.5 rounded-full" />
+          </span>
+          <div className="space-y-1">
+            <Skeleton className={cn("h-5", titleWidth)} />
+            <Skeleton className={cn("h-5", summaryWidth)} />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function OAuthClientActivitySheet({
   client,
   open,
@@ -184,9 +217,7 @@ export function OAuthClientActivitySheet({
         <ScrollArea className="min-h-0 flex-1">
           <div className="p-4">
             {isLoading ? (
-              <div className="flex min-h-64 items-center justify-center">
-                <Spinner aria-label="Loading management activity" />
-              </div>
+              <ActivityTimelineSkeleton />
             ) : error ? (
               <div
                 role="alert"
