@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Check, Copy, FileQuestion } from "lucide-react";
 
+import { AccountSessions } from "@/components/account-sessions";
 import { BanAccountAction } from "@/components/ban-account-action";
 import { PageHeader } from "@/components/page-header";
 import { SecurityActivityTable } from "@/components/security-activity-table";
@@ -28,6 +29,7 @@ import {
 import { toast } from "@/components/ui/toast";
 import type { AccountListItem } from "@/lib/admin-accounts";
 import type { SecurityActivityItem } from "@/lib/admin-security";
+import type { SafeAccountSession } from "@/lib/admin-sessions";
 import { getInitials } from "@/lib/auth-policy";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -81,9 +83,11 @@ export function AccountNotFound() {
 export function AccountDetail({
   account,
   securityActivity,
+  sessions,
 }: {
   account: AccountListItem;
   securityActivity: SecurityActivityItem[];
+  sessions: SafeAccountSession[];
 }) {
   const [copying, setCopying] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -158,6 +162,24 @@ export function AccountDetail({
           </dl>
         </CardContent>
       </Card>
+
+      {account.role === "standard" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Sessions</CardTitle>
+            <CardDescription>
+              Authenticated devices for this Standard Account. Session credentials remain private.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AccountSessions
+              accountId={account.accountId}
+              accountName={account.name}
+              sessions={sessions}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {account.role === "standard" && (
         <Card>

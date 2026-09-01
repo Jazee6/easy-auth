@@ -33,7 +33,13 @@ const columns: DataTableColumnDef<SecurityActivityItem>[] = [
         <div className="min-w-48">
           <p className="font-medium">
             {details.reason ??
-              (row.original.action === "unban" ? "Ban removed" : "Security action completed")}
+              (row.original.action === "unban"
+                ? "Ban removed"
+                : row.original.action === "revoke-session"
+                  ? `Session ${details.sessionId ?? "revoked"}`
+                  : row.original.action === "revoke-all-sessions"
+                    ? "All Sessions revoked"
+                    : "Security action completed")}
           </p>
           {details.duration && (
             <p className="text-xs text-muted-foreground">

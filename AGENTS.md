@@ -35,3 +35,4 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 - Better Auth OAuth Provider 也使用 `/admin/*` 路径；Admin Plugin 默认拒绝必须匹配其精确端点清单，不能按 `/admin/` 前缀拦截
 - Identity Domain Account 查询直接在 D1 中分页；角色过滤需按逗号分隔角色识别 `admin`，排序始终追加 User ID 作为确定性 tie-breaker
 - Better Auth 全局 before hook 早于端点 middleware；放行 Admin 安全端点时用 `getAuthoritativeSessionFromCtx` 自行鉴权，after hook 先确认 `ctx.context.returned` 成功再做清理与 Security activity
+- Session 管理界面只使用非凭据 Session ID；服务端按 Account + Session ID 解析私有 token，再调用 Better Auth 单 Session 撤销端点

@@ -5,6 +5,7 @@ import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 
 import { listAccountSecurityActivity } from "./admin-security";
 import { createEasyAuth } from "./auth-factory";
+import { listActiveAccountSessions, resolveActiveSessionToken } from "./admin-sessions";
 import type { SecurityActivityFailureEvent } from "./admin-security-plugin";
 
 const BASE_URL = "http://easy-auth-ban.test";
@@ -89,6 +90,7 @@ async function createAccount(
 }
 
 async function signInCookie(email: string): Promise<string> {
+  await database.prepare("DELETE FROM rate_limit").run();
   const response = await postAuth("/sign-in/email", { email, password: PASSWORD });
   expect(response.status).toBe(200);
   const setCookie = response.headers.get("set-cookie");
@@ -626,5 +628,236 @@ describe("Standard Account Unban integration", () => {
     const duplicate = await postAuth("/admin/unban-user", { userId: target.id }, adminCookie);
     expect(duplicate.status).toBe(409);
     expect(await count("security_activity", "target_user_id = ?", target.id)).toBe(0);
+  });
+});
+
+describe("Standard Account Session security integration", () => {
+  test("projects only active Sessions without bearer tokens or raw User-Agents", async () => {
+    const target = await createAccount("session-projection-target");
+    const administrator = await createAccount("session-projection-admin", "admin");
+    const now = Date.now();
+    const chrome =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+    await database.batch([
+      database
+        .prepare(
+          "INSERT INTO session (id, token, user_id, expires_at, created_at, updated_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "projection-active",
+          "projection-active-secret",
+          target.id,
+          now + 60_000,
+          now - 2_000,
+          now - 1_000,
+          "203.0.113.8",
+          chrome,
+        ),
+      database
+        .prepare(
+          "INSERT INTO session (id, token, user_id, expires_at, created_at, updated_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)",
+        )
+        .bind(
+          "projection-unknown",
+          "projection-unknown-secret",
+          target.id,
+          now + 120_000,
+          now - 1_000,
+          now - 500,
+        ),
+      database
+        .prepare(
+          "INSERT INTO session (id, token, user_id, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "projection-expired",
+          "projection-expired-secret",
+          target.id,
+          now - 1,
+          now - 3_000,
+          now - 2_000,
+        ),
+    ]);
+
+    const sessions = await listActiveAccountSessions(database, target.id, now);
+    expect(sessions).toEqual([
+      {
+        sessionId: "projection-unknown",
+        browser: "Unknown browser",
+        operatingSystem: "Unknown operating system",
+        deviceType: "Unknown device",
+        ipAddress: "Unknown",
+        createdAt: now - 1_000,
+        updatedAt: now - 500,
+        expiresAt: now + 120_000,
+      },
+      {
+        sessionId: "projection-active",
+        browser: "Chrome 131.0.0.0",
+        operatingSystem: "Windows 10",
+        deviceType: "Desktop",
+        ipAddress: "203.0.113.8",
+        createdAt: now - 2_000,
+        updatedAt: now - 1_000,
+        expiresAt: now + 60_000,
+      },
+    ]);
+    const serialized = JSON.stringify(sessions);
+    for (const sensitive of ["secret", "token", "userAgent", "Mozilla"]) {
+      expect(serialized.includes(sensitive)).toBe(false);
+    }
+    expect(await resolveActiveSessionToken(database, target.id, "projection-active", now)).toBe(
+      "projection-active-secret",
+    );
+    expect(
+      await resolveActiveSessionToken(database, target.id, "projection-expired", now),
+    ).toBeNull();
+    expect(await resolveActiveSessionToken(database, target.id, "projection-unknown", now)).toBe(
+      "projection-unknown-secret",
+    );
+    try {
+      await listActiveAccountSessions(database, administrator.id, now);
+      throw new Error("Expected Administrator Session projection to be rejected");
+    } catch (error) {
+      expect(error instanceof Error ? error.message : "").toBe(
+        "Administrator Sessions are operations-only",
+      );
+    }
+  });
+
+  test("revokes one Session by private token while activity retains only its Session ID", async () => {
+    const admin = await createAccount("session-single-admin", "admin");
+    const target = await createAccount("session-single-target");
+    const unrelated = await createAccount("session-single-unrelated");
+    const administratorTarget = await createAccount("session-single-admin-target", "admin");
+    const adminCookie = await signInCookie(admin.email);
+    const targetCookie = await signInCookie(target.email);
+    await signInCookie(unrelated.email);
+    await signInCookie(administratorTarget.email);
+    const selected = await database
+      .prepare("SELECT id, token FROM session WHERE user_id = ?")
+      .bind(target.id)
+      .first<{ id: string; token: string }>();
+    const administratorSession = await database
+      .prepare("SELECT token FROM session WHERE user_id = ?")
+      .bind(administratorTarget.id)
+      .first<string>("token");
+    if (!selected || !administratorSession) throw new Error("Expected seeded Sessions");
+
+    const response = await postAuth(
+      "/admin/revoke-user-session",
+      { sessionToken: selected.token },
+      adminCookie,
+    );
+    expect(response.status).toBe(200);
+    expect(JSON.stringify(await response.json()).includes(selected.token)).toBe(false);
+    expect(await count("session", "id = ?", selected.id)).toBe(0);
+    expect(await count("session", "user_id = ?", unrelated.id)).toBe(1);
+    const authenticated = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/get-session`, { headers: { cookie: targetCookie } }),
+    );
+    expect(await authenticated.json()).toBeNull();
+
+    const activity = await listAccountSecurityActivity(database, target.id);
+    expect(activity.map((item) => item.action)).toEqual(["revoke-session"]);
+    expect(activity[0]?.details).toEqual({ sessionId: selected.id });
+    const serialized = JSON.stringify(activity[0]);
+    expect(serialized.includes(selected.token)).toBe(false);
+
+    expect(await resolveActiveSessionToken(database, unrelated.id, selected.id)).toBeNull();
+
+    const unknown = await postAuth(
+      "/admin/revoke-user-session",
+      { sessionToken: "missing-session-token" },
+      adminCookie,
+    );
+    expect(unknown.status).toBe(404);
+    expect(((await unknown.json()) as { code: string }).code).toBe("SECURITY_SESSION_NOT_FOUND");
+
+    const administratorResponse = await postAuth(
+      "/admin/revoke-user-session",
+      { sessionToken: administratorSession },
+      adminCookie,
+    );
+    expect(administratorResponse.status).toBe(403);
+    expect(((await administratorResponse.json()) as { code: string }).code).toBe(
+      "ADMINISTRATOR_TARGET_PROHIBITED",
+    );
+    const administratorAllResponse = await postAuth(
+      "/admin/revoke-user-sessions",
+      { userId: administratorTarget.id },
+      adminCookie,
+    );
+    expect(administratorAllResponse.status).toBe(403);
+    expect(((await administratorAllResponse.json()) as { code: string }).code).toBe(
+      "ADMINISTRATOR_TARGET_PROHIBITED",
+    );
+  });
+
+  test("revokes all target Sessions without affecting another Account", async () => {
+    const admin = await createAccount("session-all-admin", "admin");
+    const target = await createAccount("session-all-target");
+    const unrelated = await createAccount("session-all-unrelated");
+    const adminCookie = await signInCookie(admin.email);
+    await signInCookie(target.email);
+    await signInCookie(target.email);
+    await signInCookie(unrelated.email);
+
+    expect(await count("session", "user_id = ?", target.id)).toBe(2);
+    const response = await postAuth(
+      "/admin/revoke-user-sessions",
+      { userId: target.id },
+      adminCookie,
+    );
+    expect(response.status).toBe(200);
+    expect(await count("session", "user_id = ?", target.id)).toBe(0);
+    expect(await count("session", "user_id = ?", unrelated.id)).toBe(1);
+    const activity = await listAccountSecurityActivity(database, target.id);
+    expect(activity.map((item) => item.action)).toEqual(["revoke-all-sessions"]);
+    expect(activity[0]?.details).toEqual({ scope: "all" });
+    const serialized = JSON.stringify(activity[0]);
+    for (const sensitive of ["token", "ipAddress", "userAgent"]) {
+      expect(serialized.includes(sensitive)).toBe(false);
+    }
+  });
+
+  test("keeps Session revocation successful when Security activity persistence fails", async () => {
+    const admin = await createAccount("session-activity-failure-admin", "admin");
+    const target = await createAccount("session-activity-failure-target");
+    const adminCookie = await signInCookie(admin.email);
+    await signInCookie(target.email);
+    const selected = await database
+      .prepare("SELECT id, token FROM session WHERE user_id = ?")
+      .bind(target.id)
+      .first<{ id: string; token: string }>();
+    if (!selected) throw new Error("Expected target Session");
+    await database
+      .prepare(
+        `CREATE TRIGGER fail_session_activity
+        BEFORE INSERT ON security_activity
+        WHEN NEW.target_user_id = '${target.id}' AND NEW.action = 'revoke-session'
+        BEGIN
+          SELECT RAISE(FAIL, 'forced Session activity failure');
+        END`,
+      )
+      .run();
+
+    const failureCount = activityFailures.length;
+    const response = await postAuth(
+      "/admin/revoke-user-session",
+      { sessionToken: selected.token },
+      adminCookie,
+    );
+    expect(response.status).toBe(200);
+    expect(await count("session", "id = ?", selected.id)).toBe(0);
+    expect(await count("security_activity", "target_user_id = ?", target.id)).toBe(0);
+    expect(activityFailures.length).toBe(failureCount + 1);
+    const logged = activityFailures.at(-1);
+    expect(logged?.code).toBe("SECURITY_ACTIVITY_WRITE_FAILED");
+    const serializedLog = JSON.stringify(logged);
+    for (const sensitive of [target.id, target.email, selected.id, selected.token, "userAgent"]) {
+      expect(serializedLog.includes(sensitive)).toBe(false);
+    }
+    await database.prepare("DROP TRIGGER fail_session_activity").run();
   });
 });

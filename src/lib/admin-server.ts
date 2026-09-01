@@ -1,3 +1,4 @@
+import { APIError } from "@better-auth/core/error";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
 import * as v from "valibot";
@@ -15,10 +16,21 @@ import {
   getBanDurationSeconds,
   listAccountSecurityActivity,
 } from "./admin-security";
+import {
+  ADMINISTRATOR_TARGET_PROHIBITED,
+  SECURITY_ACTION_TARGET_NOT_FOUND,
+  SECURITY_SESSION_NOT_FOUND,
+} from "./admin-security-plugin";
+import { listActiveAccountSessions, resolveActiveSessionToken } from "./admin-sessions";
 import { auth } from "./auth";
 
 const accountIdSchema = v.object({
   accountId: v.pipe(v.string(), v.trim(), v.nonEmpty("Account ID is required")),
+});
+
+const sessionIdSchema = v.object({
+  accountId: accountIdSchema.entries.accountId,
+  sessionId: v.pipe(v.string(), v.trim(), v.nonEmpty("Session ID is required")),
 });
 
 async function requireAdministrator() {
@@ -27,6 +39,15 @@ async function requireAdministrator() {
   if (!session) throw new Error("Authentication required");
   assertAdministratorRouteAccess(session.user.role);
   return { headers, session };
+}
+
+async function requireStandardAccount(accountId: string) {
+  const account = await getIdentityDomainAccount(db.$client, accountId);
+  if (!account) throw APIError.from("NOT_FOUND", SECURITY_ACTION_TARGET_NOT_FOUND);
+  if (account.role === "administrator") {
+    throw APIError.from("FORBIDDEN", ADMINISTRATOR_TARGET_PROHIBITED);
+  }
+  return account;
 }
 
 export const listAccounts = createServerFn({ method: "GET" })
@@ -45,16 +66,44 @@ export const getAccount = createServerFn({ method: "GET" })
     return getIdentityDomainAccount(db.$client, data.accountId);
   });
 
+export const listAccountSessions = createServerFn({ method: "GET" })
+  .validator((input: unknown) => v.parse(accountIdSchema, input))
+  .handler(async ({ data }) => {
+    await requireAdministrator();
+    await requireStandardAccount(data.accountId);
+    return listActiveAccountSessions(db.$client, data.accountId);
+  });
+
 export const getAccountSecurityActivity = createServerFn({ method: "GET" })
   .validator((input: unknown) => v.parse(accountIdSchema, input))
   .handler(async ({ data }) => {
     await requireAdministrator();
-    const account = await getIdentityDomainAccount(db.$client, data.accountId);
-    if (!account) return [];
-    if (account.role === "administrator") {
-      throw new Error("Administrator security activity is operations-only");
-    }
+    await requireStandardAccount(data.accountId);
     return listAccountSecurityActivity(db.$client, data.accountId);
+  });
+
+export const revokeAccountSession = createServerFn({ method: "POST" })
+  .validator((input: unknown) => v.parse(sessionIdSchema, input))
+  .handler(async ({ data }) => {
+    const { headers } = await requireAdministrator();
+    await requireStandardAccount(data.accountId);
+    const sessionToken = await resolveActiveSessionToken(
+      db.$client,
+      data.accountId,
+      data.sessionId,
+    );
+    if (!sessionToken) throw APIError.from("NOT_FOUND", SECURITY_SESSION_NOT_FOUND);
+    await auth.api.revokeUserSession({ headers, body: { sessionToken } });
+    return { revoked: true };
+  });
+
+export const revokeAllAccountSessions = createServerFn({ method: "POST" })
+  .validator((input: unknown) => v.parse(accountIdSchema, input))
+  .handler(async ({ data }) => {
+    const { headers } = await requireAdministrator();
+    await requireStandardAccount(data.accountId);
+    await auth.api.revokeUserSessions({ headers, body: { userId: data.accountId } });
+    return { revoked: true };
   });
 
 export const unbanAccount = createServerFn({ method: "POST" })

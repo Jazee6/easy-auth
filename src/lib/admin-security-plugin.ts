@@ -50,6 +50,11 @@ export const SECURITY_CLEANUP_INCOMPLETE = {
   message: "Credential cleanup must complete before this Account can be unrestricted",
 } as const;
 
+export const SECURITY_SESSION_NOT_FOUND = {
+  code: "SECURITY_SESSION_NOT_FOUND",
+  message: "Active Session not found for this Standard Account",
+} as const;
+
 interface SecurityIdentitySnapshot {
   id: string;
   name: string;
@@ -71,7 +76,20 @@ interface UnbanOperationContext extends SecurityOperationBase {
   action: "unban";
 }
 
-type SecurityOperationContext = BanOperationContext | UnbanOperationContext;
+interface RevokeSessionOperationContext extends SecurityOperationBase {
+  action: "revoke-session";
+  sessionId: string;
+}
+
+interface RevokeAllSessionsOperationContext extends SecurityOperationBase {
+  action: "revoke-all-sessions";
+}
+
+type SecurityOperationContext =
+  | BanOperationContext
+  | UnbanOperationContext
+  | RevokeSessionOperationContext
+  | RevokeAllSessionsOperationContext;
 
 interface AccountSecurityRow {
   id: string;
@@ -80,6 +98,10 @@ interface AccountSecurityRow {
   role: string | null;
   banned: number | null;
   ban_expires: number | null;
+}
+
+interface SessionTargetRow extends AccountSecurityRow {
+  session_id: string;
 }
 
 interface ResidueRow {
@@ -109,6 +131,7 @@ export interface AdminSecurityPluginOptions {
 }
 
 const accountIdSchema = v.pipe(v.string(), v.trim(), v.nonEmpty());
+const sessionTokenSchema = v.pipe(v.string(), v.nonEmpty());
 
 function isSuccessfulEndpointResult(result: unknown): boolean {
   if (result === undefined || result === null || isAPIError(result)) return false;
@@ -165,14 +188,41 @@ export function createAdminSecurityPlugin(
               throw APIError.from("FORBIDDEN", ADMINISTRATOR_ACCESS_REQUIRED);
             }
 
-            const accountId = v.safeParse(accountIdSchema, ctx.body?.userId);
-            if (!accountId.success) {
-              throw APIError.from("BAD_REQUEST", SECURITY_ACTION_INVALID_INPUT);
+            let target: AccountSecurityRow | null;
+            let revokedSessionId: string | null = null;
+            let accountId: string;
+
+            if (ctx.path === "/admin/revoke-user-session") {
+              const sessionToken = v.safeParse(sessionTokenSchema, ctx.body?.sessionToken);
+              if (!sessionToken.success) {
+                throw APIError.from("BAD_REQUEST", SECURITY_ACTION_INVALID_INPUT);
+              }
+              const sessionTarget = await database
+                .prepare(
+                  `SELECT user.id, user.name, user.email, user.role, user.banned, user.ban_expires,
+                    session.id AS session_id
+                  FROM session
+                  INNER JOIN user ON user.id = session.user_id
+                  WHERE session.token = ? AND session.expires_at > ?`,
+                )
+                .bind(sessionToken.output, Date.now())
+                .first<SessionTargetRow>();
+              if (!sessionTarget) throw APIError.from("NOT_FOUND", SECURITY_SESSION_NOT_FOUND);
+              target = sessionTarget;
+              accountId = sessionTarget.id;
+              revokedSessionId = sessionTarget.session_id;
+            } else {
+              const parsedAccountId = v.safeParse(accountIdSchema, ctx.body?.userId);
+              if (!parsedAccountId.success) {
+                throw APIError.from("BAD_REQUEST", SECURITY_ACTION_INVALID_INPUT);
+              }
+              accountId = parsedAccountId.output;
+              target = await database
+                .prepare("SELECT id, name, email, role, banned, ban_expires FROM user WHERE id = ?")
+                .bind(accountId)
+                .first<AccountSecurityRow>();
             }
-            const target = await database
-              .prepare("SELECT id, name, email, role, banned, ban_expires FROM user WHERE id = ?")
-              .bind(accountId.output)
-              .first<AccountSecurityRow>();
+
             if (!target) throw APIError.from("NOT_FOUND", SECURITY_ACTION_TARGET_NOT_FOUND);
             if (hasAdministratorRole(target.role)) {
               throw APIError.from("FORBIDDEN", ADMINISTRATOR_TARGET_PROHIBITED);
@@ -185,12 +235,11 @@ export function createAdminSecurityPlugin(
             };
             const targetSnapshot = { id: target.id, name: target.name, email: target.email };
             const securityContext = ctx.context as typeof ctx.context & EasyAuthSecurityContext;
-            ctx.body.userId = accountId.output;
 
             if (ctx.path === "/admin/ban-user") {
               const duration = getBanDurationFromSeconds(ctx.body?.banExpiresIn);
               const parsed = v.safeParse(banAccountInputSchema, {
-                accountId: accountId.output,
+                accountId,
                 reason: ctx.body?.banReason,
                 duration,
               });
@@ -208,6 +257,7 @@ export function createAdminSecurityPlugin(
                 }
               }
 
+              ctx.body.userId = accountId;
               ctx.body.banReason = parsed.output.reason;
               securityContext.easyAuthSecurityOperation = {
                 action: "ban",
@@ -219,15 +269,37 @@ export function createAdminSecurityPlugin(
               return;
             }
 
-            if (target.banned !== 1) {
-              throw APIError.from("CONFLICT", SECURITY_ACTION_INVALID_STATE);
+            if (ctx.path === "/admin/unban-user") {
+              if (target.banned !== 1) {
+                throw APIError.from("CONFLICT", SECURITY_ACTION_INVALID_STATE);
+              }
+              const residue = await getTargetResidue(database, target.id);
+              if (hasCredentialResidue(residue)) {
+                throw APIError.from("CONFLICT", SECURITY_CLEANUP_INCOMPLETE);
+              }
+              ctx.body.userId = accountId;
+              securityContext.easyAuthSecurityOperation = {
+                action: "unban",
+                actor,
+                target: targetSnapshot,
+              };
+              return;
             }
-            const residue = await getTargetResidue(database, target.id);
-            if (hasCredentialResidue(residue)) {
-              throw APIError.from("CONFLICT", SECURITY_CLEANUP_INCOMPLETE);
+
+            if (ctx.path === "/admin/revoke-user-session") {
+              if (!revokedSessionId) throw APIError.from("NOT_FOUND", SECURITY_SESSION_NOT_FOUND);
+              securityContext.easyAuthSecurityOperation = {
+                action: "revoke-session",
+                actor,
+                target: targetSnapshot,
+                sessionId: revokedSessionId,
+              };
+              return;
             }
+
+            ctx.body.userId = accountId;
             securityContext.easyAuthSecurityOperation = {
-              action: "unban",
+              action: "revoke-all-sessions",
               actor,
               target: targetSnapshot,
             };
@@ -272,6 +344,10 @@ export function createAdminSecurityPlugin(
                   duration: operation.duration,
                   expiresAt: state?.ban_expires ?? null,
                 });
+              } else if (operation.action === "revoke-session") {
+                details = JSON.stringify({ sessionId: operation.sessionId });
+              } else if (operation.action === "revoke-all-sessions") {
+                details = JSON.stringify({ scope: "all" });
               }
               await database
                 .prepare(
