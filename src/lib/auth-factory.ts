@@ -8,6 +8,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
 
 import * as schema from "../db/schema";
+import { ADMIN_PLUGIN_ENDPOINT_PROHIBITED, isDirectAdminPluginPath } from "./admin-policy";
 import {
   captchaProtectedAuthEndpoints,
   EMAIL_RESEND_COOLDOWN_SECONDS,
@@ -43,28 +44,16 @@ export interface EasyAuthFactoryOptions {
   tanstackCookiesEnabled?: boolean;
 }
 
-const constrainRoleMutationPlugin = () => ({
-  id: "constrain-admin-role-mutation",
+const defaultDenyAdminPlugin = () => ({
+  id: "default-deny-admin-plugin",
   hooks: {
     before: [
       {
-        matcher(ctx: { path?: string; body?: Record<string, unknown> }) {
-          if (ctx.path === "/admin/set-role") return true;
-          if (ctx.path !== "/admin/create-user" && ctx.path !== "/admin/update-user") {
-            return false;
-          }
-
-          const nested = ctx.body?.data;
-          return (
-            "role" in (ctx.body ?? {}) ||
-            (typeof nested === "object" && nested !== null && "role" in nested)
-          );
+        matcher(ctx: { path?: string }) {
+          return isDirectAdminPluginPath(ctx.path);
         },
         handler: createAuthMiddleware(async () => {
-          throw APIError.from("FORBIDDEN", {
-            code: "ADMIN_ROLE_ASSIGNMENT_OPERATIONS_ONLY",
-            message: "Administrator roles must be assigned directly in D1",
-          });
+          throw APIError.from("FORBIDDEN", ADMIN_PLUGIN_ENDPOINT_PROHIBITED);
         }),
       },
     ],
@@ -262,7 +251,7 @@ export function createEasyAuth({
             }),
           ]
         : []),
-      constrainRoleMutationPlugin(),
+      defaultDenyAdminPlugin(),
       constrainOAuthManagementPlugin(),
       revokeOAuthTokensAfterBanPlugin(environment.DB),
       rejectPasswordlessOtpSignInPlugin(),

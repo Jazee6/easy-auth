@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+export { hasAdministratorRole } from "./admin-policy";
+
 export const supportedScopes = ["openid", "profile", "email", "offline_access"] as const;
 
 export const oauthSecurityEventPolicy = {
@@ -100,16 +102,6 @@ const directOAuthManagementPaths = new Set([
 
 export function isDirectOAuthManagementPath(path: string | undefined): boolean {
   return directOAuthManagementPaths.has(path ?? "");
-}
-
-export function hasAdministratorRole(role: unknown): boolean {
-  return (
-    typeof role === "string" &&
-    role
-      .split(",")
-      .map((value) => value.trim())
-      .includes("admin")
-  );
 }
 
 export function getBannedUserId(path: string | undefined, body: unknown): string | null {

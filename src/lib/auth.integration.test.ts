@@ -119,6 +119,88 @@ async function signInCookie(email: string): Promise<string> {
   return setCookie.split(";", 1)[0];
 }
 
+describe("Admin boundary HTTP integration", () => {
+  test("default-denies every direct Admin Plugin read and mutation", async () => {
+    const adminEmail = "admin-default-deny@example.com";
+    const accountEmail = "account-default-deny@example.com";
+    const targetId = await createVerifiedAccount("target-default-deny@example.com");
+    await createVerifiedAccount(adminEmail, "admin");
+    await createVerifiedAccount(accountEmail);
+    const adminCookie = await signInCookie(adminEmail);
+    const accountCookie = await signInCookie(accountEmail);
+    const blockedRequests = [
+      { method: "GET", path: "/admin/list-users" },
+      { method: "GET", path: `/admin/get-user?id=${targetId}` },
+      { method: "POST", path: "/admin/list-user-sessions", body: { userId: targetId } },
+      { method: "POST", path: "/admin/has-permission", body: { permissions: {} } },
+      {
+        method: "POST",
+        path: "/admin/create-user",
+        body: {
+          name: "Smuggled administrator",
+          email: "smuggled@example.com",
+          password: "integration-password",
+          role: "admin",
+        },
+      },
+      {
+        method: "POST",
+        path: "/admin/update-user",
+        body: { userId: targetId, data: { role: "admin", banned: true } },
+      },
+      { method: "POST", path: "/admin/set-role", body: { userId: targetId, role: "admin" } },
+      {
+        method: "POST",
+        path: "/admin/set-user-password",
+        body: { userId: targetId, newPassword: "replacement-password" },
+      },
+      { method: "POST", path: "/admin/remove-user", body: { userId: targetId } },
+      { method: "POST", path: "/admin/impersonate-user", body: { userId: targetId } },
+      { method: "POST", path: "/admin/stop-impersonating", body: {} },
+      {
+        method: "POST",
+        path: "/admin/ban-user",
+        body: { userId: targetId, banReason: "Not yet productized" },
+      },
+      { method: "POST", path: "/admin/unban-user", body: { userId: targetId } },
+      {
+        method: "POST",
+        path: "/admin/revoke-user-session",
+        body: { sessionToken: "must-never-be-accepted" },
+      },
+      { method: "POST", path: "/admin/revoke-user-sessions", body: { userId: targetId } },
+    ] as const;
+
+    for (const cookie of [adminCookie, accountCookie, undefined]) {
+      for (const blockedRequest of blockedRequests) {
+        const response =
+          blockedRequest.method === "GET"
+            ? await getAuth(blockedRequest.path, cookie ? { cookie } : undefined)
+            : await postAuth(blockedRequest.path, blockedRequest.body, cookie);
+
+        expect(response.status).toBe(403);
+        expect((await response.json()) as unknown).toEqual({
+          code: "ADMIN_PLUGIN_ENDPOINT_PROHIBITED",
+          message: "Use the Easy Auth administrator interface",
+        });
+      }
+    }
+
+    expect(
+      await database
+        .prepare("SELECT count(*) AS count FROM user WHERE email = ?")
+        .bind("smuggled@example.com")
+        .first<number>("count"),
+    ).toBe(0);
+    expect(
+      await database
+        .prepare("SELECT role FROM user WHERE id = ?")
+        .bind(targetId)
+        .first<string>("role"),
+    ).toBe("user");
+  });
+});
+
 describe("OAuth HTTP integration", () => {
   test("blocks direct consent expansion at the auth handler", async () => {
     const response = await auth.handler(
@@ -672,7 +754,7 @@ describe("OAuth HTTP integration", () => {
     ).toBe(1);
   });
 
-  test("revokes OAuth token families when an administrator uses generic banned-state update", async () => {
+  test("blocks generic banned-state updates without changing OAuth state", async () => {
     const adminEmail = "admin-ban@example.com";
     const targetEmail = "target-ban@example.com";
     const adminId = await createVerifiedAccount(adminEmail, "admin");
@@ -731,7 +813,11 @@ describe("OAuth HTTP integration", () => {
       cookie,
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
+    expect((await response.json()) as unknown).toEqual({
+      code: "ADMIN_PLUGIN_ENDPOINT_PROHIBITED",
+      message: "Use the Easy Auth administrator interface",
+    });
     expect(
       await database
         .prepare(
@@ -739,7 +825,7 @@ describe("OAuth HTTP integration", () => {
         )
         .bind(targetId, targetId)
         .first<number>("count"),
-    ).toBe(0);
+    ).toBe(2);
     expect(
       await database
         .prepare("SELECT count(*) AS count FROM oauth_consent WHERE user_id = ?")
