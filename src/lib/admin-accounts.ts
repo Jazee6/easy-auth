@@ -1,3 +1,5 @@
+import { escapeLikePattern } from "./sql";
+
 export const ACCOUNT_PAGE_SIZE = 20;
 
 export type AccountRoleFilter = "standard" | "administrator";
@@ -90,10 +92,6 @@ function banStateExpression(now: number): string {
   END`;
 }
 
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, "\\$&");
-}
-
 function accountProjection(row: AccountProjectionRow): AccountListItem {
   return {
     accountId: row.account_id,
@@ -146,7 +144,7 @@ export async function listIdentityDomainAccounts(
   const banState = banStateExpression(now);
 
   if (search.q) {
-    const term = `%${escapeLike(search.q.toLowerCase())}%`;
+    const term = `%${escapeLikePattern(search.q.toLowerCase())}%`;
     conditions.push("(lower(name) LIKE ? ESCAPE '\\' OR lower(email) LIKE ? ESCAPE '\\')");
     bindings.push(term, term);
   }

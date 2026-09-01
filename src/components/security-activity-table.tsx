@@ -1,18 +1,15 @@
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
-import { formatBanDuration, type SecurityActivityItem } from "@/lib/admin-security";
+import {
+  formatBanDuration,
+  SECURITY_ACTIVITY_ACTION_LABELS,
+  type SecurityActivityItem,
+} from "@/lib/admin-security";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
 });
-
-const actionLabels: Record<SecurityActivityItem["action"], string> = {
-  ban: "Ban",
-  unban: "Unban",
-  "revoke-session": "Revoke Session",
-  "revoke-all-sessions": "Revoke all Sessions",
-};
 
 function IdentitySnapshot({
   name,
@@ -41,7 +38,7 @@ function activityColumns(global: boolean): DataTableColumnDef<SecurityActivityIt
       header: "Action",
       cell: ({ row }) => (
         <Badge variant={row.original.action === "ban" ? "destructive" : "outline"}>
-          {actionLabels[row.original.action]}
+          {SECURITY_ACTIVITY_ACTION_LABELS[row.original.action]}
         </Badge>
       ),
     },

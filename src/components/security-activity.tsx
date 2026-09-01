@@ -29,6 +29,7 @@ import type {
   SecurityActivityListResult,
   SecurityActivitySearch,
 } from "@/lib/admin-security";
+import { getPaginationItems } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
 const actionOptions: Array<{ value: SecurityActivityAction; label: string }> = [
@@ -46,22 +47,6 @@ function dateFromSearch(value?: string): Date | undefined {
 
 function searchDate(value?: Date): string | undefined {
   return value ? format(value, "yyyy-MM-dd") : undefined;
-}
-
-function paginationItems(page: number, totalPages: number): Array<number | "left" | "right"> {
-  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
-  const pages: Array<number | "left" | "right"> = [1];
-  if (page > 3) pages.push("left");
-  for (
-    let current = Math.max(2, page - 1);
-    current <= Math.min(totalPages - 1, page + 1);
-    current++
-  ) {
-    pages.push(current);
-  }
-  if (page < totalPages - 2) pages.push("right");
-  pages.push(totalPages);
-  return pages;
 }
 
 function DateRangeFilter({
@@ -235,7 +220,7 @@ export function SecurityActivity({
                 Previous
               </Link>
             </PaginationItem>
-            {paginationItems(result.page, result.totalPages).map((item) =>
+            {getPaginationItems(result.page, result.totalPages).map((item) =>
               typeof item === "number" ? (
                 <PaginationItem key={item}>
                   <Link

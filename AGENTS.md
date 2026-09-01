@@ -36,3 +36,5 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 - Identity Domain Account 查询直接在 D1 中分页；角色过滤需按逗号分隔角色识别 `admin`，排序始终追加 User ID 作为确定性 tie-breaker
 - Better Auth 全局 before hook 早于端点 middleware；放行 Admin 安全端点时用 `getAuthoritativeSessionFromCtx` 自行鉴权，after hook 先确认 `ctx.context.returned` 成功再做清理与 Security activity
 - Session 管理界面只使用非凭据 Session ID；服务端按 Account + Session ID 解析私有 token，再调用 Better Auth 单 Session 撤销端点
+- `bun run generate-routes` 单独执行会暂时移除 routeTree 尾部的 TanStack Start `Register` 声明；按 generate → build → diff check 顺序验证，Vite Start 插件会恢复该声明
+- Security activity 日期筛选使用 UTC 日期边界：起始日 `>=` 当日零点，结束日 `<` 次日零点；反向范围交换，非法日期直接拒绝，避免静默扩大结果

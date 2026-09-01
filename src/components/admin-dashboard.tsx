@@ -38,19 +38,12 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import type { AdminDashboardResult } from "@/lib/admin-dashboard";
-import type { SecurityActivityItem } from "@/lib/admin-security";
+import { SECURITY_ACTIVITY_ACTION_LABELS, type SecurityActivityItem } from "@/lib/admin-security";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
 });
-
-const actionLabels: Record<SecurityActivityItem["action"], string> = {
-  ban: "Ban",
-  unban: "Unban",
-  "revoke-session": "Revoke Session",
-  "revoke-all-sessions": "Revoke all Sessions",
-};
 
 function MetricCard({
   title,
@@ -103,7 +96,7 @@ function RecentActivity({ activity }: { activity: SecurityActivityItem[] }) {
           <ItemContent>
             <ItemTitle>
               <Badge variant={item.action === "ban" ? "destructive" : "outline"}>
-                {actionLabels[item.action]}
+                {SECURITY_ACTIVITY_ACTION_LABELS[item.action]}
               </Badge>
               <span>{item.targetName}</span>
             </ItemTitle>

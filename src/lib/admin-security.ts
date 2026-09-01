@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+import { escapeLikePattern } from "./sql";
+
 export const BAN_REASON_PRESETS = [
   "Suspicious activity",
   "Compromised account",
@@ -90,6 +92,13 @@ export const SECURITY_ACTIVITY_ACTIONS = [
 ] as const;
 
 export type SecurityActivityAction = (typeof SECURITY_ACTIVITY_ACTIONS)[number];
+
+export const SECURITY_ACTIVITY_ACTION_LABELS: Record<SecurityActivityAction, string> = {
+  ban: "Ban",
+  unban: "Unban",
+  "revoke-session": "Revoke Session",
+  "revoke-all-sessions": "Revoke all Sessions",
+};
 
 export interface SecurityActivityItem {
   activityId: string;
@@ -218,10 +227,6 @@ export function normalizeSecurityActivitySearch(
   };
 }
 
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, "\\$&");
-}
-
 function dateStart(value: string): number {
   const [year, month, day] = value.split("-").map(Number);
   return Date.UTC(year, month - 1, day);
@@ -239,7 +244,7 @@ export async function listGlobalSecurityActivity(
     bindings.push(search.action);
   }
   if (search.q) {
-    const term = `%${escapeLike(search.q.toLowerCase())}%`;
+    const term = `%${escapeLikePattern(search.q.toLowerCase())}%`;
     conditions.push(`(lower(actor_name) LIKE ? ESCAPE '\\'
       OR lower(actor_email) LIKE ? ESCAPE '\\'
       OR lower(target_name) LIKE ? ESCAPE '\\'
