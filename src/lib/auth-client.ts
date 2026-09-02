@@ -3,12 +3,19 @@ import { adminClient, emailOTPClient, twoFactorClient } from "better-auth/client
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 
 import { getOAuthContinuationPayload, type PendingOAuthContinuation } from "./oauth-policy";
+import { getTwoFactorChallengeUrl } from "./two-factor-challenge";
 
 export const authClient = createAuthClient({
   plugins: [
     adminClient(),
     emailOTPClient(),
-    twoFactorClient({ twoFactorPage: "/two-factor" }),
+    twoFactorClient({
+      onTwoFactorRedirect() {
+        if (typeof window !== "undefined") {
+          window.location.assign(getTwoFactorChallengeUrl(window.location.search));
+        }
+      },
+    }),
     oauthProviderClient(),
   ],
 });

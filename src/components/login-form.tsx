@@ -87,6 +87,10 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
           return;
         }
 
+        if (res.data && "twoFactorRedirect" in res.data && res.data.twoFactorRedirect) {
+          return;
+        }
+
         if (!(await continuePendingOAuth())) {
           await navigate({ to: getPostLoginRedirect() });
         }
