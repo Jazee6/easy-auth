@@ -1,7 +1,11 @@
 import { Outlet, createFileRoute, redirect, useMatches } from "@tanstack/react-router";
 
+import packageJson from "../../../package.json";
 import { AppSidebar } from "@/components/app-sidebar";
+import { GithubIcon } from "@/components/github-icon";
+import { buttonVariants } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getRouteRedirect } from "@/lib/auth-policy";
 import { fetchSession } from "@/lib/auth-server";
 
@@ -50,6 +54,26 @@ function AccountLayout() {
           <div className="flex items-center gap-2 text-sm font-semibold">
             <span>{title}</span>
           </div>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <a
+                  href="https://github.com/Jazee6/easy-auth"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="View Easy Auth on GitHub"
+                  className={buttonVariants({
+                    variant: "ghost",
+                    size: "icon",
+                    className: "ml-auto",
+                  })}
+                />
+              }
+            >
+              <GithubIcon />
+            </TooltipTrigger>
+            <TooltipContent>v{packageJson.version}</TooltipContent>
+          </Tooltip>
         </header>
         <main className="flex flex-1 justify-center p-6 md:p-8">
           <Outlet />

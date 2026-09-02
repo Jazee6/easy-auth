@@ -15,18 +15,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-  FieldTitle,
-} from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import {
@@ -60,14 +56,6 @@ const banFormSchema = v.pipe(
 );
 
 type BanFormValue = v.InferInput<typeof banFormSchema>;
-
-const durationOptions: { value: BanDuration; description: string }[] = [
-  { value: "one-hour", description: "Short-term containment" },
-  { value: "24-hours", description: "One full day" },
-  { value: "seven-days", description: "One week" },
-  { value: "30-days", description: "Thirty days" },
-  { value: "permanent", description: "Until explicitly unbanned" },
-];
 
 function selectedReason(value: BanFormValue): string {
   return value.reasonChoice === CUSTOM_REASON ? value.customReason.trim() : value.reasonChoice;
@@ -162,10 +150,9 @@ export function BanAccountAction({
 
             <form.Field name="reasonChoice">
               {(field) => (
-                <FieldSet>
-                  <FieldLegend variant="label">Reason</FieldLegend>
-                  <RadioGroup
-                    name={field.name}
+                <Field>
+                  <FieldLabel htmlFor="ban-reason">Reason</FieldLabel>
+                  <Select
                     value={field.state.value}
                     onValueChange={(value) => {
                       clearSubmissionError();
@@ -173,23 +160,20 @@ export function BanAccountAction({
                         field.handleChange(value as (typeof reasonChoices)[number]);
                       }
                     }}
-                    className="grid sm:grid-cols-2"
                   >
-                    {reasonChoices.map((reason, index) => (
-                      <FieldLabel key={reason} htmlFor={`ban-reason-${index}`}>
-                        <Field orientation="horizontal">
-                          <FieldContent>
-                            <FieldTitle>
-                              {reason === CUSTOM_REASON ? "Custom reason" : reason}
-                            </FieldTitle>
-                          </FieldContent>
-                          <RadioGroupItem value={reason} id={`ban-reason-${index}`} />
-                        </Field>
-                      </FieldLabel>
-                    ))}
-                  </RadioGroup>
+                    <SelectTrigger id="ban-reason" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reasonChoices.map((reason) => (
+                        <SelectItem key={reason} value={reason}>
+                          {reason === CUSTOM_REASON ? "Custom reason" : reason}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FieldError errors={field.state.meta.errors} />
-                </FieldSet>
+                </Field>
               )}
             </form.Field>
 
@@ -222,10 +206,9 @@ export function BanAccountAction({
 
             <form.Field name="duration">
               {(field) => (
-                <FieldSet>
-                  <FieldLegend variant="label">Duration</FieldLegend>
-                  <RadioGroup
-                    name={field.name}
+                <Field>
+                  <FieldLabel htmlFor="ban-duration">Duration</FieldLabel>
+                  <Select
                     value={field.state.value}
                     onValueChange={(value) => {
                       clearSubmissionError();
@@ -233,25 +216,20 @@ export function BanAccountAction({
                         field.handleChange(value as BanDuration);
                       }
                     }}
-                    className="grid sm:grid-cols-2"
                   >
-                    {durationOptions.map((option) => (
-                      <FieldLabel key={option.value} htmlFor={`ban-duration-${option.value}`}>
-                        <Field orientation="horizontal">
-                          <FieldContent>
-                            <FieldTitle>{formatBanDuration(option.value)}</FieldTitle>
-                            <FieldDescription>{option.description}</FieldDescription>
-                          </FieldContent>
-                          <RadioGroupItem
-                            value={option.value}
-                            id={`ban-duration-${option.value}`}
-                          />
-                        </Field>
-                      </FieldLabel>
-                    ))}
-                  </RadioGroup>
+                    <SelectTrigger id="ban-duration" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BAN_DURATIONS.map((duration) => (
+                        <SelectItem key={duration} value={duration}>
+                          {formatBanDuration(duration)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FieldError errors={field.state.meta.errors} />
-                </FieldSet>
+                </Field>
               )}
             </form.Field>
 

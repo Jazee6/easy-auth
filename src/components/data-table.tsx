@@ -9,9 +9,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { cn } from "@/lib/utils";
 
 const features = tableFeatures({});
 export type DataTableColumnDef<TData extends RowData> = ColumnDef<typeof features, TData, unknown>;
+
+const stickyActionsClasses = "sticky right-0 z-10 bg-background";
 
 export function DataTable<TData extends RowData>({
   data,
@@ -33,7 +36,13 @@ export function DataTable<TData extends RowData>({
             {table.getHeaderGroups().map((group) => (
               <tr key={group.id}>
                 {group.headers.map((header) => (
-                  <th key={header.id} className="px-4 py-2 align-middle font-medium">
+                  <th
+                    key={header.id}
+                    className={cn(
+                      "px-4 py-2 align-middle font-medium",
+                      header.column.id === "actions" && cn("px-2", stickyActionsClasses),
+                    )}
+                  >
                     {header.isPlaceholder ? null : <table.FlexRender header={header} />}
                   </th>
                 ))}
@@ -45,7 +54,13 @@ export function DataTable<TData extends RowData>({
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="border-b last:border-0">
                   {row.getAllCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3 align-middle">
+                    <td
+                      key={cell.id}
+                      className={cn(
+                        "px-4 py-3 align-middle",
+                        cell.column.id === "actions" && cn("px-2", stickyActionsClasses),
+                      )}
+                    >
                       <table.FlexRender cell={cell} />
                     </td>
                   ))}

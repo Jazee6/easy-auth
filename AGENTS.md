@@ -14,8 +14,8 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 
 ## 项目规则
 
-- 子Agent固定模型为3.7 flash high，fallback为5.6 luna max
-- 表单使用shadcn Field + Tanstack Form + Valibot
+- 尽量使用shadcn/ui提供的组件和helpers，不要修改通过cli添加的组件
+- 表单使用Field + Tanstack Form + Valibot
 - 数据表单统一使用 `noValidate` + Valibot 提交时校验，字段变更只清除旧错误；确认密码一致性使用前缀容忍的即时校验，Turnstile/cooldown/输入约束/预览等即时行为保留
 - 表格使用Data Table + Tanstack Table
 - 空状态使用shadcn Empty组件
@@ -38,3 +38,4 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 - Session 管理界面只使用非凭据 Session ID；服务端按 Account + Session ID 解析私有 token，再调用 Better Auth 单 Session 撤销端点
 - `bun run generate-routes` 单独执行会暂时移除 routeTree 尾部的 TanStack Start `Register` 声明；按 generate → build → diff check 顺序验证，Vite Start 插件会恢复该声明
 - Security activity 日期筛选使用 UTC 日期边界：起始日 `>=` 当日零点，结束日 `<` 次日零点；反向范围交换，非法日期直接拒绝，避免静默扩大结果
+- Lucide 不提供 GitHub 等品牌图标；GitHub 品牌入口复用 `src/components/github-icon.tsx`，不要假设 Lucide 存在 `GithubIcon`

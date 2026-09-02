@@ -1,13 +1,18 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, ChevronRight, Search } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { ArrowDown, ArrowUp, ChevronRight, Search, X } from "lucide-react";
 
+import {
+  BanBadge,
+  EmailVerificationBadge,
+  RoleBadge,
+} from "@/components/account-badges";
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Pagination,
   PaginationContent,
@@ -63,21 +68,11 @@ function SortHeader({
   );
 }
 
-function roleBadge(role: AccountRoleFilter) {
-  return role === "administrator" ? (
-    <Badge>Administrator</Badge>
-  ) : (
-    <Badge variant="secondary">Standard</Badge>
-  );
-}
-
 function BanStatus({ account }: { account: AccountListItem }) {
-  if (account.banState === "none") return <Badge variant="outline">None</Badge>;
+  if (account.banState === "none") return <BanBadge banState={account.banState} />;
   return (
     <div className="min-w-36 space-y-1">
-      <Badge variant={account.banState === "active" ? "destructive" : "secondary"}>
-        {account.banState === "active" ? "Banned" : "Expired"}
-      </Badge>
+      <BanBadge banState={account.banState} />
       {account.banReason && (
         <div className="text-xs text-muted-foreground">{account.banReason}</div>
       )}
@@ -98,8 +93,11 @@ export function Accounts({
   search: AccountListSearch;
 }) {
   const navigate = useNavigate({ from: "/admin/accounts/" });
+  const searching = useRouterState({ select: (state) => state.isLoading });
   const updateSearch = (change: Partial<AccountListSearch>) =>
     navigate({ search: { ...search, ...change, page: change.page ?? 1 } });
+  const clearFilters = () =>
+    navigate({ search: { q: "", sort: search.sort, direction: search.direction, page: 1 } });
   const onSort = (field: AccountSortField) => {
     const direction = search.sort === field && search.direction === "asc" ? "desc" : "asc";
     updateSearch({ sort: field, direction });
@@ -129,15 +127,13 @@ export function Accounts({
       accessorKey: "emailVerified",
       header: "Email",
       cell: ({ row }) => (
-        <Badge variant={row.original.emailVerified ? "secondary" : "outline"}>
-          {row.original.emailVerified ? "Verified" : "Unverified"}
-        </Badge>
+        <EmailVerificationBadge emailVerified={row.original.emailVerified} />
       ),
     },
     {
       accessorKey: "role",
       header: "Role",
-      cell: ({ row }) => roleBadge(row.original.role),
+      cell: ({ row }) => <RoleBadge role={row.original.role} />,
     },
     {
       accessorKey: "banState",
@@ -185,7 +181,8 @@ export function Accounts({
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <form
-          className="flex min-w-0 flex-1 items-end gap-2"
+          id="account-search-form"
+          className="min-w-0 flex-1"
           onSubmit={(event) => {
             event.preventDefault();
             const value = new FormData(event.currentTarget).get("q");
@@ -203,10 +200,6 @@ export function Accounts({
               placeholder="Name or login email"
             />
           </Field>
-          <Button type="submit">
-            <Search />
-            Search
-          </Button>
         </form>
 
         <Field className="w-full lg:w-auto">
@@ -247,6 +240,23 @@ export function Accounts({
             </SelectContent>
           </Select>
         </Field>
+
+        <Button
+          type="submit"
+          form="account-search-form"
+          disabled={searching}
+          className="w-full lg:w-auto"
+        >
+          {searching ? <Spinner /> : <Search />}
+          Search
+        </Button>
+
+        {(search.q || search.role || search.ban) && (
+          <Button variant="ghost" onClick={clearFilters} className="w-full lg:w-auto">
+            <X />
+            Clear
+          </Button>
+        )}
       </div>
 
       <DataTable

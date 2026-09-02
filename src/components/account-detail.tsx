@@ -1,15 +1,27 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Check, Copy, FileQuestion } from "lucide-react";
+import { FileQuestion } from "lucide-react";
 
 import { AccountSessions } from "@/components/account-sessions";
+import {
+  BanBadge,
+  EmailVerificationBadge,
+  RoleBadge,
+} from "@/components/account-badges";
 import { BanAccountAction } from "@/components/ban-account-action";
+import { CopyButton } from "@/components/copy-button";
 import { PageHeader } from "@/components/page-header";
 import { SecurityActivityTable } from "@/components/security-activity-table";
 import { UnbanAccountAction } from "@/components/unban-account-action";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -26,7 +38,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { toast } from "@/components/ui/toast";
 import type { AccountListItem } from "@/lib/admin-accounts";
 import type { SecurityActivityItem } from "@/lib/admin-security";
 import type { SafeAccountSession } from "@/lib/admin-sessions";
@@ -43,15 +54,6 @@ function Detail({ label, children }: { label: string; children: React.ReactNode 
       <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{label}</dt>
       <dd className="mt-1">{children}</dd>
     </div>
-  );
-}
-
-function BanBadge({ account }: { account: AccountListItem }) {
-  if (account.banState === "none") return <Badge variant="outline">Unrestricted</Badge>;
-  return (
-    <Badge variant={account.banState === "active" ? "destructive" : "secondary"}>
-      {account.banState === "active" ? "Banned" : "Expired"}
-    </Badge>
   );
 }
 
@@ -89,18 +91,28 @@ export function AccountDetail({
   securityActivity: SecurityActivityItem[];
   sessions: SafeAccountSession[];
 }) {
-  const [copying, setCopying] = useState(false);
-  const [copied, setCopied] = useState(false);
-
   return (
     <div className="w-full max-w-5xl space-y-6">
-      <Link
-        to="/admin/accounts"
-        search={{ q: "", sort: "createdAt", direction: "desc", page: 1 }}
-        className={buttonVariants({ variant: "ghost", size: "sm" })}
-      >
-        Back to Accounts
-      </Link>
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink
+              render={
+                <Link
+                  to="/admin/accounts"
+                  search={{ q: "", sort: "createdAt", direction: "desc", page: 1 }}
+                />
+              }
+            >
+              Accounts
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{account.name}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <PageHeader
         title={account.name}
@@ -122,10 +134,6 @@ export function AccountDetail({
                 retry={account.banState === "active"}
               />
             )}
-            <Badge variant={account.role === "administrator" ? "default" : "secondary"}>
-              {account.role === "administrator" ? "Administrator" : "Standard"}
-            </Badge>
-            <BanBadge account={account} />
           </>
         }
       />
@@ -145,13 +153,16 @@ export function AccountDetail({
           <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <Detail label="Name">{account.name}</Detail>
             <Detail label="Login email">{account.email}</Detail>
+            <Detail label="Role">
+              <RoleBadge role={account.role} />
+            </Detail>
             <Detail label="Email verification">
-              {account.emailVerified ? "Verified" : "Unverified"}
+              <EmailVerificationBadge emailVerified={account.emailVerified} />
             </Detail>
             <Detail label="Created">{dateFormatter.format(new Date(account.createdAt))}</Detail>
             <Detail label="Updated">{dateFormatter.format(new Date(account.updatedAt))}</Detail>
             <Detail label="Ban state">
-              <BanBadge account={account} />
+              <BanBadge banState={account.banState} />
             </Detail>
             {account.banReason && <Detail label="Ban reason">{account.banReason}</Detail>}
             {account.banExpires && (
@@ -205,29 +216,7 @@ export function AccountDetail({
         <CardContent>
           <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
             <code className="break-all text-sm">{account.accountId}</code>
-            <Button
-              variant="outline"
-              loading={copying}
-              disabled={copying}
-              onClick={async () => {
-                setCopying(true);
-                try {
-                  await navigator.clipboard.writeText(account.accountId);
-                  setCopied(true);
-                  toast.add({ title: "User ID copied" });
-                } catch {
-                  toast.add({
-                    title: "Unable to copy User ID",
-                    description: "Copy the identifier manually and try again if needed.",
-                  });
-                } finally {
-                  setCopying(false);
-                }
-              }}
-            >
-              {copied ? <Check /> : <Copy />}
-              {copied ? "Copied" : "Copy User ID"}
-            </Button>
+            <CopyButton value={account.accountId} label="User ID" className="self-start sm:self-center" />
           </div>
           <p className="text-sm text-muted-foreground" aria-live="polite">
             {account.role === "administrator"

@@ -1,5 +1,6 @@
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
-import { ActivityCell, RelativeTime } from "@/components/oauth-client-activity";
+import { ActivityCell } from "@/components/oauth-client-activity";
+import { RelativeTime } from "@/components/relative-time";
 import { PageHeader } from "@/components/page-header";
 import type { OAuthClientActivityRecord } from "@/lib/oauth-activity";
 

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "@tanstack/react-router";
 import * as v from "valibot";
-import { Check, Copy, Globe2, LockKeyhole, Plus, Smartphone, UnlockKeyhole, X } from "lucide-react";
+import { Globe2, LockKeyhole, Plus, Smartphone, UnlockKeyhole, X } from "lucide-react";
 
+import { CopyButton } from "@/components/copy-button";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -457,44 +458,10 @@ function RegistrationResult({ result }: { result: CreatedClient }) {
 }
 
 export function CopyValueRow({ value, label }: { value: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (timer.current) clearTimeout(timer.current);
-    },
-    [],
-  );
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.add({
-        title: `Unable to copy ${label}`,
-        description: "Copy it manually from the value shown.",
-        type: "error",
-      });
-    }
-  };
-
   return (
     <div className="flex items-start gap-1 rounded-md bg-muted p-3 font-mono text-sm">
       <span className="min-w-0 flex-1 break-all">{value}</span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-xs"
-        className="shrink-0 text-muted-foreground hover:text-foreground"
-        onClick={() => void copy()}
-        aria-label={copied ? "Copied" : `Copy ${label}`}
-      >
-        {copied ? <Check className="animate-in fade-in-0 zoom-in-75 text-primary" /> : <Copy />}
-      </Button>
+      <CopyButton value={value} label={label} />
     </div>
   );
 }

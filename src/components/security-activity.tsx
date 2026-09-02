@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { CalendarRange, Search, X } from "lucide-react";
 import { useState } from "react";
@@ -17,13 +17,8 @@ import {
   PaginationItem,
 } from "@/components/ui/pagination";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import type {
   SecurityActivityAction,
   SecurityActivityListResult,
@@ -122,6 +117,7 @@ export function SecurityActivity({
   search: SecurityActivitySearch;
 }) {
   const navigate = useNavigate({ from: "/admin/security-activity/" });
+  const searching = useRouterState({ select: (state) => state.isLoading });
   const updateSearch = (change: Partial<SecurityActivitySearch>) =>
     navigate({ search: { ...search, ...change, page: change.page ?? 1 } });
   const clearFilters = () => navigate({ search: { q: "", page: 1 } });
@@ -136,7 +132,8 @@ export function SecurityActivity({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <form
           noValidate
-          className="flex min-w-0 flex-1 items-end gap-2"
+          id="security-activity-search-form"
+          className="min-w-0 flex-1"
           onSubmit={(event) => {
             event.preventDefault();
             const value = new FormData(event.currentTarget).get("q");
@@ -154,10 +151,6 @@ export function SecurityActivity({
               placeholder="Actor or target name/email"
             />
           </Field>
-          <Button type="submit">
-            <Search />
-            Search
-          </Button>
         </form>
 
         <Field className="w-full lg:w-auto">
@@ -191,8 +184,18 @@ export function SecurityActivity({
           onApply={({ start, end }) => updateSearch({ start, end })}
         />
 
+        <Button
+          type="submit"
+          form="security-activity-search-form"
+          disabled={searching}
+          className="w-full lg:w-auto"
+        >
+          {searching ? <Spinner /> : <Search />}
+          Search
+        </Button>
+
         {(search.q || search.action || search.start || search.end) && (
-          <Button variant="ghost" onClick={clearFilters}>
+          <Button variant="ghost" onClick={clearFilters} className="w-full lg:w-auto">
             <X />
             Clear
           </Button>

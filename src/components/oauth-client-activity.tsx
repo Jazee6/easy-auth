@@ -3,6 +3,7 @@ import { useRouter } from "@tanstack/react-router";
 import { CircleCheck, CircleOff, ClipboardPlus, KeyRound, PencilLine, Trash2 } from "lucide-react";
 
 import { type OAuthClientDialogClient, CopyValueRow } from "@/components/oauth-client-dialog";
+import { RelativeTime } from "@/components/relative-time";
 import {
   Empty,
   EmptyDescription,
@@ -29,12 +30,9 @@ import {
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toast";
 import {
-  formatAbsoluteTime,
   formatOAuthClientActivityEvent,
-  formatRelativeTime,
   type OAuthClientActivityIcon,
   type OAuthClientActivityRecord,
 } from "@/lib/oauth-activity";
@@ -49,27 +47,6 @@ const activityIcons: Record<OAuthClientActivityIcon, typeof ClipboardPlus> = {
   rotated: KeyRound,
   deleted: Trash2,
 };
-
-export function RelativeTime({ value }: { value: Date | number | string }) {
-  const absolute = formatAbsoluteTime(value);
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <span
-              tabIndex={0}
-              className="cursor-help underline decoration-dotted underline-offset-4"
-            />
-          }
-        >
-          {formatRelativeTime(value)}
-        </TooltipTrigger>
-        <TooltipContent>{absolute}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 export function ActivityCell({ record }: { record: OAuthClientActivityRecord }) {
   const event = formatOAuthClientActivityEvent(record);

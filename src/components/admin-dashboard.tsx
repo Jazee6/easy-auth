@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
+import { SecurityActivityActionBadge } from "@/components/security-activity-table";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -38,7 +38,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import type { AdminDashboardResult } from "@/lib/admin-dashboard";
-import { SECURITY_ACTIVITY_ACTION_LABELS, type SecurityActivityItem } from "@/lib/admin-security";
+import type { SecurityActivityItem } from "@/lib/admin-security";
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
@@ -95,9 +95,7 @@ function RecentActivity({ activity }: { activity: SecurityActivityItem[] }) {
         <Item key={item.activityId} variant="outline" size="sm">
           <ItemContent>
             <ItemTitle>
-              <Badge variant={item.action === "ban" ? "destructive" : "outline"}>
-                {SECURITY_ACTIVITY_ACTION_LABELS[item.action]}
-              </Badge>
+              <SecurityActivityActionBadge action={item.action} />
               <span>{item.targetName}</span>
             </ItemTitle>
             <ItemDescription>

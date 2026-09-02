@@ -1,8 +1,13 @@
+import { Ban, LockOpen, LogOut, MonitorSmartphone } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
+import { RelativeTime } from "@/components/relative-time";
 import { Badge } from "@/components/ui/badge";
 import {
   formatBanDuration,
   SECURITY_ACTIVITY_ACTION_LABELS,
+  type SecurityActivityAction,
   type SecurityActivityItem,
 } from "@/lib/admin-security";
 
@@ -10,6 +15,23 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
 });
+
+const actionIcons: Record<SecurityActivityAction, LucideIcon> = {
+  ban: Ban,
+  unban: LockOpen,
+  "revoke-session": LogOut,
+  "revoke-all-sessions": MonitorSmartphone,
+};
+
+export function SecurityActivityActionBadge({ action }: { action: SecurityActivityAction }) {
+  const Icon = actionIcons[action];
+  return (
+    <Badge variant={action === "ban" ? "destructive" : "outline"}>
+      <Icon aria-hidden="true" />
+      {SECURITY_ACTIVITY_ACTION_LABELS[action]}
+    </Badge>
+  );
+}
 
 function IdentitySnapshot({
   name,
@@ -36,11 +58,7 @@ function activityColumns(global: boolean): DataTableColumnDef<SecurityActivityIt
     {
       accessorKey: "action",
       header: "Action",
-      cell: ({ row }) => (
-        <Badge variant={row.original.action === "ban" ? "destructive" : "outline"}>
-          {SECURITY_ACTIVITY_ACTION_LABELS[row.original.action]}
-        </Badge>
-      ),
+      cell: ({ row }) => <SecurityActivityActionBadge action={row.original.action} />,
     },
     {
       id: "details",
@@ -105,7 +123,7 @@ function activityColumns(global: boolean): DataTableColumnDef<SecurityActivityIt
     header: "Time",
     cell: ({ row }) => (
       <span className="whitespace-nowrap">
-        {dateFormatter.format(new Date(row.original.createdAt))}
+        <RelativeTime value={row.original.createdAt} />
       </span>
     ),
   });
