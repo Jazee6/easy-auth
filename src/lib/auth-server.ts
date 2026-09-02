@@ -9,6 +9,7 @@ import {
   revokeOwnAccountSession,
 } from "./account-session-service";
 import { auth } from "./auth";
+import { getOwnTwoFactorStatus } from "./two-factor-management";
 
 const sessionIdSchema = v.object({
   sessionId: v.pipe(v.string(), v.trim(), v.nonEmpty("Session ID is required")),
@@ -28,6 +29,14 @@ export const fetchAccountSignInMethods = createServerFn({ method: "GET" }).handl
 
 export const fetchAccountSessions = createServerFn({ method: "GET" }).handler(async () => {
   return listOwnAccountSessions({
+    database: db.$client,
+    authApi: auth.api,
+    headers: getRequestHeaders(),
+  });
+});
+
+export const fetchTwoFactorStatus = createServerFn({ method: "GET" }).handler(async () => {
+  return getOwnTwoFactorStatus({
     database: db.$client,
     authApi: auth.api,
     headers: getRequestHeaders(),

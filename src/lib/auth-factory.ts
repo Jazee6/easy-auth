@@ -32,6 +32,10 @@ import {
   type AuthEmailSender,
 } from "./email-service";
 import { hasAdministratorRole, isDirectOAuthManagementPath } from "./oauth-policy";
+import {
+  createTwoFactorManagementPlugin,
+  type TwoFactorCleanupFailureEvent,
+} from "./two-factor-management-plugin";
 import { getAuthHandlerPath, getConstrainedAuthSurfaceError } from "./two-factor-policy";
 
 export interface AuthEnvironment {
@@ -52,6 +56,7 @@ export interface EasyAuthFactoryOptions {
   captchaEnabled?: boolean;
   tanstackCookiesEnabled?: boolean;
   onSecurityActivityFailure?: (event: SecurityActivityFailureEvent) => void;
+  onTwoFactorCleanupFailure?: (event: TwoFactorCleanupFailureEvent) => void;
 }
 
 const defaultDenyAdminPlugin = () => ({
@@ -115,6 +120,7 @@ export function createEasyAuth({
   captchaEnabled = true,
   tanstackCookiesEnabled = true,
   onSecurityActivityFailure,
+  onTwoFactorCleanupFailure,
 }: EasyAuthFactoryOptions) {
   const database = drizzle(environment.DB, { schema });
 
@@ -190,6 +196,9 @@ export function createEasyAuth({
         backupCodeOptions: {
           storeBackupCodes: "encrypted",
         },
+      }),
+      createTwoFactorManagementPlugin(environment.DB, {
+        onCleanupFailure: onTwoFactorCleanupFailure,
       }),
       oauthProvider({
         loginPage: "/login",
