@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { describeSessionDevice } from "./admin-sessions";
+import {
+  describeSessionDevice,
+  orderSelfServiceAccountSessions,
+  type SafeAccountSession,
+} from "./admin-sessions";
 
 const WINDOWS_CHROME =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -29,5 +33,58 @@ describe("Session device description", () => {
     };
     expect(describeSessionDevice(null)).toEqual(fallback);
     expect(describeSessionDevice("custom-client/1.0")).toEqual(fallback);
+  });
+});
+
+describe("Account-owned Session ordering", () => {
+  test("places the current Session first and uses update time then ID for a stable order", () => {
+    const session = (
+      sessionId: string,
+      updatedAt: number,
+      createdAt = updatedAt,
+    ): SafeAccountSession => ({
+      sessionId,
+      browser: "Unknown browser",
+      operatingSystem: "Unknown operating system",
+      deviceType: "Unknown device",
+      ipAddress: "Unknown",
+      createdAt,
+      updatedAt,
+      expiresAt: updatedAt + 10_000,
+    });
+
+    expect(
+      orderSelfServiceAccountSessions(
+        [
+          session("same-b", 300),
+          session("current", 100),
+          session("older", 200),
+          session("same-a", 300),
+        ],
+        "current",
+      ).map(({ sessionId, isCurrent }) => ({ sessionId, isCurrent })),
+    ).toEqual([
+      { sessionId: "current", isCurrent: true },
+      { sessionId: "same-a", isCurrent: false },
+      { sessionId: "same-b", isCurrent: false },
+      { sessionId: "older", isCurrent: false },
+    ]);
+  });
+
+  test("marks no Session current when the authoritative ID is absent", () => {
+    const sessions: SafeAccountSession[] = [
+      {
+        sessionId: "only",
+        browser: "Unknown browser",
+        operatingSystem: "Unknown operating system",
+        deviceType: "Unknown device",
+        ipAddress: "Unknown",
+        createdAt: 100,
+        updatedAt: 100,
+        expiresAt: 200,
+      },
+    ];
+
+    expect(orderSelfServiceAccountSessions(sessions, "missing")[0]?.isCurrent).toBe(false);
   });
 });

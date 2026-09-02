@@ -16,6 +16,10 @@ export interface SafeAccountSession extends SessionDeviceDescription {
   expiresAt: number;
 }
 
+export interface SelfServiceAccountSession extends SafeAccountSession {
+  isCurrent: boolean;
+}
+
 interface SessionProjectionRow {
   session_id: string;
   ip_address: string | null;
@@ -92,30 +96,87 @@ async function assertStandardAccount(database: D1Database, accountId: string): P
   }
 }
 
-export async function listActiveAccountSessions(
+async function listActiveSessionRows(
   database: D1Database,
   accountId: string,
-  now = Date.now(),
-): Promise<SafeAccountSession[]> {
-  await assertStandardAccount(database, accountId);
+  now: number,
+): Promise<SessionProjectionRow[]> {
   const rows = await database
     .prepare(
       `SELECT id AS session_id, ip_address, user_agent, created_at, updated_at, expires_at
       FROM session
-      WHERE user_id = ? AND expires_at > ?
-      ORDER BY created_at DESC, id DESC`,
+      WHERE user_id = ? AND expires_at > ?`,
     )
     .bind(accountId, now)
     .all<SessionProjectionRow>();
+  return rows.results;
+}
 
-  return rows.results.map((row) => ({
+function projectSession(row: SessionProjectionRow): SafeAccountSession {
+  return {
     sessionId: row.session_id,
     ...describeSessionDevice(row.user_agent),
     ipAddress: row.ip_address ?? "Unknown",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     expiresAt: row.expires_at,
-  }));
+  };
+}
+
+function compareSessionIds(left: string, right: string): number {
+  if (left === right) return 0;
+  return left < right ? -1 : 1;
+}
+
+export function orderSelfServiceAccountSessions(
+  sessions: SafeAccountSession[],
+  currentSessionId: string,
+): SelfServiceAccountSession[] {
+  return sessions
+    .map((session) => ({ ...session, isCurrent: session.sessionId === currentSessionId }))
+    .sort(
+      (left, right) =>
+        Number(right.isCurrent) - Number(left.isCurrent) ||
+        right.updatedAt - left.updatedAt ||
+        compareSessionIds(left.sessionId, right.sessionId),
+    );
+}
+
+export async function listActiveAccountSessions(
+  database: D1Database,
+  accountId: string,
+  now = Date.now(),
+): Promise<SafeAccountSession[]> {
+  await assertStandardAccount(database, accountId);
+  return (await listActiveSessionRows(database, accountId, now))
+    .map(projectSession)
+    .sort(
+      (left, right) =>
+        right.createdAt - left.createdAt || compareSessionIds(right.sessionId, left.sessionId),
+    );
+}
+
+export async function listOwnActiveSessions(
+  database: D1Database,
+  accountId: string,
+  currentSessionId: string,
+  now = Date.now(),
+): Promise<SelfServiceAccountSession[]> {
+  const sessions = (await listActiveSessionRows(database, accountId, now)).map(projectSession);
+  return orderSelfServiceAccountSessions(sessions, currentSessionId);
+}
+
+export async function resolveOwnedActiveSessionToken(
+  database: D1Database,
+  accountId: string,
+  sessionId: string,
+  now = Date.now(),
+): Promise<string | null> {
+  const row = await database
+    .prepare("SELECT token FROM session WHERE id = ? AND user_id = ? AND expires_at > ?")
+    .bind(sessionId.trim(), accountId, now)
+    .first<SessionTokenRow>();
+  return row?.token ?? null;
 }
 
 export async function resolveActiveSessionToken(
@@ -125,9 +186,5 @@ export async function resolveActiveSessionToken(
   now = Date.now(),
 ): Promise<string | null> {
   await assertStandardAccount(database, accountId);
-  const row = await database
-    .prepare("SELECT token FROM session WHERE id = ? AND user_id = ? AND expires_at > ?")
-    .bind(sessionId, accountId, now)
-    .first<SessionTokenRow>();
-  return row?.token ?? null;
+  return resolveOwnedActiveSessionToken(database, accountId, sessionId, now);
 }
