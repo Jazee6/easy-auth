@@ -1,11 +1,16 @@
 import { createAuthClient } from "better-auth/react";
-import { adminClient, emailOTPClient } from "better-auth/client/plugins";
+import { adminClient, emailOTPClient, twoFactorClient } from "better-auth/client/plugins";
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
 
 import { getOAuthContinuationPayload, type PendingOAuthContinuation } from "./oauth-policy";
 
 export const authClient = createAuthClient({
-  plugins: [adminClient(), emailOTPClient(), oauthProviderClient()],
+  plugins: [
+    adminClient(),
+    emailOTPClient(),
+    twoFactorClient({ twoFactorPage: "/two-factor" }),
+    oauthProviderClient(),
+  ],
 });
 
 export function hasPendingOAuthFlow(): boolean {

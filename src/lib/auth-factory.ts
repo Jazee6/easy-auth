@@ -3,7 +3,7 @@ import { createAuthMiddleware } from "@better-auth/core/api";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, captcha, emailOTP, jwt } from "better-auth/plugins";
+import { admin, captcha, emailOTP, jwt, twoFactor } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -32,6 +32,7 @@ import {
   type AuthEmailSender,
 } from "./email-service";
 import { hasAdministratorRole, isDirectOAuthManagementPath } from "./oauth-policy";
+import { getAuthHandlerPath, getConstrainedAuthSurfaceError } from "./two-factor-policy";
 
 export interface AuthEnvironment {
   DB: D1Database;
@@ -117,7 +118,8 @@ export function createEasyAuth({
 }: EasyAuthFactoryOptions) {
   const database = drizzle(environment.DB, { schema });
 
-  return betterAuth({
+  const auth = betterAuth({
+    appName: "Easy Auth",
     baseURL: environment.BETTER_AUTH_URL,
     secret: environment.BETTER_AUTH_SECRET,
     database: drizzleAdapter(database, {
@@ -181,6 +183,14 @@ export function createEasyAuth({
         adminRoles: ["admin"],
       }),
       jwt(),
+      twoFactor({
+        issuer: "Easy Auth",
+        allowPasswordless: false,
+        skipVerificationOnEnable: false,
+        backupCodeOptions: {
+          storeBackupCodes: "encrypted",
+        },
+      }),
       oauthProvider({
         loginPage: "/login",
         consentPage: "/consent",
@@ -247,4 +257,13 @@ export function createEasyAuth({
       ...(tanstackCookiesEnabled ? [tanstackStartCookies()] : []),
     ],
   });
+
+  return {
+    ...auth,
+    async handler(request: Request): Promise<Response> {
+      const error = getConstrainedAuthSurfaceError(getAuthHandlerPath(request.url));
+      if (error) return Response.json(error, { status: 403 });
+      return auth.handler(request);
+    },
+  };
 }
