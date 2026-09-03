@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { AppWindow } from "lucide-react";
+import { LayoutGrid } from "lucide-react";
 
 import {
   AlertDialog,
@@ -66,7 +66,7 @@ export function AuthorizedApplications({ applications }: { applications: Authori
           <Empty>
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <AppWindow />
+                <LayoutGrid />
               </EmptyMedia>
               <EmptyTitle>No applications are authorized.</EmptyTitle>
             </EmptyHeader>

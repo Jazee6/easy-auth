@@ -6,9 +6,9 @@ import {
   IdCard,
   KeyRound,
   LayoutDashboard,
+  LayoutGrid,
   Shield,
   ShieldAlert,
-  ShieldCheck,
   User,
   Users,
 } from "lucide-react";
@@ -117,7 +117,7 @@ export function AppSidebar({
                   tooltip="Applications"
                   render={
                     <Link to="/applications">
-                      <ShieldCheck className="size-4" />
+                      <LayoutGrid className="size-4" />
                       <span>Applications</span>
                     </Link>
                   }
