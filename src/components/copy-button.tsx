@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from "react";
+import type { VariantProps } from "class-variance-authority";
 import { Check, Copy } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, type buttonVariants } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 
-export function CopyButton({
-  value,
-  label,
-  className,
-}: {
+export interface CopyButtonProps {
   value: string;
   label: string;
+  children?: React.ReactNode;
+  variant?: VariantProps<typeof buttonVariants>["variant"];
+  size?: VariantProps<typeof buttonVariants>["size"];
   className?: string;
-}) {
+}
+
+export function CopyButton({ value, label, children, variant, size, className }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -40,16 +42,24 @@ export function CopyButton({
     }
   }
 
+  const resolvedVariant = variant ?? (children ? "outline" : "ghost");
+  const resolvedSize = size ?? (children ? "default" : "icon-xs");
+
   return (
     <Button
       type="button"
-      variant="ghost"
-      size="icon-xs"
-      className={cn("shrink-0 text-muted-foreground hover:text-foreground", className)}
+      variant={resolvedVariant}
+      size={resolvedSize}
+      className={cn(
+        "shrink-0",
+        !children && resolvedVariant === "ghost" && "text-muted-foreground hover:text-foreground",
+        className,
+      )}
       onClick={() => void copy()}
-      aria-label={copied ? "Copied" : `Copy ${label}`}
+      aria-label={copied ? "Copied" : children ? undefined : `Copy ${label}`}
     >
       {copied ? <Check className="animate-in fade-in-0 zoom-in-75 text-primary" /> : <Copy />}
+      {children}
     </Button>
   );
 }

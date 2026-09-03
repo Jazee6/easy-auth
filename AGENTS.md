@@ -19,6 +19,7 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 - 数据表单统一使用 `noValidate` + Valibot 提交时校验，字段变更只清除旧错误；确认密码一致性使用前缀容忍的即时校验，Turnstile/cooldown/输入约束/预览等即时行为保留
 - 表格使用Data Table + Tanstack Table
 - 空状态使用shadcn Empty组件
+- 复制按钮使用公共组件
 - 账户/管理面板页面统一使用 PageHeader
 - 按钮加载状态统一在文字左侧+Spinner，状态为disabled
 - 已安装reactCompiler，减少不必要代码

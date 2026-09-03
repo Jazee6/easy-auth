@@ -254,11 +254,7 @@ function columns(): DataTableColumnDef<SelfServiceAccountSession>[] {
       header: "",
       cell: ({ row }) => (
         <div className="flex justify-end">
-          {row.original.isCurrent ? (
-            <span className="px-2 text-xs text-muted-foreground">Use Sign out</span>
-          ) : (
-            <RevokeOwnedSession session={row.original} />
-          )}
+          {row.original.isCurrent ? null : <RevokeOwnedSession session={row.original} />}
         </div>
       ),
     },

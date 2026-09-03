@@ -17,7 +17,7 @@ export function AccountSecurity({
   return (
     <div className="w-full max-w-4xl space-y-6">
       <PageHeader
-        title="Account Security"
+        title="Security"
         description="Manage Two-Factor Authentication and active Sessions for your Account."
       />
       <TwoFactorSettings status={twoFactorStatus} email={email} />

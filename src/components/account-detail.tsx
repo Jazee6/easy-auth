@@ -93,7 +93,7 @@ export function AccountDetail({
   sessions: SafeAccountSession[];
 }) {
   return (
-    <div className="w-full max-w-5xl space-y-6">
+    <div className="w-full max-w-7xl space-y-6">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>

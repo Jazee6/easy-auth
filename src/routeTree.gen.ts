@@ -19,10 +19,10 @@ import { Route as TwoFactorRouteImport } from './routes/two-factor'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known/oauth-authorization-server'
 import { Route as DotwellKnownOpenidConfigurationRouteImport } from './routes/[.]well-known/openid-configuration'
-import { Route as AccountAccountSecurityRouteImport } from './routes/_account/account-security'
 import { Route as AccountAdminRouteRouteImport } from './routes/_account/admin/route'
-import { Route as AccountAuthorizedApplicationsRouteImport } from './routes/_account/authorized-applications'
+import { Route as AccountApplicationsRouteImport } from './routes/_account/applications'
 import { Route as AccountProfileRouteImport } from './routes/_account/profile'
+import { Route as AccountSecurityRouteImport } from './routes/_account/security'
 import { Route as AccountSignInMethodsRouteImport } from './routes/_account/sign-in-methods'
 import { Route as AccountAdminIndexRouteImport } from './routes/_account/admin/index'
 import { Route as AccountAdminManagementActivityRouteImport } from './routes/_account/admin/management-activity'
@@ -30,7 +30,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as DotwellKnownOauthAuthorizationServerApiAuthRouteImport } from './routes/[.]well-known/oauth-authorization-server/api/auth'
 import { Route as AccountAdminAccountsIndexRouteImport } from './routes/_account/admin/accounts/index'
 import { Route as AccountAdminAccountsAccountIdRouteImport } from './routes/_account/admin/accounts/$accountId'
-import { Route as AccountAdminOauthClientsIndexRouteImport } from './routes/_account/admin/oauth-clients/index'
+import { Route as AccountAdminClientsIndexRouteImport } from './routes/_account/admin/clients/index'
 import { Route as AccountAdminSecurityActivityIndexRouteImport } from './routes/_account/admin/security-activity/index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -84,25 +84,24 @@ const DotwellKnownOpenidConfigurationRoute =
     path: '/.well-known/openid-configuration',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AccountAccountSecurityRoute = AccountAccountSecurityRouteImport.update({
-  id: '/account-security',
-  path: '/account-security',
-  getParentRoute: () => AccountRouteRoute,
-} as any)
 const AccountAdminRouteRoute = AccountAdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => AccountRouteRoute,
 } as any)
-const AccountAuthorizedApplicationsRoute =
-  AccountAuthorizedApplicationsRouteImport.update({
-    id: '/authorized-applications',
-    path: '/authorized-applications',
-    getParentRoute: () => AccountRouteRoute,
-  } as any)
+const AccountApplicationsRoute = AccountApplicationsRouteImport.update({
+  id: '/applications',
+  path: '/applications',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
 const AccountProfileRoute = AccountProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AccountSecurityRoute = AccountSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => AccountRouteRoute,
 } as any)
 const AccountSignInMethodsRoute = AccountSignInMethodsRouteImport.update({
@@ -144,10 +143,10 @@ const AccountAdminAccountsAccountIdRoute =
     path: '/accounts/$accountId',
     getParentRoute: () => AccountAdminRouteRoute,
   } as any)
-const AccountAdminOauthClientsIndexRoute =
-  AccountAdminOauthClientsIndexRouteImport.update({
-    id: '/oauth-clients/',
-    path: '/oauth-clients/',
+const AccountAdminClientsIndexRoute =
+  AccountAdminClientsIndexRouteImport.update({
+    id: '/clients/',
+    path: '/clients/',
     getParentRoute: () => AccountAdminRouteRoute,
   } as any)
 const AccountAdminSecurityActivityIndexRoute =
@@ -168,9 +167,9 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AccountAdminRouteRouteWithChildren
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/.well-known/openid-configuration': typeof DotwellKnownOpenidConfigurationRoute
-  '/account-security': typeof AccountAccountSecurityRoute
-  '/authorized-applications': typeof AccountAuthorizedApplicationsRoute
+  '/applications': typeof AccountApplicationsRoute
   '/profile': typeof AccountProfileRoute
+  '/security': typeof AccountSecurityRoute
   '/sign-in-methods': typeof AccountSignInMethodsRoute
   '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -178,7 +177,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
   '/admin/accounts/': typeof AccountAdminAccountsIndexRoute
-  '/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
+  '/admin/clients/': typeof AccountAdminClientsIndexRoute
   '/admin/security-activity/': typeof AccountAdminSecurityActivityIndexRoute
 }
 export interface FileRoutesByTo {
@@ -191,9 +190,9 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/.well-known/openid-configuration': typeof DotwellKnownOpenidConfigurationRoute
-  '/account-security': typeof AccountAccountSecurityRoute
-  '/authorized-applications': typeof AccountAuthorizedApplicationsRoute
+  '/applications': typeof AccountApplicationsRoute
   '/profile': typeof AccountProfileRoute
+  '/security': typeof AccountSecurityRoute
   '/sign-in-methods': typeof AccountSignInMethodsRoute
   '/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -201,7 +200,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
   '/admin/accounts': typeof AccountAdminAccountsIndexRoute
-  '/admin/oauth-clients': typeof AccountAdminOauthClientsIndexRoute
+  '/admin/clients': typeof AccountAdminClientsIndexRoute
   '/admin/security-activity': typeof AccountAdminSecurityActivityIndexRoute
 }
 export interface FileRoutesById {
@@ -217,9 +216,9 @@ export interface FileRoutesById {
   '/_account/admin': typeof AccountAdminRouteRouteWithChildren
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
   '/.well-known/openid-configuration': typeof DotwellKnownOpenidConfigurationRoute
-  '/_account/account-security': typeof AccountAccountSecurityRoute
-  '/_account/authorized-applications': typeof AccountAuthorizedApplicationsRoute
+  '/_account/applications': typeof AccountApplicationsRoute
   '/_account/profile': typeof AccountProfileRoute
+  '/_account/security': typeof AccountSecurityRoute
   '/_account/sign-in-methods': typeof AccountSignInMethodsRoute
   '/_account/admin/management-activity': typeof AccountAdminManagementActivityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -227,7 +226,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-authorization-server/api/auth': typeof DotwellKnownOauthAuthorizationServerApiAuthRoute
   '/_account/admin/accounts/$accountId': typeof AccountAdminAccountsAccountIdRoute
   '/_account/admin/accounts/': typeof AccountAdminAccountsIndexRoute
-  '/_account/admin/oauth-clients/': typeof AccountAdminOauthClientsIndexRoute
+  '/_account/admin/clients/': typeof AccountAdminClientsIndexRoute
   '/_account/admin/security-activity/': typeof AccountAdminSecurityActivityIndexRoute
 }
 export interface FileRouteTypes {
@@ -243,9 +242,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/.well-known/oauth-authorization-server'
     | '/.well-known/openid-configuration'
-    | '/account-security'
-    | '/authorized-applications'
+    | '/applications'
     | '/profile'
+    | '/security'
     | '/sign-in-methods'
     | '/admin/management-activity'
     | '/api/auth/$'
@@ -253,7 +252,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/admin/accounts/$accountId'
     | '/admin/accounts/'
-    | '/admin/oauth-clients/'
+    | '/admin/clients/'
     | '/admin/security-activity/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -266,9 +265,9 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/.well-known/oauth-authorization-server'
     | '/.well-known/openid-configuration'
-    | '/account-security'
-    | '/authorized-applications'
+    | '/applications'
     | '/profile'
+    | '/security'
     | '/sign-in-methods'
     | '/admin/management-activity'
     | '/api/auth/$'
@@ -276,7 +275,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/admin/accounts/$accountId'
     | '/admin/accounts'
-    | '/admin/oauth-clients'
+    | '/admin/clients'
     | '/admin/security-activity'
   id:
     | '__root__'
@@ -291,9 +290,9 @@ export interface FileRouteTypes {
     | '/_account/admin'
     | '/.well-known/oauth-authorization-server'
     | '/.well-known/openid-configuration'
-    | '/_account/account-security'
-    | '/_account/authorized-applications'
+    | '/_account/applications'
     | '/_account/profile'
+    | '/_account/security'
     | '/_account/sign-in-methods'
     | '/_account/admin/management-activity'
     | '/api/auth/$'
@@ -301,7 +300,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-authorization-server/api/auth'
     | '/_account/admin/accounts/$accountId'
     | '/_account/admin/accounts/'
-    | '/_account/admin/oauth-clients/'
+    | '/_account/admin/clients/'
     | '/_account/admin/security-activity/'
   fileRoutesById: FileRoutesById
 }
@@ -391,13 +390,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotwellKnownOpenidConfigurationRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_account/account-security': {
-      id: '/_account/account-security'
-      path: '/account-security'
-      fullPath: '/account-security'
-      preLoaderRoute: typeof AccountAccountSecurityRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
     '/_account/admin': {
       id: '/_account/admin'
       path: '/admin'
@@ -405,11 +397,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountAdminRouteRouteImport
       parentRoute: typeof AccountRouteRoute
     }
-    '/_account/authorized-applications': {
-      id: '/_account/authorized-applications'
-      path: '/authorized-applications'
-      fullPath: '/authorized-applications'
-      preLoaderRoute: typeof AccountAuthorizedApplicationsRouteImport
+    '/_account/applications': {
+      id: '/_account/applications'
+      path: '/applications'
+      fullPath: '/applications'
+      preLoaderRoute: typeof AccountApplicationsRouteImport
       parentRoute: typeof AccountRouteRoute
     }
     '/_account/profile': {
@@ -417,6 +409,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof AccountProfileRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/_account/security': {
+      id: '/_account/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof AccountSecurityRouteImport
       parentRoute: typeof AccountRouteRoute
     }
     '/_account/sign-in-methods': {
@@ -468,11 +467,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountAdminAccountsAccountIdRouteImport
       parentRoute: typeof AccountAdminRouteRoute
     }
-    '/_account/admin/oauth-clients/': {
-      id: '/_account/admin/oauth-clients/'
-      path: '/oauth-clients'
-      fullPath: '/admin/oauth-clients/'
-      preLoaderRoute: typeof AccountAdminOauthClientsIndexRouteImport
+    '/_account/admin/clients/': {
+      id: '/_account/admin/clients/'
+      path: '/clients'
+      fullPath: '/admin/clients/'
+      preLoaderRoute: typeof AccountAdminClientsIndexRouteImport
       parentRoute: typeof AccountAdminRouteRoute
     }
     '/_account/admin/security-activity/': {
@@ -490,7 +489,7 @@ interface AccountAdminRouteRouteChildren {
   AccountAdminIndexRoute: typeof AccountAdminIndexRoute
   AccountAdminAccountsAccountIdRoute: typeof AccountAdminAccountsAccountIdRoute
   AccountAdminAccountsIndexRoute: typeof AccountAdminAccountsIndexRoute
-  AccountAdminOauthClientsIndexRoute: typeof AccountAdminOauthClientsIndexRoute
+  AccountAdminClientsIndexRoute: typeof AccountAdminClientsIndexRoute
   AccountAdminSecurityActivityIndexRoute: typeof AccountAdminSecurityActivityIndexRoute
 }
 
@@ -499,7 +498,7 @@ const AccountAdminRouteRouteChildren: AccountAdminRouteRouteChildren = {
   AccountAdminIndexRoute: AccountAdminIndexRoute,
   AccountAdminAccountsAccountIdRoute: AccountAdminAccountsAccountIdRoute,
   AccountAdminAccountsIndexRoute: AccountAdminAccountsIndexRoute,
-  AccountAdminOauthClientsIndexRoute: AccountAdminOauthClientsIndexRoute,
+  AccountAdminClientsIndexRoute: AccountAdminClientsIndexRoute,
   AccountAdminSecurityActivityIndexRoute:
     AccountAdminSecurityActivityIndexRoute,
 }
@@ -509,17 +508,17 @@ const AccountAdminRouteRouteWithChildren =
 
 interface AccountRouteRouteChildren {
   AccountAdminRouteRoute: typeof AccountAdminRouteRouteWithChildren
-  AccountAccountSecurityRoute: typeof AccountAccountSecurityRoute
-  AccountAuthorizedApplicationsRoute: typeof AccountAuthorizedApplicationsRoute
+  AccountApplicationsRoute: typeof AccountApplicationsRoute
   AccountProfileRoute: typeof AccountProfileRoute
+  AccountSecurityRoute: typeof AccountSecurityRoute
   AccountSignInMethodsRoute: typeof AccountSignInMethodsRoute
 }
 
 const AccountRouteRouteChildren: AccountRouteRouteChildren = {
   AccountAdminRouteRoute: AccountAdminRouteRouteWithChildren,
-  AccountAccountSecurityRoute: AccountAccountSecurityRoute,
-  AccountAuthorizedApplicationsRoute: AccountAuthorizedApplicationsRoute,
+  AccountApplicationsRoute: AccountApplicationsRoute,
   AccountProfileRoute: AccountProfileRoute,
+  AccountSecurityRoute: AccountSecurityRoute,
   AccountSignInMethodsRoute: AccountSignInMethodsRoute,
 }
 

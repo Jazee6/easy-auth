@@ -3,8 +3,8 @@ import * as v from "valibot";
 export const accountNavigation = [
   { label: "Profile", path: "/profile" },
   { label: "Sign-in methods", path: "/sign-in-methods" },
-  { label: "Account Security", path: "/account-security" },
-  { label: "Authorized applications", path: "/authorized-applications" },
+  { label: "Security", path: "/security" },
+  { label: "Applications", path: "/applications" },
 ] as const;
 
 export const passwordConfirmationSchema = v.object({

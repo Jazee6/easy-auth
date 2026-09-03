@@ -687,8 +687,10 @@ describe("auth-policy", () => {
       expect(getRouteRedirect({ pathname: "/profile", hasSession: false })).toBe("/login");
       expect(getRouteRedirect({ pathname: "/sign-in-methods", hasSession: true })).toBeNull();
       expect(getRouteRedirect({ pathname: "/sign-in-methods", hasSession: false })).toBe("/login");
-      expect(getRouteRedirect({ pathname: "/account-security", hasSession: true })).toBeNull();
-      expect(getRouteRedirect({ pathname: "/account-security", hasSession: false })).toBe("/login");
+      expect(getRouteRedirect({ pathname: "/security", hasSession: true })).toBeNull();
+      expect(getRouteRedirect({ pathname: "/security", hasSession: false })).toBe("/login");
+      expect(getRouteRedirect({ pathname: "/applications", hasSession: true })).toBeNull();
+      expect(getRouteRedirect({ pathname: "/applications", hasSession: false })).toBe("/login");
     });
 
     it("returns expected post-action redirect paths", () => {

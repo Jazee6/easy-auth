@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 
 import { NavUser } from "@/components/nav-user";
-import { accountNavigation } from "@/lib/account-security";
 import { hasAdministratorRole } from "@/lib/oauth-policy";
 import {
   Sidebar,
@@ -44,11 +43,11 @@ export function AppSidebar({
   const location = useLocation();
   const isProfileActive = location.pathname === "/profile";
   const isSignInMethodsActive = location.pathname === "/sign-in-methods";
-  const isAccountSecurityActive = location.pathname === accountNavigation[2].path;
-  const isAuthorizationsActive = location.pathname === "/authorized-applications";
+  const isSecurityActive = location.pathname === "/security";
+  const isApplicationsActive = location.pathname === "/applications";
   const isDashboardActive = location.pathname === "/admin" || location.pathname === "/admin/";
   const isAccountsActive = location.pathname.startsWith("/admin/accounts");
-  const isOAuthClientsActive = location.pathname.startsWith("/admin/oauth-clients");
+  const isClientsActive = location.pathname.startsWith("/admin/clients");
   const isSecurityActivityActive = location.pathname === "/admin/security-activity";
   const isManagementActivityActive = location.pathname === "/admin/management-activity";
   const isAdministrator = hasAdministratorRole(user.role);
@@ -102,24 +101,24 @@ export function AppSidebar({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={isAccountSecurityActive}
-                  tooltip={accountNavigation[2].label}
+                  isActive={isSecurityActive}
+                  tooltip="Security"
                   render={
-                    <Link to={accountNavigation[2].path}>
+                    <Link to="/security">
                       <Shield className="size-4" />
-                      <span>{accountNavigation[2].label}</span>
+                      <span>Security</span>
                     </Link>
                   }
                 />
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={isAuthorizationsActive}
-                  tooltip="Authorized applications"
+                  isActive={isApplicationsActive}
+                  tooltip="Applications"
                   render={
-                    <Link to="/authorized-applications">
+                    <Link to="/applications">
                       <ShieldCheck className="size-4" />
-                      <span>Authorized applications</span>
+                      <span>Applications</span>
                     </Link>
                   }
                 />
@@ -161,12 +160,12 @@ export function AppSidebar({
                 </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    isActive={isOAuthClientsActive}
-                    tooltip="OAuth clients"
+                    isActive={isClientsActive}
+                    tooltip="Clients"
                     render={
-                      <Link to="/admin/oauth-clients">
+                      <Link to="/admin/clients">
                         <AppWindow className="size-4" />
-                        <span>OAuth clients</span>
+                        <span>Clients</span>
                       </Link>
                     }
                   />

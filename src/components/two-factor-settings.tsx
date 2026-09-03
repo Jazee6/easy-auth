@@ -1,11 +1,12 @@
 import * as React from "react";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
-import { Copy, Download, KeyRound, ShieldCheck } from "lucide-react";
+import { Download, KeyRound, ShieldCheck } from "lucide-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { encode } from "uqr";
 
 import { TwoFactorBadge } from "@/components/account-badges";
+import { CopyButton } from "@/components/copy-button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,14 +19,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -46,6 +39,15 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { toast } from "@/components/ui/toast";
 import {
   accountSecurityError,
@@ -83,19 +85,6 @@ function TotpQrCode({ value }: { value: string }) {
   );
 }
 
-async function copyText(value: string, success: string): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(value);
-    toast.add({ title: success, type: "success" });
-  } catch {
-    toast.add({
-      title: "Copy failed",
-      description: "Select and copy the value manually.",
-      type: "error",
-    });
-  }
-}
-
 function downloadBackupCodes(codes: string[]) {
   const url = URL.createObjectURL(
     new Blob([`${backupCodesText(codes)}\n`], { type: "text/plain;charset=utf-8" }),
@@ -128,14 +117,9 @@ function BackupCodes({
         ))}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void copyText(backupCodesText(codes), "Backup Codes copied")}
-        >
-          <Copy />
+        <CopyButton value={backupCodesText(codes)} label="Backup Codes" variant="outline">
           Copy all
-        </Button>
+        </CopyButton>
         <Button type="button" variant="outline" onClick={() => downloadBackupCodes(codes)}>
           <Download />
           Download
@@ -277,7 +261,7 @@ function EnrollmentDialog() {
           if (shouldRefresh) void router.invalidate();
         }}
       >
-        <DialogTrigger render={<Button />}>Set up Two-Factor Authentication</DialogTrigger>
+        <DialogTrigger render={<Button />}>Set up</DialogTrigger>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
@@ -369,17 +353,12 @@ function EnrollmentDialog() {
                           value={getTotpSecret(totpURI)}
                           className="font-mono"
                         />
-                        <Button
-                          type="button"
+                        <CopyButton
+                          value={getTotpSecret(totpURI)}
+                          label="Manual setup key"
                           variant="outline"
                           size="icon"
-                          aria-label="Copy manual setup key"
-                          onClick={() =>
-                            void copyText(getTotpSecret(totpURI), "Manual setup key copied")
-                          }
-                        >
-                          <Copy />
-                        </Button>
+                        />
                       </div>
                     </Field>
                     {formError && <FieldError errors={[{ message: formError }]} />}
@@ -776,31 +755,31 @@ export function TwoFactorSettings({
   email: string;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Two-Factor Authentication</CardTitle>
-        <CardDescription>
-          Require an Authenticator App after local password sign-in. GitHub sign-in remains
-          protected by GitHub.
-        </CardDescription>
-        <CardAction>
-          <TwoFactorBadge enabled={status.enabled} />
-        </CardAction>
-      </CardHeader>
-      <CardContent>
-        {status.enabled ? (
-          <div className="flex flex-wrap gap-2">
-            <RegenerateBackupCodesDialog />
-            <DisableTwoFactorDialog />
-          </div>
-        ) : status.hasLocalPassword ? (
-          <EnrollmentDialog />
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Two-Factor Authentication protects local password sign-in only. Set a password before
-              enabling it.
-            </p>
+    <ItemGroup>
+      <Item variant="outline">
+        <ItemMedia variant="icon">
+          <ShieldCheck />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>
+            <span>Two-Factor Authentication</span>
+            <TwoFactorBadge enabled={status.enabled} />
+          </ItemTitle>
+          <ItemDescription>
+            {!status.hasLocalPassword && !status.enabled
+              ? "Two-Factor Authentication protects local password sign-in only. Set a password before enabling it."
+              : "Require an Authenticator App after local password sign-in."}
+          </ItemDescription>
+        </ItemContent>
+        <ItemActions>
+          {status.enabled ? (
+            <>
+              <RegenerateBackupCodesDialog />
+              <DisableTwoFactorDialog />
+            </>
+          ) : status.hasLocalPassword ? (
+            <EnrollmentDialog />
+          ) : (
             <Link
               to="/forgot-password"
               search={{ action: "set", email }}
@@ -809,9 +788,9 @@ export function TwoFactorSettings({
               <KeyRound />
               Set password
             </Link>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          )}
+        </ItemActions>
+      </Item>
+    </ItemGroup>
   );
 }

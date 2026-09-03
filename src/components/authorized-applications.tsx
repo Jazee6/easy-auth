@@ -47,7 +47,7 @@ export function AuthorizedApplications({ applications }: { applications: Authori
   return (
     <div className="w-full max-w-4xl space-y-6">
       <PageHeader
-        title="Authorized applications"
+        title="Applications"
         description="Revocation prevents future token use and silent reauthorization. It cannot recall an ID token already delivered or end a relying application's own local session."
       />
       <section className="space-y-4" aria-labelledby="authorized-applications-list-title">

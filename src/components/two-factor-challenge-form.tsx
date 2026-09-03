@@ -237,10 +237,6 @@ export function TwoFactorChallengeForm({ className, ...props }: TwoFactorChallen
                   >
                     Restart login
                   </Link>
-                  <FieldDescription className="text-center">
-                    Easy Auth Two-Factor Authentication protects local password sign-in. GitHub
-                    sign-in is protected by GitHub.
-                  </FieldDescription>
                 </Field>
               </FieldGroup>
             )}

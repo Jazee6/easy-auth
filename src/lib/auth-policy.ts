@@ -498,7 +498,8 @@ export function getRouteRedirect({ pathname, hasSession }: RouteRedirectParams):
   if (
     cleanPath === "/profile" ||
     cleanPath === "/sign-in-methods" ||
-    cleanPath === "/account-security"
+    cleanPath === "/security" ||
+    cleanPath === "/applications"
   ) {
     return hasSession ? null : "/login";
   }

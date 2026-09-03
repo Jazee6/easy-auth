@@ -13,12 +13,12 @@ import {
 } from "./account-security";
 
 describe("Account Security navigation", () => {
-  test("places Account Security between sign-in methods and authorized applications", () => {
+  test("places Security between sign-in methods and applications", () => {
     expect(accountNavigation).toEqual([
       { label: "Profile", path: "/profile" },
       { label: "Sign-in methods", path: "/sign-in-methods" },
-      { label: "Account Security", path: "/account-security" },
-      { label: "Authorized applications", path: "/authorized-applications" },
+      { label: "Security", path: "/security" },
+      { label: "Applications", path: "/applications" },
     ]);
   });
 });

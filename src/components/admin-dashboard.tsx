@@ -195,12 +195,12 @@ export function AdminDashboard({ dashboard }: { dashboard: AdminDashboardResult 
                   <ArrowRight />
                 </ItemActions>
               </Item>
-              <Item variant="outline" size="sm" render={<Link to="/admin/oauth-clients" />}>
+              <Item variant="outline" size="sm" render={<Link to="/admin/clients" />}>
                 <ItemMedia variant="icon">
                   <AppWindow />
                 </ItemMedia>
                 <ItemContent>
-                  <ItemTitle>OAuth Clients</ItemTitle>
+                  <ItemTitle>Clients</ItemTitle>
                   <ItemDescription>Manage clients you created.</ItemDescription>
                 </ItemContent>
                 <ItemActions>

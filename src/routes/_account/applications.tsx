@@ -3,13 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthorizedApplications } from "@/components/authorized-applications";
 import { listApplicationAuthorizations } from "@/lib/oauth-server";
 
-export const Route = createFileRoute("/_account/authorized-applications")({
-  staticData: { title: "Authorized applications" },
+export const Route = createFileRoute("/_account/applications")({
+  staticData: { title: "Applications" },
   loader: () => listApplicationAuthorizations(),
-  component: AuthorizedApplicationsPage,
+  component: ApplicationsPage,
 });
 
-function AuthorizedApplicationsPage() {
+function ApplicationsPage() {
   const applications = Route.useLoaderData();
   return <AuthorizedApplications applications={applications} />;
 }
