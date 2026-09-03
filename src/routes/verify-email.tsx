@@ -1,14 +1,16 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import * as v from "valibot";
-import { fetchSession } from "@/lib/auth-server";
+import { fetchAuthoritativeSession } from "@/lib/auth-server";
 import { getRouteRedirect, normalizeEmail } from "@/lib/auth-policy";
 import { VerifyEmailForm } from "@/components/verify-email-form";
+import { privatePageHead } from "@/lib/page-metadata";
 
 const searchSchema = v.object({
   email: v.optional(v.pipe(v.string(), v.trim(), v.email())),
 });
 
 export const Route = createFileRoute("/verify-email")({
+  head: () => privatePageHead("Verify email"),
   validateSearch: (search) => {
     const result = v.safeParse(searchSchema, search);
     return result.success && result.output.email
@@ -16,7 +18,7 @@ export const Route = createFileRoute("/verify-email")({
       : {};
   },
   beforeLoad: async () => {
-    const session = await fetchSession();
+    const session = await fetchAuthoritativeSession();
     const redirectPath = getRouteRedirect({
       pathname: "/verify-email",
       hasSession: Boolean(session?.session),

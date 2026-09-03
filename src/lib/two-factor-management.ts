@@ -1,6 +1,7 @@
 import { APIError } from "@better-auth/core/error";
 
 import type { createEasyAuth } from "./auth-factory";
+import { getAuthoritativeSession } from "./authoritative-session";
 
 export const TWO_FACTOR_ALREADY_ENABLED = {
   code: "TWO_FACTOR_ALREADY_ENABLED",
@@ -45,7 +46,7 @@ export async function getOwnTwoFactorStatus({
   authApi: TwoFactorStatusAuthApi;
   headers: Headers;
 }): Promise<TwoFactorAccountStatus> {
-  const session = await authApi.getSession({ headers });
+  const session = await getAuthoritativeSession(authApi, headers);
   if (!session) {
     throw APIError.from("UNAUTHORIZED", TWO_FACTOR_AUTHENTICATION_REQUIRED);
   }

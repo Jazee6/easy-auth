@@ -132,6 +132,14 @@ export function createEasyAuth({
       provider: "sqlite",
       schema,
     }),
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60,
+        strategy: "compact",
+        refreshCache: false,
+      },
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: true,
@@ -177,6 +185,11 @@ export function createEasyAuth({
       },
     },
     advanced: {
+      cookiePrefix: "ea",
+      database: {
+        joins: true,
+        generateId: "uuid",
+      },
       ipAddress: {
         ipAddressHeaders: ["cf-connecting-ip"],
       },

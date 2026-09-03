@@ -84,9 +84,14 @@ async function createAccount(slug: string) {
 }
 
 function responseCookie(response: Response): string {
-  const setCookie = response.headers.get("set-cookie");
-  if (!setCookie) throw new Error("Expected a Session cookie");
-  return setCookie.split(";", 1)[0];
+  const cookies = new Map<string, string>();
+  for (const setCookie of response.headers.getSetCookie()) {
+    const cookie = setCookie.split(";", 1)[0];
+    const separator = cookie.indexOf("=");
+    if (separator > 0) cookies.set(cookie.slice(0, separator), cookie);
+  }
+  if (cookies.size === 0) throw new Error("Expected a Session cookie");
+  return [...cookies.values()].join("; ");
 }
 
 async function signIn(email: string) {

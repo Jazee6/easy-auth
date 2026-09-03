@@ -28,6 +28,7 @@ import {
 } from "./admin-security-plugin";
 import { listActiveAccountSessions, resolveActiveSessionToken } from "./admin-sessions";
 import { auth } from "./auth";
+import { getAuthoritativeSession } from "./authoritative-session";
 
 const accountIdSchema = v.object({
   accountId: v.pipe(v.string(), v.trim(), v.nonEmpty("Account ID is required")),
@@ -40,7 +41,7 @@ const sessionIdSchema = v.object({
 
 async function requireAdministrator() {
   const headers = getRequestHeaders();
-  const session = await auth.api.getSession({ headers });
+  const session = await getAuthoritativeSession(auth.api, headers);
   if (!session) throw new Error("Authentication required");
   assertAdministratorRouteAccess(session.user.role);
   return { headers, session };

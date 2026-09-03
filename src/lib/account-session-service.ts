@@ -1,6 +1,7 @@
 import { APIError } from "@better-auth/core/error";
 
 import type { createEasyAuth } from "./auth-factory";
+import { getAuthoritativeSession } from "./authoritative-session";
 import {
   listOwnActiveSessions,
   resolveOwnedActiveSessionToken,
@@ -46,7 +47,7 @@ interface CurrentSessionRow {
 }
 
 async function requireAccountSession(authApi: AccountSessionAuthApi, headers: Headers) {
-  const session = await authApi.getSession({ headers });
+  const session = await getAuthoritativeSession(authApi, headers);
   if (!session) {
     throw APIError.from("UNAUTHORIZED", ACCOUNT_SESSION_AUTHENTICATION_REQUIRED);
   }

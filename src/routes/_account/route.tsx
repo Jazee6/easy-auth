@@ -8,6 +8,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getRouteRedirect } from "@/lib/auth-policy";
 import { fetchSession } from "@/lib/auth-server";
+import { privatePageHead } from "@/lib/page-metadata";
 
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
@@ -16,6 +17,7 @@ declare module "@tanstack/react-router" {
 }
 
 export const Route = createFileRoute("/_account")({
+  head: () => privatePageHead("Account"),
   beforeLoad: async ({ location }) => {
     const session = await fetchSession();
     const redirectPath = getRouteRedirect({

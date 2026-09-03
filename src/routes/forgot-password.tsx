@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import { ForgotPasswordForm } from "@/components/forgot-password-form";
 import { normalizeEmail } from "@/lib/auth-policy";
+import { privatePageHead } from "@/lib/page-metadata";
 
 const searchSchema = v.object({
   email: v.optional(v.pipe(v.string(), v.trim(), v.email())),
@@ -10,6 +11,7 @@ const searchSchema = v.object({
 });
 
 export const Route = createFileRoute("/forgot-password")({
+  head: () => privatePageHead("Reset password"),
   validateSearch: (search) => {
     const result = v.safeParse(searchSchema, search);
     if (!result.success) {

@@ -2,11 +2,13 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { TwoFactorChallengeForm } from "@/components/two-factor-challenge-form";
 import { getPostLoginRedirect } from "@/lib/auth-policy";
-import { fetchSession } from "@/lib/auth-server";
+import { fetchAuthoritativeSession } from "@/lib/auth-server";
+import { privatePageHead } from "@/lib/page-metadata";
 
 export const Route = createFileRoute("/two-factor")({
+  head: () => privatePageHead("Two-factor authentication"),
   beforeLoad: async () => {
-    const session = await fetchSession();
+    const session = await fetchAuthoritativeSession();
     if (session?.session) {
       throw redirect({ to: getPostLoginRedirect() });
     }

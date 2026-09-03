@@ -8,6 +8,7 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import { FileQuestionIcon } from "lucide-react";
+import { useEffect } from "react";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { Toaster } from "@/components/ui/toast";
@@ -43,6 +44,42 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       {
         title: "Easy Auth",
       },
+      {
+        name: "robots",
+        content: "noindex, nofollow",
+      },
+      {
+        property: "og:title",
+        content: "Easy Auth",
+      },
+      {
+        property: "og:site_name",
+        content: "Easy Auth",
+      },
+      {
+        property: "og:type",
+        content: "website",
+      },
+      {
+        property: "og:image",
+        content: "/og-image.png",
+      },
+      {
+        property: "og:image:type",
+        content: "image/png",
+      },
+      {
+        property: "og:image:width",
+        content: "1200",
+      },
+      {
+        property: "og:image:height",
+        content: "630",
+      },
+      {
+        property: "og:image:alt",
+        content: "Easy Auth",
+      },
     ],
     links: [
       {
@@ -61,6 +98,14 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function NotFound() {
+  useEffect(() => {
+    const previousTitle = document.title;
+    document.title = "Page not found | Easy Auth";
+    return () => {
+      document.title = previousTitle;
+    };
+  }, []);
+
   return (
     <main className="flex min-h-svh items-center justify-center p-4">
       <Empty>
@@ -68,12 +113,12 @@ function NotFound() {
           <EmptyMedia variant="icon">
             <FileQuestionIcon />
           </EmptyMedia>
-          <EmptyTitle>页面不存在</EmptyTitle>
-          <EmptyDescription>你访问的页面不存在或已被移动</EmptyDescription>
+          <EmptyTitle>Page not found</EmptyTitle>
+          <EmptyDescription>The page you requested does not exist or has moved.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
           <Link data-slot="button" className={buttonVariants({ variant: "outline" })} to="/">
-            返回首页
+            Back to home
           </Link>
         </EmptyContent>
       </Empty>

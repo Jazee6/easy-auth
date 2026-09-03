@@ -2,9 +2,11 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 
 import { AccountDetail, AccountNotFound } from "@/components/account-detail";
 import { getAccount, getAccountSecurityActivity, listAccountSessions } from "@/lib/admin-server";
+import { privatePageHead } from "@/lib/page-metadata";
 
 export const Route = createFileRoute("/_account/admin/accounts/$accountId")({
   staticData: { title: "Account" },
+  head: () => privatePageHead("Account details"),
   loader: async ({ params }) => {
     const account = await getAccount({ data: { accountId: params.accountId } });
     if (!account) throw notFound();

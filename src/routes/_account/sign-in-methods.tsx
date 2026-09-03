@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { SignInMethods } from "@/components/sign-in-methods";
 import { fetchAccountSignInMethods } from "@/lib/auth-server";
+import { privatePageHead } from "@/lib/page-metadata";
 
 interface SignInMethodsSearch {
   status?: string;
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_account/sign-in-methods")({
   staticData: {
     title: "Sign-in methods",
   },
+  head: () => privatePageHead("Sign-in methods"),
   loader: () => fetchAccountSignInMethods(),
   component: SignInMethodsPage,
 });

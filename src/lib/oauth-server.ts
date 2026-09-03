@@ -6,6 +6,7 @@ import * as v from "valibot";
 import { db } from "@/db";
 import { oauthClient, oauthClientAudit, oauthConsent } from "@/db/schema";
 import { auth } from "./auth";
+import { getAuthoritativeSession } from "./authoritative-session";
 import {
   deleteOAuthClientAtomically,
   revokeApplicationAuthorizationAtomically,
@@ -39,7 +40,7 @@ function stringArray(value: unknown): string[] {
 
 async function requireSession() {
   const headers = getRequestHeaders();
-  const session = await auth.api.getSession({ headers });
+  const session = await getAuthoritativeSession(auth.api, headers);
   if (!session) throw new Error("Authentication required");
   return { headers, session };
 }

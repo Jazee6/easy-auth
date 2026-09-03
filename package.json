@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "bun run build && wrangler deploy",
+    "og:generate": "bun scripts/generate-og-image.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "auth:generate": "bunx auth@1.7.2 generate --config src/lib/auth.ts --output src/db/schema.ts -y",

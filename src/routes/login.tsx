@@ -1,13 +1,15 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { fetchSession } from "@/lib/auth-server";
+import { fetchAuthoritativeSession } from "@/lib/auth-server";
 import { getRouteRedirect } from "@/lib/auth-policy";
+import { publicPageHead } from "@/lib/page-metadata";
 import { LoginForm } from "@/components/login-form";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): { error?: string } =>
     typeof search.error === "string" ? { error: search.error } : {},
+  head: () => publicPageHead("Sign in", "/login"),
   beforeLoad: async () => {
-    const session = await fetchSession();
+    const session = await fetchAuthoritativeSession();
     const redirectPath = getRouteRedirect({
       pathname: "/login",
       hasSession: Boolean(session?.session),

@@ -119,6 +119,40 @@ async function signInCookie(email: string): Promise<string> {
   return setCookie.split(";", 1)[0];
 }
 
+describe("Session cookie configuration", () => {
+  test("uses the ea prefix and bypasses cached Sessions for authoritative reads", async () => {
+    const email = "cookie-cache@example.com";
+    const accountId = await createVerifiedAccount(email);
+    expect(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(accountId),
+    ).toBe(true);
+    await database.prepare("DELETE FROM rate_limit").run();
+
+    const response = await postAuth("/sign-in/email", {
+      email,
+      password: "integration-password",
+    });
+    expect(response.status).toBe(200);
+
+    const setCookies = response.headers.getSetCookie();
+    expect(setCookies.some((cookie) => cookie.startsWith("ea.session_token="))).toBe(true);
+    expect(setCookies.some((cookie) => cookie.startsWith("ea.session_data="))).toBe(true);
+    const cookie = setCookies.map((value) => value.split(";", 1)[0]).join("; ");
+    const headers = new Headers({ cookie });
+
+    expect((await auth.api.getSession({ headers })) === null).toBe(false);
+    await database.prepare("DELETE FROM session WHERE user_id = ?").bind(accountId).run();
+
+    expect((await auth.api.getSession({ headers })) === null).toBe(false);
+    expect(
+      await auth.api.getSession({
+        headers,
+        query: { disableCookieCache: true },
+      }),
+    ).toBeNull();
+  });
+});
+
 describe("Admin boundary HTTP integration", () => {
   test("default-denies every direct Admin Plugin read and mutation", async () => {
     const adminEmail = "admin-default-deny@example.com";

@@ -3,6 +3,7 @@ import * as v from "valibot";
 
 import { OAuthConsent } from "@/components/oauth-consent";
 import { getConsentClient } from "@/lib/oauth-server";
+import { privatePageHead } from "@/lib/page-metadata";
 
 const searchSchema = v.object({
   client_id: v.pipe(v.string(), v.nonEmpty()),
@@ -10,6 +11,7 @@ const searchSchema = v.object({
 });
 
 export const Route = createFileRoute("/consent")({
+  head: () => privatePageHead("Authorize application"),
   validateSearch: (search) => v.parse(searchSchema, search),
   loaderDeps: ({ search }) => ({ clientId: search.client_id }),
   loader: ({ deps }) => getConsentClient({ data: { clientId: deps.clientId } }),

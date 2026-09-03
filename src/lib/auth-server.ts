@@ -9,6 +9,7 @@ import {
   revokeOwnAccountSession,
 } from "./account-session-service";
 import { auth } from "./auth";
+import { getAuthoritativeSession } from "./authoritative-session";
 import { getOwnTwoFactorStatus } from "./two-factor-management";
 
 const sessionIdSchema = v.object({
@@ -21,10 +22,15 @@ export const fetchSession = createServerFn({ method: "GET" }).handler(async () =
   });
 });
 
+export const fetchAuthoritativeSession = createServerFn({ method: "GET" }).handler(async () => {
+  return getAuthoritativeSession(auth.api, getRequestHeaders());
+});
+
 export const fetchAccountSignInMethods = createServerFn({ method: "GET" }).handler(async () => {
-  return auth.api.listUserAccounts({
-    headers: getRequestHeaders(),
-  });
+  const headers = getRequestHeaders();
+  const session = await getAuthoritativeSession(auth.api, headers);
+  if (!session) throw new Error("Authentication required");
+  return auth.api.listUserAccounts({ headers });
 });
 
 export const fetchAccountSessions = createServerFn({ method: "GET" }).handler(async () => {
