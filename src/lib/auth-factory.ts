@@ -177,6 +177,9 @@ export function createEasyAuth({
       },
     },
     advanced: {
+      ipAddress: {
+        ipAddressHeaders: ["cf-connecting-ip"],
+      },
       backgroundTasks: {
         handler(task) {
           scheduleBackgroundTask(task, waitUntil ?? (() => {}));

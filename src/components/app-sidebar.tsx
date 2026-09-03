@@ -6,6 +6,7 @@ import {
   IdCard,
   KeyRound,
   LayoutDashboard,
+  Shield,
   ShieldAlert,
   ShieldCheck,
   User,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { NavUser } from "@/components/nav-user";
+import { accountNavigation } from "@/lib/account-security";
 import { hasAdministratorRole } from "@/lib/oauth-policy";
 import {
   Sidebar,
@@ -42,6 +44,7 @@ export function AppSidebar({
   const location = useLocation();
   const isProfileActive = location.pathname === "/profile";
   const isSignInMethodsActive = location.pathname === "/sign-in-methods";
+  const isAccountSecurityActive = location.pathname === accountNavigation[2].path;
   const isAuthorizationsActive = location.pathname === "/authorized-applications";
   const isDashboardActive = location.pathname === "/admin" || location.pathname === "/admin/";
   const isAccountsActive = location.pathname.startsWith("/admin/accounts");
@@ -93,6 +96,18 @@ export function AppSidebar({
                     <Link to="/sign-in-methods">
                       <KeyRound className="size-4" />
                       <span>Sign-in methods</span>
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isAccountSecurityActive}
+                  tooltip={accountNavigation[2].label}
+                  render={
+                    <Link to={accountNavigation[2].path}>
+                      <Shield className="size-4" />
+                      <span>{accountNavigation[2].label}</span>
                     </Link>
                   }
                 />

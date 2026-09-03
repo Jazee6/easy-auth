@@ -350,6 +350,40 @@ describe("Two-Factor disable lifecycle", () => {
           now + 60_000,
           now,
         ),
+      database
+        .prepare(
+          "INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind("disable-trust-one", "trust-device-disable-one", account.id, now + 60_000, now, now),
+      database
+        .prepare(
+          "INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind("disable-trust-two", "trust-device-disable-two", account.id, now + 60_000, now, now),
+      database
+        .prepare(
+          "INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "disable-unrelated-trust",
+          "trust-device-disable-unrelated",
+          "another-account-id",
+          now + 60_000,
+          now,
+          now,
+        ),
+      database
+        .prepare(
+          "INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(
+          "disable-unrelated-verification",
+          "unrelated-verification",
+          account.id,
+          now + 60_000,
+          now,
+          now,
+        ),
     ]);
 
     const response = await postAuth("/two-factor/disable", { password: PASSWORD }, enabled.cookie);
@@ -365,6 +399,11 @@ describe("Two-Factor disable lifecycle", () => {
     expect(await count("oauth_consent", "user_id = ?", account.id)).toBe(1);
     expect(await count("oauth_refresh_token", "user_id = ?", account.id)).toBe(1);
     expect(await count("oauth_access_token", "user_id = ?", account.id)).toBe(1);
+    expect(
+      await count("verification", "identifier GLOB 'trust-device-*' AND value = ?", account.id),
+    ).toBe(0);
+    expect(await count("verification", "id = ?", "disable-unrelated-trust")).toBe(1);
+    expect(await count("verification", "id = ?", "disable-unrelated-verification")).toBe(1);
     expect(await count("security_activity", "target_user_id = ?", account.id)).toBe(0);
   });
 
@@ -390,13 +429,13 @@ describe("Two-Factor disable lifecycle", () => {
     expect(response.status).toBe(200);
     expect(await response.clone().json()).toEqual({
       status: true,
-      sessionCleanupRequired: true,
+      securityCleanupRequired: true,
     });
     expect(await count("two_factor", "user_id = ?", account.id)).toBe(0);
     expect(await count("session", "id = ?", remote.sessionId)).toBe(1);
     expect(cleanupFailures).toEqual([
       {
-        code: "TWO_FACTOR_SESSION_CLEANUP_FAILED",
+        code: "TWO_FACTOR_SECURITY_CLEANUP_FAILED",
         operation: "disable",
         accountId: account.id,
       },
@@ -411,5 +450,57 @@ describe("Two-Factor disable lifecycle", () => {
       headers: new Headers({ cookie: rotatedCookie }),
     });
     expect(await count("session", "user_id = ?", account.id)).toBe(1);
+  });
+
+  test("reports residual cleanup when a Trusted Device cannot be removed", async () => {
+    const account = await createAccount("two-factor-trust-cleanup-failure");
+    const initial = await signIn(account.email);
+    const enabled = await completeEnrollment(initial.cookie);
+    const remote = await insertRemoteSession(account.id, "trust-cleanup-failure-remote");
+    const now = Date.now();
+
+    await database
+      .prepare(
+        "INSERT INTO verification (id, identifier, value, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .bind(
+        "undeletable-trust-device",
+        "trust-device-undeletable",
+        account.id,
+        now + 60_000,
+        now,
+        now,
+      )
+      .run();
+    cleanupFailures.length = 0;
+    await database
+      .prepare(
+        `CREATE TRIGGER fail_two_factor_trusted_device_cleanup
+         BEFORE DELETE ON verification
+         WHEN OLD.id = 'undeletable-trust-device'
+         BEGIN
+           SELECT RAISE(FAIL, 'forced trusted device cleanup failure');
+         END`,
+      )
+      .run();
+
+    const response = await postAuth("/two-factor/disable", { password: PASSWORD }, enabled.cookie);
+    expect(response.status).toBe(200);
+    expect(await response.clone().json()).toEqual({
+      status: true,
+      securityCleanupRequired: true,
+    });
+    expect(await count("two_factor", "user_id = ?", account.id)).toBe(0);
+    expect(await count("verification", "id = ?", "undeletable-trust-device")).toBe(1);
+    expect(await count("session", "id = ?", remote.sessionId)).toBe(0);
+    expect(cleanupFailures).toEqual([
+      {
+        code: "TWO_FACTOR_SECURITY_CLEANUP_FAILED",
+        operation: "disable",
+        accountId: account.id,
+      },
+    ]);
+
+    await database.prepare("DROP TRIGGER fail_two_factor_trusted_device_cleanup").run();
   });
 });

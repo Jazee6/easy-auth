@@ -38,7 +38,7 @@ interface EasyAuthTwoFactorContext {
 }
 
 export interface TwoFactorCleanupFailureEvent {
-  code: "TWO_FACTOR_SESSION_CLEANUP_FAILED";
+  code: "TWO_FACTOR_SECURITY_CLEANUP_FAILED";
   operation: "enable" | "disable";
   accountId: string;
 }
@@ -98,14 +98,14 @@ function reportCleanupFailure(
   operation: TwoFactorCleanupOperation,
 ): void {
   const event: TwoFactorCleanupFailureEvent = {
-    code: "TWO_FACTOR_SESSION_CLEANUP_FAILED",
+    code: "TWO_FACTOR_SECURITY_CLEANUP_FAILED",
     operation: operation.action,
     accountId: operation.accountId,
   };
 
   try {
     if (options.onCleanupFailure) options.onCleanupFailure(event);
-    else context.logger.error("Two-Factor Session cleanup failed", event);
+    else context.logger.error("Two-Factor security cleanup failed", event);
   } catch {
     // Diagnostics must not change an already-authoritative Two-Factor mutation.
   }
@@ -119,18 +119,56 @@ async function responseWithCleanupWarning(ctx: {
   try {
     if (returned instanceof Response) {
       const payload = (await returned.clone().json()) as Record<string, unknown>;
-      return ctx.json({ ...payload, sessionCleanupRequired: true });
+      return ctx.json({ ...payload, securityCleanupRequired: true });
     }
     if (typeof returned === "object" && returned !== null) {
       return ctx.json({
         ...(returned as Record<string, unknown>),
-        sessionCleanupRequired: true,
+        securityCleanupRequired: true,
       });
     }
   } catch {
     // The stable warning must survive an unexpected successful response shape.
   }
-  return ctx.json({ status: true, sessionCleanupRequired: true });
+  return ctx.json({ status: true, securityCleanupRequired: true });
+}
+
+async function cleanupOtherSessions(
+  database: D1Database,
+  accountId: string,
+  currentSessionId: string,
+): Promise<boolean> {
+  try {
+    await database
+      .prepare("DELETE FROM session WHERE user_id = ? AND id <> ?")
+      .bind(accountId, currentSessionId)
+      .run();
+    const residue = await database
+      .prepare("SELECT count(*) AS count FROM session WHERE user_id = ? AND id <> ?")
+      .bind(accountId, currentSessionId)
+      .first<number>("count");
+    return (residue ?? 0) === 0;
+  } catch {
+    return false;
+  }
+}
+
+async function cleanupTrustedDevices(database: D1Database, accountId: string): Promise<boolean> {
+  try {
+    await database
+      .prepare("DELETE FROM verification WHERE identifier GLOB 'trust-device-*' AND value = ?")
+      .bind(accountId)
+      .run();
+    const residue = await database
+      .prepare(
+        "SELECT count(*) AS count FROM verification WHERE identifier GLOB 'trust-device-*' AND value = ?",
+      )
+      .bind(accountId)
+      .first<number>("count");
+    return (residue ?? 0) === 0;
+  } catch {
+    return false;
+  }
 }
 
 export function createTwoFactorManagementPlugin(
@@ -202,16 +240,16 @@ export function createTwoFactorManagementPlugin(
                 throw new Error("Authoritative Session rotation was not observed");
               }
 
-              await database
-                .prepare("DELETE FROM session WHERE user_id = ? AND id <> ?")
-                .bind(operation.accountId, current.session.id)
-                .run();
-              const residue = await database
-                .prepare("SELECT count(*) AS count FROM session WHERE user_id = ? AND id <> ?")
-                .bind(operation.accountId, current.session.id)
-                .first<number>("count");
-              if ((residue ?? 0) !== 0) {
-                throw new Error("Other Sessions remain after cleanup");
+              const trustedDevicesCleared =
+                operation.action === "enable" ||
+                (await cleanupTrustedDevices(database, operation.accountId));
+              const otherSessionsCleared = await cleanupOtherSessions(
+                database,
+                operation.accountId,
+                current.session.id,
+              );
+              if (!trustedDevicesCleared || !otherSessionsCleared) {
+                throw new Error("Security state remains after cleanup");
               }
             } catch {
               reportCleanupFailure(context, options, operation);
