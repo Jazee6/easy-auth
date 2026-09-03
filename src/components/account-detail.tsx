@@ -6,6 +6,7 @@ import {
   BanBadge,
   EmailVerificationBadge,
   RoleBadge,
+  TwoFactorBadge,
 } from "@/components/account-badges";
 import { BanAccountAction } from "@/components/ban-account-action";
 import { CopyButton } from "@/components/copy-button";
@@ -38,7 +39,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import type { AccountListItem } from "@/lib/admin-accounts";
+import type { AccountDetail as AccountDetailData } from "@/lib/admin-accounts";
 import type { SecurityActivityItem } from "@/lib/admin-security";
 import type { SafeAccountSession } from "@/lib/admin-sessions";
 import { getInitials } from "@/lib/auth-policy";
@@ -87,7 +88,7 @@ export function AccountDetail({
   securityActivity,
   sessions,
 }: {
-  account: AccountListItem;
+  account: AccountDetailData;
   securityActivity: SecurityActivityItem[];
   sessions: SafeAccountSession[];
 }) {
@@ -159,6 +160,9 @@ export function AccountDetail({
             <Detail label="Email verification">
               <EmailVerificationBadge emailVerified={account.emailVerified} />
             </Detail>
+            <Detail label="Two-Factor Authentication">
+              <TwoFactorBadge enabled={account.twoFactorEnabled} />
+            </Detail>
             <Detail label="Created">{dateFormatter.format(new Date(account.createdAt))}</Detail>
             <Detail label="Updated">{dateFormatter.format(new Date(account.updatedAt))}</Detail>
             <Detail label="Ban state">
@@ -216,7 +220,11 @@ export function AccountDetail({
         <CardContent>
           <div className="flex flex-col gap-3 rounded-md border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
             <code className="break-all text-sm">{account.accountId}</code>
-            <CopyButton value={account.accountId} label="User ID" className="self-start sm:self-center" />
+            <CopyButton
+              value={account.accountId}
+              label="User ID"
+              className="self-start sm:self-center"
+            />
           </div>
           <p className="text-sm text-muted-foreground" aria-live="polite">
             {account.role === "administrator"

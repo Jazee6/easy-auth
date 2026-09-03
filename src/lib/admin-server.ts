@@ -6,6 +6,7 @@ import * as v from "valibot";
 import { db } from "@/db";
 import {
   getIdentityDomainAccount,
+  getIdentityDomainAccountDetail,
   listIdentityDomainAccounts,
   normalizeAccountListSearch,
   type AccountListSearch,
@@ -72,7 +73,7 @@ export const getAccount = createServerFn({ method: "GET" })
   .validator((input: unknown) => v.parse(accountIdSchema, input))
   .handler(async ({ data }) => {
     await requireAdministrator();
-    return getIdentityDomainAccount(db.$client, data.accountId);
+    return getIdentityDomainAccountDetail(db.$client, data.accountId);
   });
 
 export const listAccountSessions = createServerFn({ method: "GET" })

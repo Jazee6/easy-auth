@@ -30,6 +30,10 @@ export interface AccountListItem {
   updatedAt: number;
 }
 
+export interface AccountDetail extends AccountListItem {
+  twoFactorEnabled: boolean;
+}
+
 export interface AccountListResult {
   accounts: AccountListItem[];
   total: number;
@@ -50,6 +54,10 @@ interface AccountProjectionRow {
   ban_expires: number | null;
   created_at: number;
   updated_at: number;
+}
+
+interface AccountDetailProjectionRow extends AccountProjectionRow {
+  two_factor_enabled: number;
 }
 
 const roleFilters = new Set<AccountRoleFilter>(["standard", "administrator"]);
@@ -108,6 +116,13 @@ function accountProjection(row: AccountProjectionRow): AccountListItem {
   };
 }
 
+function accountDetailProjection(row: AccountDetailProjectionRow): AccountDetail {
+  return {
+    ...accountProjection(row),
+    twoFactorEnabled: row.two_factor_enabled === 1,
+  };
+}
+
 function accountProjectionColumns(now: number): string {
   return `id AS account_id,
     name,
@@ -132,6 +147,23 @@ export async function getIdentityDomainAccount(
     .bind(accountId)
     .first<AccountProjectionRow>();
   return row ? accountProjection(row) : null;
+}
+
+export async function getIdentityDomainAccountDetail(
+  database: D1Database,
+  accountId: string,
+  now = Date.now(),
+): Promise<AccountDetail | null> {
+  const row = await database
+    .prepare(
+      `SELECT ${accountProjectionColumns(now)},
+        coalesce(two_factor_enabled, 0) AS two_factor_enabled
+      FROM user
+      WHERE id = ?`,
+    )
+    .bind(accountId)
+    .first<AccountDetailProjectionRow>();
+  return row ? accountDetailProjection(row) : null;
 }
 
 export async function listIdentityDomainAccounts(

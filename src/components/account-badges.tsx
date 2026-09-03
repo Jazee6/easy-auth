@@ -1,4 +1,4 @@
-import { Ban, History, MailCheck, MailQuestion, ShieldCheck, User } from "lucide-react";
+import { Ban, History, MailCheck, MailQuestion, ShieldCheck, ShieldOff, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { AccountBanState, AccountRoleFilter } from "@/lib/admin-accounts";
@@ -50,6 +50,20 @@ export function BanBadge({ banState }: { banState: AccountBanState }) {
     <Badge variant="secondary">
       <History aria-hidden="true" />
       Expired
+    </Badge>
+  );
+}
+
+export function TwoFactorBadge({ enabled }: { enabled: boolean }) {
+  return enabled ? (
+    <Badge variant="secondary">
+      <ShieldCheck aria-hidden="true" />
+      Enabled
+    </Badge>
+  ) : (
+    <Badge variant="outline">
+      <ShieldOff aria-hidden="true" />
+      Disabled
     </Badge>
   );
 }

@@ -5,6 +5,7 @@ import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 
 import {
   getIdentityDomainAccount,
+  getIdentityDomainAccountDetail,
   listIdentityDomainAccounts,
   normalizeAccountListSearch,
 } from "./admin-accounts";
@@ -210,6 +211,41 @@ describe("Identity Domain Account projection", () => {
     expect(await getIdentityDomainAccount(database, "missing", NOW)).toBeNull();
     for (const secretField of ["token", "password", "providerId", "userAgent", "ipAddress"]) {
       expect(JSON.stringify({ standard, administrator }).includes(secretField)).toBe(false);
+    }
+  });
+
+  test("projects authoritative Two-Factor state on detail but not list projections", async () => {
+    const accountIds = ["admin-a", "active-b"];
+
+    for (const accountId of accountIds) {
+      for (const enabled of [false, true]) {
+        await database
+          .prepare("UPDATE user SET two_factor_enabled = ? WHERE id = ?")
+          .bind(enabled ? 1 : 0, accountId)
+          .run();
+        expect(
+          (await getIdentityDomainAccountDetail(database, accountId, NOW))?.twoFactorEnabled,
+        ).toBe(enabled);
+      }
+    }
+
+    expect(await getIdentityDomainAccountDetail(database, "missing", NOW)).toBeNull();
+    const listProjection = await getIdentityDomainAccount(database, "admin-a", NOW);
+    expect(listProjection && "twoFactorEnabled" in listProjection).toBe(false);
+
+    const administrator = await getIdentityDomainAccountDetail(database, "admin-a", NOW);
+    const standard = await getIdentityDomainAccountDetail(database, "active-b", NOW);
+    const serialized = JSON.stringify({ administrator, standard });
+    for (const sensitiveField of [
+      "secret",
+      "backupCodes",
+      "failedVerificationCount",
+      "lockedUntil",
+      "trustedDevice",
+      "token",
+      "password",
+    ]) {
+      expect(serialized.includes(sensitiveField)).toBe(false);
     }
   });
 
