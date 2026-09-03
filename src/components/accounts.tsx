@@ -1,11 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, ChevronRight, Search, X } from "lucide-react";
 
-import {
-  BanBadge,
-  EmailVerificationBadge,
-  RoleBadge,
-} from "@/components/account-badges";
+import { BanBadge, EmailVerificationBadge, RoleBadge } from "@/components/account-badges";
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -126,9 +122,7 @@ export function Accounts({
     {
       accessorKey: "emailVerified",
       header: "Email",
-      cell: ({ row }) => (
-        <EmailVerificationBadge emailVerified={row.original.emailVerified} />
-      ),
+      cell: ({ row }) => <EmailVerificationBadge emailVerified={row.original.emailVerified} />,
     },
     {
       accessorKey: "role",
