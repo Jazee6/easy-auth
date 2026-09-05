@@ -5,57 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1787815101184,
-      "tag": "0000_certain_loa",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1787822321536,
-      "tag": "0001_warm_sentinels",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1787832999014,
-      "tag": "0002_condemned_living_tribunal",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1787889892978,
-      "tag": "0003_slim_miss_america",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1788247969629,
-      "tag": "0004_curly_blockbuster",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1788335677509,
-      "tag": "0005_happy_zarda",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "6",
-      "when": 1788580013952,
-      "tag": "0006_red_sharon_ventura",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "6",
-      "when": 1788587894713,
-      "tag": "0007_outstanding_meteorite",
+      "when": 1788591606719,
+      "tag": "0000_init",
       "breakpoints": true
     }
   ]

@@ -1,3 +1,24 @@
+CREATE TABLE `account` (
+	`id` text PRIMARY KEY NOT NULL,
+	`issuer` text NOT NULL,
+	`account_id` text NOT NULL,
+	`provider_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`access_token` text,
+	`refresh_token` text,
+	`id_token` text,
+	`access_token_expires_at` integer,
+	`refresh_token_expires_at` integer,
+	`scope` text,
+	`password` text,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `account_issuer_accountId_uidx` ON `account` (`issuer`,`account_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `account_userId_providerId_uidx` ON `account` (`user_id`,`provider_id`);--> statement-breakpoint
+CREATE INDEX `account_userId_idx` ON `account` (`user_id`);--> statement-breakpoint
 CREATE TABLE `jwks` (
 	`id` text PRIMARY KEY NOT NULL,
 	`public_key` text NOT NULL,
@@ -173,8 +194,99 @@ CREATE TABLE `oauth_resource` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `oauth_resource_identifier_unique` ON `oauth_resource` (`identifier`);--> statement-breakpoint
-ALTER TABLE `session` ADD `impersonated_by` text;--> statement-breakpoint
-ALTER TABLE `user` ADD `role` text;--> statement-breakpoint
-ALTER TABLE `user` ADD `banned` integer DEFAULT false;--> statement-breakpoint
-ALTER TABLE `user` ADD `ban_reason` text;--> statement-breakpoint
-ALTER TABLE `user` ADD `ban_expires` integer;
+CREATE TABLE `passkey` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text,
+	`public_key` text NOT NULL,
+	`user_id` text NOT NULL,
+	`credential_id` text NOT NULL,
+	`counter` integer NOT NULL,
+	`device_type` text NOT NULL,
+	`backed_up` integer NOT NULL,
+	`transports` text,
+	`created_at` integer,
+	`aaguid` text,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `passkey_userId_idx` ON `passkey` (`user_id`);--> statement-breakpoint
+CREATE INDEX `passkey_credentialID_idx` ON `passkey` (`credential_id`);--> statement-breakpoint
+CREATE TABLE `rate_limit` (
+	`id` text PRIMARY KEY NOT NULL,
+	`key` text NOT NULL,
+	`count` integer NOT NULL,
+	`last_request` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `rate_limit_key_unique` ON `rate_limit` (`key`);--> statement-breakpoint
+CREATE TABLE `security_activity` (
+	`id` text PRIMARY KEY NOT NULL,
+	`actor_user_id` text NOT NULL,
+	`actor_name` text NOT NULL,
+	`actor_email` text NOT NULL,
+	`target_user_id` text NOT NULL,
+	`target_name` text NOT NULL,
+	`target_email` text NOT NULL,
+	`action` text NOT NULL,
+	`details` text NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `securityActivity_createdAt_id_idx` ON `security_activity` (`created_at`,`id`);--> statement-breakpoint
+CREATE INDEX `securityActivity_action_createdAt_id_idx` ON `security_activity` (`action`,`created_at`,`id`);--> statement-breakpoint
+CREATE INDEX `securityActivity_targetUserId_createdAt_id_idx` ON `security_activity` (`target_user_id`,`created_at`,`id`);--> statement-breakpoint
+CREATE INDEX `securityActivity_actorUserId_createdAt_id_idx` ON `security_activity` (`actor_user_id`,`created_at`,`id`);--> statement-breakpoint
+CREATE TABLE `session` (
+	`id` text PRIMARY KEY NOT NULL,
+	`expires_at` integer NOT NULL,
+	`token` text NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer NOT NULL,
+	`ip_address` text,
+	`user_agent` text,
+	`user_id` text NOT NULL,
+	`impersonated_by` text,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `session_token_unique` ON `session` (`token`);--> statement-breakpoint
+CREATE INDEX `session_userId_idx` ON `session` (`user_id`);--> statement-breakpoint
+CREATE TABLE `two_factor` (
+	`id` text PRIMARY KEY NOT NULL,
+	`secret` text NOT NULL,
+	`backup_codes` text NOT NULL,
+	`user_id` text NOT NULL,
+	`verified` integer DEFAULT true,
+	`failed_verification_count` integer DEFAULT 0,
+	`locked_until` integer,
+	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `twoFactor_secret_idx` ON `two_factor` (`secret`);--> statement-breakpoint
+CREATE INDEX `twoFactor_userId_idx` ON `two_factor` (`user_id`);--> statement-breakpoint
+CREATE TABLE `user` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`email` text NOT NULL,
+	`email_verified` integer DEFAULT false NOT NULL,
+	`image` text,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`role` text,
+	`banned` integer DEFAULT false,
+	`ban_reason` text,
+	`ban_expires` integer,
+	`two_factor_enabled` integer DEFAULT false
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `user_email_unique` ON `user` (`email`);--> statement-breakpoint
+CREATE TABLE `verification` (
+	`id` text PRIMARY KEY NOT NULL,
+	`identifier` text NOT NULL,
+	`value` text NOT NULL,
+	`expires_at` integer NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `verification_identifier_idx` ON `verification` (`identifier`);
