@@ -45,6 +45,10 @@ beforeAll(async () => {
       DB: database,
       BETTER_AUTH_URL: BASE_URL,
       BETTER_AUTH_SECRET: "integration-test-secret-at-least-32-characters",
+      GITHUB_CLIENT_ID: "github-integration-client",
+      GITHUB_CLIENT_SECRET: "github-integration-secret",
+      GOOGLE_CLIENT_ID: "google-integration-client",
+      GOOGLE_CLIENT_SECRET: "google-integration-secret",
     },
     sendAuthEmail: async () => {},
     captchaEnabled: false,
@@ -137,6 +141,12 @@ describe("Session cookie configuration", () => {
     const setCookies = response.headers.getSetCookie();
     expect(setCookies.some((cookie) => cookie.startsWith("ea.session_token="))).toBe(true);
     expect(setCookies.some((cookie) => cookie.startsWith("ea.session_data="))).toBe(true);
+    const lastLoginMethodCookie = setCookies.find((cookie) =>
+      cookie.startsWith("better-auth.last_used_login_method=email"),
+    );
+    expect(lastLoginMethodCookie).toBeDefined();
+    expect(lastLoginMethodCookie?.toLowerCase().includes("httponly")).toBe(false);
+    expect(lastLoginMethodCookie).toContain("Max-Age=2592000");
     const cookie = setCookies.map((value) => value.split(";", 1)[0]).join("; ");
     const headers = new Headers({ cookie });
 
@@ -150,6 +160,28 @@ describe("Session cookie configuration", () => {
         query: { disableCookieCache: true },
       }),
     ).toBeNull();
+  });
+});
+
+describe("External identity provider HTTP integration", () => {
+  test("starts Google authorization with the configured callback", async () => {
+    const response = await postAuth("/sign-in/social", {
+      provider: "google",
+      callbackURL: "/profile",
+      newUserCallbackURL: "/profile",
+      errorCallbackURL: "/login?provider=google",
+    });
+    expect(response.status).toBe(200);
+
+    const result = (await response.json()) as { redirect: boolean; url: string };
+    const authorizationUrl = new URL(result.url);
+    expect(result.redirect).toBe(true);
+    expect(authorizationUrl.origin).toBe("https://accounts.google.com");
+    expect(authorizationUrl.pathname).toBe("/o/oauth2/v2/auth");
+    expect(authorizationUrl.searchParams.get("client_id")).toBe("google-integration-client");
+    expect(authorizationUrl.searchParams.get("redirect_uri")).toBe(
+      `${BASE_URL}/api/auth/callback/google`,
+    );
   });
 });
 

@@ -13,7 +13,9 @@ import { useEffect } from "react";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { Toaster } from "@/components/ui/toast";
 import { RouteProgress } from "@/components/route-progress";
+import { ThemeProvider } from "@/components/theme-provider";
 import { buttonVariants } from "@/components/ui/button";
+import { themeBootstrapScript } from "@/lib/theme";
 import {
   Empty,
   EmptyContent,
@@ -128,26 +130,29 @@ function NotFound() {
 
 function RootDocument({ children }: { children?: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <HeadContent />
       </head>
       <body>
-        {children ?? <Outlet />}
-        <RouteProgress />
-        <Toaster />
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-            TanStackQueryDevtools,
-          ]}
-        />
+        <ThemeProvider>
+          {children ?? <Outlet />}
+          <RouteProgress />
+          <Toaster />
+          <TanStackDevtools
+            config={{
+              position: "bottom-right",
+            }}
+            plugins={[
+              {
+                name: "Tanstack Router",
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+              TanStackQueryDevtools,
+            ]}
+          />
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>

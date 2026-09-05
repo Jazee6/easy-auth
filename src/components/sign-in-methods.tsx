@@ -3,14 +3,19 @@ import { Link, useRouter } from "@tanstack/react-router";
 import { KeyRound } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
-import { GithubIcon } from "@/components/github-icon";
 import {
   deriveSignInMethodState,
-  getGithubLinkOptions,
+  externalIdentityProviders,
+  getExternalIdentityLinkOptions,
+  getExternalIdentityProviderName,
   translateSignInMethodsError,
+  type ExternalIdentityMethodState,
+  type ExternalIdentityProvider,
   type PasskeyItem,
   type SignInMethodAccount,
 } from "@/lib/auth-policy";
+import { GithubIcon } from "@/components/github-icon";
+import { GoogleIcon } from "@/components/google-icon";
 import { PageHeader } from "@/components/page-header";
 import {
   AlertDialog,
@@ -45,77 +50,67 @@ interface SignInMethodsProps {
   passkeys?: PasskeyItem[];
   status?: string;
   error?: string;
+  errorProvider?: ExternalIdentityProvider;
   resumePasskeyRegistration?: boolean;
 }
 
-export function SignInMethods({
-  user,
-  accounts,
-  passkeys = [],
-  status,
-  error,
-  resumePasskeyRegistration,
-}: SignInMethodsProps) {
-  const router = useRouter();
-  const methodState = deriveSignInMethodState(accounts, passkeys);
+const providerIcons: Record<
+  ExternalIdentityProvider,
+  (props: React.ComponentProps<"svg">) => React.ReactNode
+> = {
+  google: GoogleIcon,
+  github: GithubIcon,
+};
 
+function ExternalIdentityItem({
+  provider,
+  state,
+}: {
+  provider: ExternalIdentityProvider;
+  state: ExternalIdentityMethodState;
+}) {
+  const router = useRouter();
+  const providerName = getExternalIdentityProviderName(provider);
+  const ProviderIcon = providerIcons[provider];
   const [isLinking, setIsLinking] = React.useState(false);
   const [isUnlinking, setIsUnlinking] = React.useState(false);
   const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = React.useState(false);
 
-  React.useEffect(() => {
-    if (status === "github-linked") {
-      toast.add({
-        title: "GitHub linked",
-        description: "GitHub is now available as a sign-in method.",
-        type: "success",
-      });
-    } else if (error) {
-      toast.add({
-        title: "GitHub was not linked",
-        description: translateSignInMethodsError(error),
-        type: "error",
-      });
-    }
-  }, [error, status]);
-
-  const linkGithub = async () => {
+  const linkExternalIdentity = async () => {
     setIsLinking(true);
 
     try {
-      const result = await authClient.linkSocial(getGithubLinkOptions());
+      const result = await authClient.linkSocial(getExternalIdentityLinkOptions(provider));
       if (result.error) {
         toast.add({
-          title: "GitHub was not linked",
-          description: translateSignInMethodsError(result.error.code ?? "linking_failed"),
+          title: `${providerName} was not linked`,
+          description: translateSignInMethodsError(provider, result.error.code ?? "linking_failed"),
           type: "error",
         });
         setIsLinking(false);
       }
     } catch {
       toast.add({
-        title: "GitHub was not linked",
-        description: translateSignInMethodsError("linking_failed"),
+        title: `${providerName} was not linked`,
+        description: translateSignInMethodsError(provider, "linking_failed"),
         type: "error",
       });
       setIsLinking(false);
     }
   };
 
-  const unlinkGithub = async () => {
-    if (!methodState.github.accountId || !methodState.github.canUnlink) return;
+  const unlinkExternalIdentity = async () => {
+    if (!state.accountId || !state.canUnlink) return;
 
     setIsUnlinking(true);
 
     try {
-      const result = await authClient.unlinkAccount({
-        accountId: methodState.github.accountId,
-      });
-
+      const result = await authClient.unlinkAccount({ accountId: state.accountId });
       if (result.error) {
         toast.add({
-          title: "GitHub was not unlinked",
+          title: `${providerName} was not unlinked`,
           description: translateSignInMethodsError(
+            provider,
             (result.error as { code?: string } | null)?.code ?? "unlink_failed",
           ),
           type: "error",
@@ -125,21 +120,103 @@ export function SignInMethods({
 
       setIsUnlinkDialogOpen(false);
       toast.add({
-        title: "GitHub unlinked",
-        description: "GitHub can no longer be used to sign in to Easy Auth.",
+        title: `${providerName} unlinked`,
+        description: `${providerName} can no longer be used to sign in to Easy Auth.`,
         type: "success",
       });
       await router.invalidate();
     } catch {
       toast.add({
-        title: "GitHub was not unlinked",
-        description: translateSignInMethodsError("unlink_failed"),
+        title: `${providerName} was not unlinked`,
+        description: translateSignInMethodsError(provider, "unlink_failed"),
         type: "error",
       });
     } finally {
       setIsUnlinking(false);
     }
   };
+
+  return (
+    <Item variant="outline">
+      <ItemMedia variant="icon">
+        <ProviderIcon />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle>{providerName}</ItemTitle>
+        <ItemDescription>
+          {state.isLinked ? "Linked" : "Not linked"}
+          {state.unlinkReason && <span className="mt-1 block">{state.unlinkReason}</span>}
+        </ItemDescription>
+      </ItemContent>
+      <ItemActions>
+        {!state.isLinked ? (
+          <Button loading={isLinking} disabled={isLinking} onClick={linkExternalIdentity}>
+            Link {providerName}
+          </Button>
+        ) : (
+          <AlertDialog open={isUnlinkDialogOpen} onOpenChange={setIsUnlinkDialogOpen}>
+            <AlertDialogTrigger render={<Button variant="outline" disabled={!state.canUnlink} />}>
+              Unlink
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Unlink {providerName}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {providerName} will stop working as a sign-in method. This removes locally stored
+                  {` ${providerName} tokens`}, but it does not revoke access at {providerName}.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isUnlinking}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  loading={isUnlinking}
+                  disabled={isUnlinking}
+                  onClick={unlinkExternalIdentity}
+                >
+                  Unlink {providerName}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </ItemActions>
+    </Item>
+  );
+}
+
+export function SignInMethods({
+  user,
+  accounts,
+  passkeys = [],
+  status,
+  error,
+  errorProvider,
+  resumePasskeyRegistration,
+}: SignInMethodsProps) {
+  const methodState = deriveSignInMethodState(accounts, passkeys);
+
+  React.useEffect(() => {
+    const linkedProvider = externalIdentityProviders.find(
+      (provider) => status === `${provider}-linked`,
+    );
+    if (linkedProvider) {
+      const providerName = getExternalIdentityProviderName(linkedProvider);
+      toast.add({
+        title: `${providerName} linked`,
+        description: `${providerName} is now available as a sign-in method.`,
+        type: "success",
+      });
+    } else if (error) {
+      toast.add({
+        title: errorProvider
+          ? `${getExternalIdentityProviderName(errorProvider)} was not linked`
+          : "External identity was not linked",
+        description: translateSignInMethodsError(errorProvider, error),
+        type: "error",
+      });
+    }
+  }, [error, errorProvider, status]);
 
   return (
     <div className="w-full max-w-2xl space-y-6">
@@ -172,56 +249,8 @@ export function SignInMethods({
           </ItemActions>
         </Item>
 
-        <Item variant="outline">
-          <ItemMedia variant="icon">
-            <GithubIcon />
-          </ItemMedia>
-          <ItemContent>
-            <ItemTitle>GitHub</ItemTitle>
-            <ItemDescription>
-              {methodState.github.isLinked ? "Linked" : "Not linked"}
-              {methodState.github.unlinkReason && (
-                <span className="mt-1 block">{methodState.github.unlinkReason}</span>
-              )}
-            </ItemDescription>
-          </ItemContent>
-          <ItemActions>
-            {!methodState.github.isLinked ? (
-              <Button loading={isLinking} disabled={isLinking} onClick={linkGithub}>
-                Link GitHub
-              </Button>
-            ) : (
-              <AlertDialog open={isUnlinkDialogOpen} onOpenChange={setIsUnlinkDialogOpen}>
-                <AlertDialogTrigger
-                  render={<Button variant="outline" disabled={!methodState.github.canUnlink} />}
-                >
-                  Unlink
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Unlink GitHub?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      GitHub will stop working as a local sign-in method. This removes locally
-                      stored GitHub tokens, but it does not revoke the Authorized OAuth App grant in
-                      GitHub.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isUnlinking}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      variant="destructive"
-                      loading={isUnlinking}
-                      disabled={isUnlinking}
-                      onClick={unlinkGithub}
-                    >
-                      Unlink GitHub
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </ItemActions>
-        </Item>
+        <ExternalIdentityItem provider="google" state={methodState.google} />
+        <ExternalIdentityItem provider="github" state={methodState.github} />
         <PasskeySettings
           userId={user.id}
           resumeRegistration={resumePasskeyRegistration}

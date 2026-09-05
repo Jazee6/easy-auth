@@ -126,7 +126,7 @@ export function createPasskeyManagementPlugin(database: D1Database) {
                    WHERE id = ? AND user_id = ?
                      AND (
                        EXISTS (SELECT 1 FROM passkey WHERE user_id = ? AND id != ?)
-                       OR EXISTS (SELECT 1 FROM account WHERE user_id = ? AND (password IS NOT NULL OR provider_id = 'github'))
+                       OR EXISTS (SELECT 1 FROM account WHERE user_id = ? AND (password IS NOT NULL OR provider_id IN ('google', 'github')))
                      )`,
                 )
                 .bind(
@@ -174,9 +174,13 @@ export function createPasskeyManagementPlugin(database: D1Database) {
               const deleteResult = await database
                 .prepare(
                   `DELETE FROM account
-                   WHERE id = ? AND user_id = ? AND provider_id = 'github'
+                   WHERE id = ? AND user_id = ? AND provider_id IN ('google', 'github')
                      AND (
-                       EXISTS (SELECT 1 FROM account WHERE user_id = ? AND id != ? AND password IS NOT NULL)
+                       EXISTS (
+                         SELECT 1 FROM account
+                         WHERE user_id = ? AND id != ?
+                           AND (password IS NOT NULL OR provider_id IN ('google', 'github'))
+                       )
                        OR EXISTS (SELECT 1 FROM passkey WHERE user_id = ?)
                      )`,
                 )
@@ -196,7 +200,10 @@ export function createPasskeyManagementPlugin(database: D1Database) {
                   .bind(accountId, authSession.user.id)
                   .first<{ id: string; provider_id: string }>();
 
-                if (!existing || existing.provider_id !== "github") {
+                if (
+                  !existing ||
+                  (existing.provider_id !== "google" && existing.provider_id !== "github")
+                ) {
                   throw APIError.from("BAD_REQUEST", {
                     code: "ACCOUNT_NOT_FOUND",
                     message: "Account not found",
@@ -205,7 +212,7 @@ export function createPasskeyManagementPlugin(database: D1Database) {
 
                 throw APIError.from("BAD_REQUEST", {
                   code: "FAILED_TO_UNLINK_LAST_ACCOUNT",
-                  message: "Set a password before unlinking your final sign-in method.",
+                  message: "Add another sign-in method before unlinking your final sign-in method.",
                 });
               }
 

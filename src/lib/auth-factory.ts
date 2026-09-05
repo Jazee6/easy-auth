@@ -3,7 +3,7 @@ import { createAuthMiddleware } from "@better-auth/core/api";
 import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { admin, captcha, emailOTP, jwt, twoFactor } from "better-auth/plugins";
+import { admin, captcha, emailOTP, jwt, lastLoginMethod, twoFactor } from "better-auth/plugins";
 import { passkey } from "@better-auth/passkey";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
@@ -21,10 +21,10 @@ import {
 import {
   captchaProtectedAuthEndpoints,
   EMAIL_RESEND_COOLDOWN_SECONDS,
-  githubAuthPolicy,
+  externalIdentityAuthPolicy,
   passwordResetPolicy,
   shouldRejectPasswordlessOtpRequest,
-  validateGithubIdentity,
+  validateExternalIdentity,
 } from "./auth-policy";
 import {
   createResendEmailSender,
@@ -48,6 +48,8 @@ export interface AuthEnvironment {
   TURNSTILE_SECRET_KEY?: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
   BETTER_AUTH_URL?: string;
   BETTER_AUTH_SECRET?: string;
 }
@@ -153,25 +155,31 @@ export function createEasyAuth({
       autoSignInAfterVerification: true,
     },
     socialProviders: {
+      google: {
+        clientId: environment.GOOGLE_CLIENT_ID ?? "",
+        clientSecret: environment.GOOGLE_CLIENT_SECRET ?? "",
+        requireEmailVerification: externalIdentityAuthPolicy.requireEmailVerification,
+        overrideUserInfoOnSignIn: externalIdentityAuthPolicy.overrideUserInfoOnSignIn,
+      },
       github: {
         clientId: environment.GITHUB_CLIENT_ID ?? "",
         clientSecret: environment.GITHUB_CLIENT_SECRET ?? "",
-        requireEmailVerification: githubAuthPolicy.requireEmailVerification,
-        overrideUserInfoOnSignIn: githubAuthPolicy.overrideUserInfoOnSignIn,
+        requireEmailVerification: externalIdentityAuthPolicy.requireEmailVerification,
+        overrideUserInfoOnSignIn: externalIdentityAuthPolicy.overrideUserInfoOnSignIn,
       },
     },
     user: {
       validateUserInfo(data) {
-        return validateGithubIdentity(data.user, data.source);
+        return validateExternalIdentity(data.user, data.source);
       },
     },
     account: {
-      encryptOAuthTokens: githubAuthPolicy.encryptOAuthTokens,
+      encryptOAuthTokens: externalIdentityAuthPolicy.encryptOAuthTokens,
       accountLinking: {
-        disableImplicitLinking: githubAuthPolicy.disableImplicitLinking,
-        allowDifferentEmails: githubAuthPolicy.allowDifferentEmails,
-        updateUserInfoOnLink: githubAuthPolicy.updateUserInfoOnLink,
-        allowUnlinkingAll: githubAuthPolicy.allowUnlinkingAll,
+        disableImplicitLinking: externalIdentityAuthPolicy.disableImplicitLinking,
+        allowDifferentEmails: externalIdentityAuthPolicy.allowDifferentEmails,
+        updateUserInfoOnLink: externalIdentityAuthPolicy.updateUserInfoOnLink,
+        allowUnlinkingAll: externalIdentityAuthPolicy.allowUnlinkingAll,
       },
     },
     rateLimit: {
@@ -204,6 +212,11 @@ export function createEasyAuth({
       },
     },
     plugins: [
+      lastLoginMethod({
+        customResolveMethod(ctx) {
+          return ctx.path?.startsWith("/two-factor/verify-") ? "email" : null;
+        },
+      }),
       admin({
         defaultRole: "user",
         adminRoles: ["admin"],

@@ -70,7 +70,7 @@ export const passwordResetPolicy = {
   establishSession: false,
 } as const;
 
-export const githubAuthPolicy = {
+export const externalIdentityAuthPolicy = {
   requireEmailVerification: true,
   overrideUserInfoOnSignIn: false,
   disableImplicitLinking: true,
@@ -80,44 +80,71 @@ export const githubAuthPolicy = {
   encryptOAuthTokens: false,
 } as const;
 
-export interface GithubIdentitySource {
+export const externalIdentityProviders = ["google", "github"] as const;
+export type ExternalIdentityProvider = (typeof externalIdentityProviders)[number];
+
+const externalIdentityProviderNames: Record<ExternalIdentityProvider, string> = {
+  google: "Google",
+  github: "GitHub",
+};
+
+export function isExternalIdentityProvider(value: unknown): value is ExternalIdentityProvider {
+  return externalIdentityProviders.includes(value as ExternalIdentityProvider);
+}
+
+export function getExternalIdentityProviderName(provider: ExternalIdentityProvider): string {
+  return externalIdentityProviderNames[provider];
+}
+
+export interface ExternalIdentitySource {
   action: "create-user" | "link-account" | "sign-in";
   method: string;
   oauth?: { providerId: string };
 }
 
-export function validateGithubIdentity(
+export function validateExternalIdentity(
   user: { email?: string | null; emailVerified?: boolean | null },
-  source: GithubIdentitySource,
+  source: ExternalIdentitySource,
 ): { error: string; errorDescription: string } | undefined {
-  if (source.method !== "oauth" || source.oauth?.providerId !== "github") {
+  const provider = source.oauth?.providerId;
+  if (source.method !== "oauth" || !isExternalIdentityProvider(provider)) {
     return undefined;
   }
 
+  const providerName = getExternalIdentityProviderName(provider);
   if (!user.email) {
     return {
-      error: "github_email_missing",
-      errorDescription: "GitHub must provide an email address",
+      error: `${provider}_email_missing`,
+      errorDescription: `${providerName} must provide an email address`,
     };
   }
 
   if (!user.emailVerified) {
     return {
-      error: "github_email_not_verified",
-      errorDescription: "GitHub must provide a verified email address",
+      error: `${provider}_email_not_verified`,
+      errorDescription: `${providerName} must provide a verified email address`,
     };
   }
 
   return undefined;
 }
 
-export interface GithubSignInOptionsParams {
+export interface ExternalIdentitySignInOptionsParams {
   returnTo?: string | null;
   search?: string | null;
 }
 
-export function getGithubSignInOptions(params?: GithubSignInOptionsParams): {
-  provider: "github";
+function addProviderToLoginUrl(url: string, provider: ExternalIdentityProvider): string {
+  const parsed = new URL(url, "https://easy-auth.invalid");
+  parsed.searchParams.set("provider", provider);
+  return `${parsed.pathname}${parsed.search}`;
+}
+
+export function getExternalIdentitySignInOptions(
+  provider: ExternalIdentityProvider,
+  params?: ExternalIdentitySignInOptionsParams,
+): {
+  provider: ExternalIdentityProvider;
   callbackURL: string;
   newUserCallbackURL: string;
   errorCallbackURL: string;
@@ -132,28 +159,26 @@ export function getGithubSignInOptions(params?: GithubSignInOptionsParams): {
     const formattedSearch = search.startsWith("?") ? search : `?${search}`;
     const oauthContinuationUrl = `/login${formattedSearch}`;
     return {
-      provider: "github",
+      provider,
       callbackURL: oauthContinuationUrl,
       newUserCallbackURL: oauthContinuationUrl,
-      errorCallbackURL: oauthContinuationUrl,
+      errorCallbackURL: addProviderToLoginUrl(oauthContinuationUrl, provider),
     };
   }
 
   const destination = sanitizeReturnDestination(returnTo);
-  if (destination !== "/profile") {
-    return {
-      provider: "github",
-      callbackURL: destination,
-      newUserCallbackURL: destination,
-      errorCallbackURL: `/login?${new URLSearchParams({ returnTo: destination })}`,
-    };
-  }
+  const errorCallbackURL = addProviderToLoginUrl(
+    destination === "/profile"
+      ? "/login"
+      : `/login?${new URLSearchParams({ returnTo: destination })}`,
+    provider,
+  );
 
   return {
-    provider: "github",
-    callbackURL: "/profile",
-    newUserCallbackURL: "/profile",
-    errorCallbackURL: "/login",
+    provider,
+    callbackURL: destination,
+    newUserCallbackURL: destination,
+    errorCallbackURL,
   };
 }
 
@@ -169,50 +194,68 @@ export interface PasskeyItem {
   aaguid?: string | null;
 }
 
+export interface ExternalIdentityMethodState {
+  isLinked: boolean;
+  accountId: string | null;
+  canUnlink: boolean;
+  unlinkReason: string | null;
+}
+
 export function deriveSignInMethodState(
   accounts: SignInMethodAccount[],
   passkeys?: PasskeyItem[],
 ): {
   password: { isSet: boolean };
-  github: {
-    isLinked: boolean;
-    accountId: string | null;
-    canUnlink: boolean;
-    unlinkReason: string | null;
-  };
+  google: ExternalIdentityMethodState;
+  github: ExternalIdentityMethodState;
   passkey?: {
     items: PasskeyItem[];
     canDelete: (passkeyId: string) => boolean;
   };
 } {
   const passwordAccount = accounts.find((account) => account.providerId === "credential");
-  const githubAccount = accounts.find((account) => account.providerId === "github");
+  const providerAccounts = Object.fromEntries(
+    externalIdentityProviders.map((provider) => [
+      provider,
+      accounts.find((account) => account.providerId === provider),
+    ]),
+  ) as Record<ExternalIdentityProvider, SignInMethodAccount | undefined>;
   const hasPasskey = Boolean(passkeys && passkeys.length > 0);
-  const hasAnotherMethod = Boolean(passwordAccount) || hasPasskey;
+
+  const getExternalIdentityState = (
+    provider: ExternalIdentityProvider,
+  ): ExternalIdentityMethodState => {
+    const providerAccount = providerAccounts[provider];
+    const hasAnotherMethod =
+      Boolean(passwordAccount) ||
+      hasPasskey ||
+      externalIdentityProviders.some(
+        (candidate) => candidate !== provider && Boolean(providerAccounts[candidate]),
+      );
+
+    return {
+      isLinked: Boolean(providerAccount),
+      accountId: providerAccount?.id ?? null,
+      canUnlink: Boolean(providerAccount && hasAnotherMethod),
+      unlinkReason:
+        providerAccount && !hasAnotherMethod
+          ? "Add another sign-in method before unlinking your final sign-in method."
+          : null,
+    };
+  };
 
   const result: {
     password: { isSet: boolean };
-    github: {
-      isLinked: boolean;
-      accountId: string | null;
-      canUnlink: boolean;
-      unlinkReason: string | null;
-    };
+    google: ExternalIdentityMethodState;
+    github: ExternalIdentityMethodState;
     passkey?: {
       items: PasskeyItem[];
       canDelete: (passkeyId: string) => boolean;
     };
   } = {
     password: { isSet: Boolean(passwordAccount) },
-    github: {
-      isLinked: Boolean(githubAccount),
-      accountId: githubAccount?.id ?? null,
-      canUnlink: Boolean(githubAccount && hasAnotherMethod),
-      unlinkReason:
-        githubAccount && !hasAnotherMethod
-          ? "Set a password before unlinking your final sign-in method."
-          : null,
-    },
+    google: getExternalIdentityState("google"),
+    github: getExternalIdentityState("github"),
   };
 
   if (passkeys !== undefined) {
@@ -220,7 +263,10 @@ export function deriveSignInMethodState(
       items: passkeys,
       canDelete(passkeyId: string) {
         const remainingPasskeys = passkeys.filter((p) => p.id !== passkeyId);
-        return Boolean(passwordAccount) || Boolean(githubAccount) || remainingPasskeys.length > 0;
+        const hasExternalIdentity = externalIdentityProviders.some((provider) =>
+          Boolean(providerAccounts[provider]),
+        );
+        return Boolean(passwordAccount) || hasExternalIdentity || remainingPasskeys.length > 0;
       },
     };
   }
@@ -228,24 +274,25 @@ export function deriveSignInMethodState(
   return result;
 }
 
-interface GithubLinkEvaluationInput {
+interface ExternalIdentityLinkEvaluationInput {
+  provider: ExternalIdentityProvider;
   userId: string;
   loginEmail: string;
   providerEmail?: string | null;
   providerEmailVerified: boolean;
-  githubIdentityCount: number;
+  providerIdentityCount: number;
   identityOwnerUserId?: string | null;
 }
 
-export function evaluateGithubLink(
-  input: GithubLinkEvaluationInput,
+export function evaluateExternalIdentityLink(
+  input: ExternalIdentityLinkEvaluationInput,
 ): { allowed: true } | { allowed: false; code: string } {
   if (!input.providerEmail) {
-    return { allowed: false, code: "github_email_missing" };
+    return { allowed: false, code: `${input.provider}_email_missing` };
   }
 
   if (!input.providerEmailVerified) {
-    return { allowed: false, code: "github_email_not_verified" };
+    return { allowed: false, code: `${input.provider}_email_not_verified` };
   }
 
   if (normalizeEmail(input.providerEmail) !== normalizeEmail(input.loginEmail)) {
@@ -256,33 +303,38 @@ export function evaluateGithubLink(
     return { allowed: false, code: "identity_owned_by_another_user" };
   }
 
-  if (input.githubIdentityCount > 0) {
-    return { allowed: false, code: "github_already_linked" };
+  if (input.providerIdentityCount > 0) {
+    return { allowed: false, code: `${input.provider}_already_linked` };
   }
 
   return { allowed: true };
 }
 
-export function getGithubLinkOptions(): {
-  provider: "github";
-  callbackURL: "/sign-in-methods?status=github-linked";
-  errorCallbackURL: "/sign-in-methods";
+export function getExternalIdentityLinkOptions(provider: ExternalIdentityProvider): {
+  provider: ExternalIdentityProvider;
+  callbackURL: string;
+  errorCallbackURL: string;
 } {
   return {
-    provider: "github",
-    callbackURL: "/sign-in-methods?status=github-linked",
-    errorCallbackURL: "/sign-in-methods",
+    provider,
+    callbackURL: `/sign-in-methods?status=${provider}-linked`,
+    errorCallbackURL: `/sign-in-methods?provider=${provider}`,
   };
 }
 
-export function translateSignInMethodsError(error: string): string {
+export function translateSignInMethodsError(
+  provider: ExternalIdentityProvider | undefined,
+  error: string,
+): string {
   const errorCode = error.toLowerCase();
+  if (!provider) return "Unable to update sign-in methods. Please try again.";
 
+  const providerName = getExternalIdentityProviderName(provider);
   if (
     errorCode === "email_does_not_match" ||
     errorCode === "linking_different_emails_not_allowed"
   ) {
-    return "The verified GitHub email must match your login email.";
+    return `The verified ${providerName} email must match your login email.`;
   }
 
   if (
@@ -290,52 +342,58 @@ export function translateSignInMethodsError(error: string): string {
     errorCode === "social_account_already_linked" ||
     errorCode === "identity_owned_by_another_user"
   ) {
-    return "This GitHub identity is already linked to another account.";
+    return `This ${providerName} identity is already linked to another account.`;
   }
 
   if (
     errorCode === "unable_to_link_account" ||
-    errorCode === "github_already_linked" ||
+    errorCode === `${provider}_already_linked` ||
     errorCode === "linking_failed"
   ) {
-    return "A GitHub identity is already linked, or the link could not be completed.";
+    return `A ${providerName} identity is already linked, or the link could not be completed.`;
   }
 
-  if (errorCode === "github_email_missing" || errorCode === "email_not_found") {
-    return "GitHub did not provide an email. Verify your primary email in GitHub and try again.";
+  if (errorCode === `${provider}_email_missing` || errorCode === "email_not_found") {
+    return `${providerName} did not provide an email. Verify your primary email in ${providerName} and try again.`;
   }
 
-  if (errorCode === "github_email_not_verified" || errorCode === "email_not_verified") {
-    return "Verify your primary email in GitHub before linking.";
+  if (errorCode === `${provider}_email_not_verified` || errorCode === "email_not_verified") {
+    return `Verify your primary email in ${providerName} before linking.`;
   }
 
   if (errorCode === "failed_to_unlink_last_account") {
-    return "Set a password before unlinking your final sign-in method.";
+    return "Add another sign-in method before unlinking your final sign-in method.";
   }
 
   return "Unable to update sign-in methods. Please try again.";
 }
 
-export function translateGithubOauthError(error?: string): string | null {
+export function translateExternalIdentityOauthError(
+  provider: ExternalIdentityProvider | undefined,
+  error?: string,
+): string | null {
   if (!error) return null;
+  if (!provider) return "Unable to sign in. Please try again.";
 
-  if (error === "access_denied" || error === "no_code") {
-    return "GitHub sign-in was canceled. Please try again.";
+  const providerName = getExternalIdentityProviderName(provider);
+  const errorCode = error.toLowerCase();
+  if (errorCode === "access_denied" || errorCode === "no_code") {
+    return `${providerName} sign-in was canceled. Please try again.`;
   }
 
-  if (error === "email_not_found" || error === "github_email_missing") {
-    return "GitHub did not provide an email. Verify your primary email in GitHub and try again.";
+  if (errorCode === "email_not_found" || errorCode === `${provider}_email_missing`) {
+    return `${providerName} did not provide an email. Verify your primary email in ${providerName} and try again.`;
   }
 
-  if (error === "email_not_verified" || error === "github_email_not_verified") {
-    return "Verify your primary email in GitHub before signing in.";
+  if (errorCode === "email_not_verified" || errorCode === `${provider}_email_not_verified`) {
+    return `Verify your primary email in ${providerName} before signing in.`;
   }
 
-  if (error === "account_not_linked") {
-    return "An account already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.";
+  if (errorCode === "account_not_linked") {
+    return `An account already exists with this email. Log in with an existing sign-in method, then link ${providerName} from Sign-in methods.`;
   }
 
-  return "Unable to sign in with GitHub. Please try again.";
+  return `Unable to sign in with ${providerName}. Please try again.`;
 }
 
 export const profileSchema = v.object({

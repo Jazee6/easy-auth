@@ -73,9 +73,7 @@ export const account = sqliteTable(
   },
   (table) => [
     uniqueIndex("account_issuer_accountId_uidx").on(table.issuer, table.accountId),
-    uniqueIndex("account_userId_github_uidx")
-      .on(table.userId)
-      .where(sql`${table.providerId} = 'github'`),
+    uniqueIndex("account_userId_providerId_uidx").on(table.userId, table.providerId),
     index("account_userId_idx").on(table.userId),
   ],
 );

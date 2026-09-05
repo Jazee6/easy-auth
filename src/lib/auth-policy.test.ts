@@ -10,9 +10,9 @@ import {
   derivePasswordResetPayload,
   deriveSignupPayload,
   deriveSignInMethodState,
-  evaluateGithubLink,
-  getGithubLinkOptions,
-  getGithubSignInOptions,
+  evaluateExternalIdentityLink,
+  getExternalIdentityLinkOptions,
+  getExternalIdentitySignInOptions,
   getInitials,
   getLoginFailureResolution,
   getPasswordConfirmationError,
@@ -32,12 +32,12 @@ import {
   profileSchema,
   shouldRejectPasswordlessOtpRequest,
   signupSchema,
-  githubAuthPolicy,
+  externalIdentityAuthPolicy,
   translateAuthError,
-  translateGithubOauthError,
+  translateExternalIdentityOauthError,
   translateProfileError,
   translateSignInMethodsError,
-  validateGithubIdentity,
+  validateExternalIdentity,
   verifyEmailFormSchema,
 } from "./auth-policy";
 import { PasswordResetEmail } from "../emails/password-reset-email";
@@ -406,54 +406,57 @@ describe("auth-policy", () => {
     });
   });
 
-  describe("GitHub identity admission and OAuth feedback", () => {
-    it("admits only GitHub identities with a verified email for create, sign-in, and link", () => {
-      for (const action of ["create-user", "sign-in", "link-account"] as const) {
+  describe("external identity admission and OAuth feedback", () => {
+    it("admits only supported external identities with a verified email", () => {
+      for (const provider of ["google", "github"] as const) {
+        const providerName = provider === "google" ? "Google" : "GitHub";
+        for (const action of ["create-user", "sign-in", "link-account"] as const) {
+          expect(
+            validateExternalIdentity(
+              { email: "User@Example.com", emailVerified: true },
+              { action, method: "oauth", oauth: { providerId: provider } },
+            ),
+          ).toBeUndefined();
+          expect(
+            validateExternalIdentity(
+              { email: "user@example.com", emailVerified: false },
+              { action, method: "oauth", oauth: { providerId: provider } },
+            ),
+          ).toEqual({
+            error: `${provider}_email_not_verified`,
+            errorDescription: `${providerName} must provide a verified email address`,
+          });
+        }
+
         expect(
-          validateGithubIdentity(
-            { email: "User@Example.com", emailVerified: true },
-            { action, method: "oauth", oauth: { providerId: "github" } },
-          ),
-        ).toBeUndefined();
-        expect(
-          validateGithubIdentity(
-            { email: "user@example.com", emailVerified: false },
-            { action, method: "oauth", oauth: { providerId: "github" } },
+          validateExternalIdentity(
+            { emailVerified: false },
+            { action: "create-user", method: "oauth", oauth: { providerId: provider } },
           ),
         ).toEqual({
-          error: "github_email_not_verified",
-          errorDescription: "GitHub must provide a verified email address",
+          error: `${provider}_email_missing`,
+          errorDescription: `${providerName} must provide an email address`,
         });
       }
-
-      expect(
-        validateGithubIdentity(
-          { emailVerified: false },
-          { action: "create-user", method: "oauth", oauth: { providerId: "github" } },
-        ),
-      ).toEqual({
-        error: "github_email_missing",
-        errorDescription: "GitHub must provide an email address",
-      });
     });
 
-    it("does not apply GitHub admission policy to other authentication methods", () => {
+    it("does not apply external identity admission policy to other methods or providers", () => {
       expect(
-        validateGithubIdentity(
+        validateExternalIdentity(
           { email: "user@example.com", emailVerified: false },
           { action: "create-user", method: "email-password" },
         ),
       ).toBeUndefined();
       expect(
-        validateGithubIdentity(
+        validateExternalIdentity(
           { email: "user@example.com", emailVerified: false },
-          { action: "create-user", method: "oauth", oauth: { providerId: "google" } },
+          { action: "create-user", method: "oauth", oauth: { providerId: "custom" } },
         ),
       ).toBeUndefined();
     });
 
     it("keeps linking explicit and preserves maintained profile data", () => {
-      expect(githubAuthPolicy).toEqual({
+      expect(externalIdentityAuthPolicy).toEqual({
         requireEmailVerification: true,
         overrideUserInfoOnSignIn: false,
         disableImplicitLinking: true,
@@ -464,33 +467,30 @@ describe("auth-policy", () => {
       });
     });
 
-    it("uses stable local destinations for GitHub sign-in", () => {
-      expect(getGithubSignInOptions()).toEqual({
-        provider: "github",
+    it("uses provider-aware local destinations for external identity sign-in", () => {
+      expect(getExternalIdentitySignInOptions("google")).toEqual({
+        provider: "google",
         callbackURL: "/profile",
         newUserCallbackURL: "/profile",
-        errorCallbackURL: "/login",
+        errorCallbackURL: "/login?provider=google",
       });
 
-      // Carries sanitized returnTo through success and error/retry
-      expect(getGithubSignInOptions({ returnTo: "/sign-in-methods" })).toEqual({
+      expect(getExternalIdentitySignInOptions("github", { returnTo: "/sign-in-methods" })).toEqual({
         provider: "github",
         callbackURL: "/sign-in-methods",
         newUserCallbackURL: "/sign-in-methods",
-        errorCallbackURL: "/login?returnTo=%2Fsign-in-methods",
+        errorCallbackURL: "/login?returnTo=%2Fsign-in-methods&provider=github",
       });
 
-      // Invalid/arbitrary returnTo falls back safely
-      expect(getGithubSignInOptions({ returnTo: "//evil.com" })).toEqual({
-        provider: "github",
+      expect(getExternalIdentitySignInOptions("google", { returnTo: "//evil.com" })).toEqual({
+        provider: "google",
         callbackURL: "/profile",
         newUserCallbackURL: "/profile",
-        errorCallbackURL: "/login",
+        errorCallbackURL: "/login?provider=google",
       });
 
-      // Preserves pending OAuth flow priority over returnTo
       expect(
-        getGithubSignInOptions({
+        getExternalIdentitySignInOptions("github", {
           returnTo: "/sign-in-methods",
           search: "?client_id=ea_app&sig=signed_token&ba_param=client_id",
         }),
@@ -498,109 +498,129 @@ describe("auth-policy", () => {
         provider: "github",
         callbackURL: "/login?client_id=ea_app&sig=signed_token&ba_param=client_id",
         newUserCallbackURL: "/login?client_id=ea_app&sig=signed_token&ba_param=client_id",
-        errorCallbackURL: "/login?client_id=ea_app&sig=signed_token&ba_param=client_id",
+        errorCallbackURL:
+          "/login?client_id=ea_app&sig=signed_token&ba_param=client_id&provider=github",
       });
     });
 
-    it("translates cancellation, unverified email, and collisions without exposing framework errors", () => {
-      expect(translateGithubOauthError("access_denied")).toBe(
-        "GitHub sign-in was canceled. Please try again.",
+    it("translates provider-aware OAuth failures without exposing framework errors", () => {
+      expect(translateExternalIdentityOauthError("google", "access_denied")).toBe(
+        "Google sign-in was canceled. Please try again.",
       );
-      expect(translateGithubOauthError("github_email_missing")).toBe(
+      expect(translateExternalIdentityOauthError("github", "github_email_missing")).toBe(
         "GitHub did not provide an email. Verify your primary email in GitHub and try again.",
       );
-      expect(translateGithubOauthError("github_email_not_verified")).toBe(
-        "Verify your primary email in GitHub before signing in.",
+      expect(translateExternalIdentityOauthError("google", "google_email_not_verified")).toBe(
+        "Verify your primary email in Google before signing in.",
       );
-      expect(translateGithubOauthError("account_not_linked")).toBe(
-        "An account already exists with this email. Log in with an existing sign-in method, then link GitHub from Sign-in methods.",
+      expect(translateExternalIdentityOauthError("google", "account_not_linked")).toBe(
+        "An account already exists with this email. Log in with an existing sign-in method, then link Google from Sign-in methods.",
       );
-      expect(translateGithubOauthError("raw_provider_failure")).toBe(
+      expect(translateExternalIdentityOauthError("github", "raw_provider_failure")).toBe(
         "Unable to sign in with GitHub. Please try again.",
       );
-      expect(translateGithubOauthError(undefined)).toBeNull();
+      expect(translateExternalIdentityOauthError(undefined, "provider_failure")).toBe(
+        "Unable to sign in. Please try again.",
+      );
+      expect(translateExternalIdentityOauthError("google", undefined)).toBeNull();
     });
   });
 
   describe("sign-in method policy", () => {
-    it("derives password and GitHub state from Better Auth account records", () => {
+    it("derives password, Google, and GitHub state from Better Auth account records", () => {
       expect(
         deriveSignInMethodState([
           { id: "credential-1", providerId: "credential" },
+          { id: "google-1", providerId: "google" },
           { id: "github-1", providerId: "github" },
         ]),
       ).toEqual({
         password: { isSet: true },
+        google: { isLinked: true, accountId: "google-1", canUnlink: true, unlinkReason: null },
         github: { isLinked: true, accountId: "github-1", canUnlink: true, unlinkReason: null },
       });
 
-      expect(deriveSignInMethodState([{ id: "github-1", providerId: "github" }])).toEqual({
+      expect(deriveSignInMethodState([{ id: "google-1", providerId: "google" }])).toEqual({
         password: { isSet: false },
-        github: {
+        google: {
           isLinked: true,
-          accountId: "github-1",
+          accountId: "google-1",
           canUnlink: false,
-          unlinkReason: "Set a password before unlinking your final sign-in method.",
+          unlinkReason: "Add another sign-in method before unlinking your final sign-in method.",
         },
+        github: { isLinked: false, accountId: null, canUnlink: false, unlinkReason: null },
       });
 
       expect(deriveSignInMethodState([{ id: "credential-1", providerId: "credential" }])).toEqual({
         password: { isSet: true },
+        google: { isLinked: false, accountId: null, canUnlink: false, unlinkReason: null },
         github: { isLinked: false, accountId: null, canUnlink: false, unlinkReason: null },
       });
     });
 
-    it("requires an unused, verified, same-email GitHub identity for explicit linking", () => {
+    it("treats another external identity as a valid fallback login method", () => {
+      const state = deriveSignInMethodState([
+        { id: "google-1", providerId: "google" },
+        { id: "github-1", providerId: "github" },
+      ]);
+      expect(state.google.canUnlink).toBe(true);
+      expect(state.github.canUnlink).toBe(true);
+    });
+
+    it("requires an unused, verified, same-email external identity for explicit linking", () => {
       const base = {
+        provider: "google" as const,
         userId: "user-1",
         loginEmail: " User@Example.com ",
         providerEmail: "user@example.COM",
         providerEmailVerified: true,
-        githubIdentityCount: 0,
+        providerIdentityCount: 0,
         identityOwnerUserId: null,
       };
 
-      expect(evaluateGithubLink(base)).toEqual({ allowed: true });
-      expect(evaluateGithubLink({ ...base, providerEmailVerified: false })).toEqual({
+      expect(evaluateExternalIdentityLink(base)).toEqual({ allowed: true });
+      expect(evaluateExternalIdentityLink({ ...base, providerEmailVerified: false })).toEqual({
         allowed: false,
-        code: "github_email_not_verified",
+        code: "google_email_not_verified",
       });
-      expect(evaluateGithubLink({ ...base, providerEmail: "other@example.com" })).toEqual({
+      expect(evaluateExternalIdentityLink({ ...base, providerEmail: "other@example.com" })).toEqual(
+        {
+          allowed: false,
+          code: "email_does_not_match",
+        },
+      );
+      expect(evaluateExternalIdentityLink({ ...base, providerIdentityCount: 1 })).toEqual({
         allowed: false,
-        code: "email_does_not_match",
+        code: "google_already_linked",
       });
-      expect(evaluateGithubLink({ ...base, githubIdentityCount: 1 })).toEqual({
-        allowed: false,
-        code: "github_already_linked",
-      });
-      expect(evaluateGithubLink({ ...base, identityOwnerUserId: "user-2" })).toEqual({
+      expect(evaluateExternalIdentityLink({ ...base, identityOwnerUserId: "user-2" })).toEqual({
         allowed: false,
         code: "identity_owned_by_another_user",
       });
     });
 
-    it("uses authenticated local destinations for explicit GitHub linking", () => {
-      expect(getGithubLinkOptions()).toEqual({
-        provider: "github",
-        callbackURL: "/sign-in-methods?status=github-linked",
-        errorCallbackURL: "/sign-in-methods",
+    it("uses provider-aware destinations for explicit external identity linking", () => {
+      expect(getExternalIdentityLinkOptions("google")).toEqual({
+        provider: "google",
+        callbackURL: "/sign-in-methods?status=google-linked",
+        errorCallbackURL: "/sign-in-methods?provider=google",
       });
     });
 
-    it("maps link and unlink errors to stable feedback", () => {
-      expect(translateSignInMethodsError("email_does_not_match")).toBe(
-        "The verified GitHub email must match your login email.",
+    it("maps provider-aware link and unlink errors to stable feedback", () => {
+      expect(translateSignInMethodsError("google", "email_does_not_match")).toBe(
+        "The verified Google email must match your login email.",
       );
-      expect(translateSignInMethodsError("account_already_linked_to_different_user")).toBe(
-        "This GitHub identity is already linked to another account.",
+      expect(
+        translateSignInMethodsError("github", "account_already_linked_to_different_user"),
+      ).toBe("This GitHub identity is already linked to another account.");
+      expect(translateSignInMethodsError("google", "unable_to_link_account")).toBe(
+        "A Google identity is already linked, or the link could not be completed.",
       );
-      expect(translateSignInMethodsError("unable_to_link_account")).toBe(
-        "A GitHub identity is already linked, or the link could not be completed.",
+      expect(translateSignInMethodsError("github", "FAILED_TO_UNLINK_LAST_ACCOUNT")).toBe(
+        "Add another sign-in method before unlinking your final sign-in method.",
       );
-      expect(translateSignInMethodsError("FAILED_TO_UNLINK_LAST_ACCOUNT")).toBe(
-        "Set a password before unlinking your final sign-in method.",
-      );
-      expect(translateSignInMethodsError("provider_raw_error")).toBe(
+      expect(translateSignInMethodsError(undefined, "provider_raw_error")).toBe(
         "Unable to update sign-in methods. Please try again.",
       );
     });

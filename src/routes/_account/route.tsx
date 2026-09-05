@@ -6,6 +6,7 @@ import { GithubIcon } from "@/components/github-icon";
 import { buttonVariants } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 import { getRouteRedirect } from "@/lib/auth-policy";
 import { fetchSession } from "@/lib/auth-server";
 import { privatePageHead } from "@/lib/page-metadata";
@@ -76,6 +77,7 @@ function AccountLayout() {
             </TooltipTrigger>
             <TooltipContent>v{packageJson.version}</TooltipContent>
           </Tooltip>
+          <ThemeSwitcher />
         </header>
         <main className="flex flex-1 justify-center p-6 md:p-8">
           <Outlet />

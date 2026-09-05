@@ -3,7 +3,7 @@ import {
   consumePasskeyRegistrationDraft,
   savePasskeyRegistrationDraft,
 } from "./passkey-registration-draft";
-import { getGithubSignInOptions } from "./auth-policy";
+import { getExternalIdentitySignInOptions } from "./auth-policy";
 import { sanitizeReturnDestination } from "./passkey-policy";
 
 function createStorage() {
@@ -72,7 +72,7 @@ describe("passkey registration resume", () => {
   test("retains the resume marker through login return destinations", () => {
     const returnTo = "/sign-in-methods?resume=add-passkey";
     expect(sanitizeReturnDestination(returnTo)).toBe(returnTo);
-    const options = getGithubSignInOptions({ returnTo });
+    const options = getExternalIdentitySignInOptions("github", { returnTo });
     expect(options.callbackURL).toBe(returnTo);
     expect(options.newUserCallbackURL).toBe(returnTo);
     expect(

@@ -177,7 +177,7 @@ describe("passkey-policy", () => {
       expect(state.passkey?.canDelete("pk-2")).toBe(true);
     });
 
-    it("allows deleting a passkey when password or GitHub exists", () => {
+    it("allows deleting a passkey when a password or external identity exists", () => {
       const withPassword = deriveSignInMethodState(
         [{ id: "cred-1", providerId: "credential" }],
         [{ id: "pk-1", name: "Key 1" }],
@@ -189,6 +189,12 @@ describe("passkey-policy", () => {
         [{ id: "pk-1", name: "Key 1" }],
       );
       expect(withGithub.passkey?.canDelete("pk-1")).toBe(true);
+
+      const withGoogle = deriveSignInMethodState(
+        [{ id: "google-1", providerId: "google" }],
+        [{ id: "pk-1", name: "Key 1" }],
+      );
+      expect(withGoogle.passkey?.canDelete("pk-1")).toBe(true);
     });
 
     it("forbids deleting the only passkey when no other login methods exist", () => {

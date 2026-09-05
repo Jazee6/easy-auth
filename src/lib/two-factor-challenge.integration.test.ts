@@ -146,6 +146,11 @@ describe("password-login Two-Factor challenge", () => {
       challenge.cookie,
     );
     expect(verified.status).toBe(200);
+    expect(
+      verified.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("better-auth.last_used_login_method=email")),
+    ).toBe(true);
     expect(await countSessions(account.accountId)).toBe(1);
 
     const replay = await postAuth(
@@ -172,6 +177,11 @@ describe("password-login Two-Factor challenge", () => {
       firstChallenge.cookie,
     );
     expect(verified.status).toBe(200);
+    expect(
+      verified.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("better-auth.last_used_login_method=email")),
+    ).toBe(true);
     expect(await countSessions(account.accountId)).toBe(1);
 
     await database.prepare("DELETE FROM session WHERE user_id = ?").bind(account.accountId).run();

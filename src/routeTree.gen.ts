@@ -14,7 +14,9 @@ import { Route as AccountRouteRouteImport } from './routes/_account/route'
 import { Route as ConsentRouteImport } from './routes/consent'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TwoFactorRouteImport } from './routes/two-factor'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as DotwellKnownOauthAuthorizationServerRouteImport } from './routes/[.]well-known/oauth-authorization-server'
@@ -57,9 +59,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TwoFactorRoute = TwoFactorRouteImport.update({
@@ -161,7 +173,9 @@ export interface FileRoutesByFullPath {
   '/consent': typeof ConsentRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/admin': typeof AccountAdminRouteRouteWithChildren
@@ -185,7 +199,9 @@ export interface FileRoutesByTo {
   '/consent': typeof ConsentRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/.well-known/oauth-authorization-server': typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
@@ -210,7 +226,9 @@ export interface FileRoutesById {
   '/consent': typeof ConsentRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/two-factor': typeof TwoFactorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/_account/admin': typeof AccountAdminRouteRouteWithChildren
@@ -236,7 +254,9 @@ export interface FileRouteTypes {
     | '/consent'
     | '/forgot-password'
     | '/login'
+    | '/privacy'
     | '/signup'
+    | '/terms'
     | '/two-factor'
     | '/verify-email'
     | '/admin'
@@ -260,7 +280,9 @@ export interface FileRouteTypes {
     | '/consent'
     | '/forgot-password'
     | '/login'
+    | '/privacy'
     | '/signup'
+    | '/terms'
     | '/two-factor'
     | '/verify-email'
     | '/.well-known/oauth-authorization-server'
@@ -284,7 +306,9 @@ export interface FileRouteTypes {
     | '/consent'
     | '/forgot-password'
     | '/login'
+    | '/privacy'
     | '/signup'
+    | '/terms'
     | '/two-factor'
     | '/verify-email'
     | '/_account/admin'
@@ -310,7 +334,9 @@ export interface RootRouteChildren {
   ConsentRoute: typeof ConsentRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
   SignupRoute: typeof SignupRoute
+  TermsRoute: typeof TermsRoute
   TwoFactorRoute: typeof TwoFactorRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   DotwellKnownOauthAuthorizationServerRoute: typeof DotwellKnownOauthAuthorizationServerRouteWithChildren
@@ -355,11 +381,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/two-factor': {
@@ -547,7 +587,9 @@ const rootRouteChildren: RootRouteChildren = {
   ConsentRoute: ConsentRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
   SignupRoute: SignupRoute,
+  TermsRoute: TermsRoute,
   TwoFactorRoute: TwoFactorRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   DotwellKnownOauthAuthorizationServerRoute:

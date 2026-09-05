@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Turnstile, type TurnstileRef } from "@/components/turnstile";
+import { LegalLinks } from "@/components/legal-links";
 
 export function SignupForm({ className, ...props }: React.ComponentProps<typeof Card>) {
   const navigate = useNavigate();
@@ -82,112 +83,115 @@ export function SignupForm({ className, ...props }: React.ComponentProps<typeof 
   });
 
   return (
-    <Card className={cn(className)} {...props}>
-      <CardHeader>
-        <CardTitle>Create account</CardTitle>
-        <CardDescription>
-          Enter your email and password below to create your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          noValidate
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            form.handleSubmit();
-          }}
-        >
-          <FieldGroup>
-            {formError && (
-              <Alert variant="destructive" className="border-destructive/25 bg-destructive/15">
-                <CircleAlertIcon />
-                <AlertTitle>{formError}</AlertTitle>
-              </Alert>
-            )}
-
-            <form.Field name="email">
-              {(field) => (
-                <Field>
-                  <FieldLabel htmlFor="email">Email</FieldLabel>
-                  <Input
-                    id="email"
-                    name={field.name}
-                    type="email"
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => {
-                      setFormError(null);
-                      field.handleChange(e.target.value);
-                    }}
-                  />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
+    <div className="flex flex-col gap-6">
+      <Card className={cn(className)} {...props}>
+        <CardHeader>
+          <CardTitle>Create account</CardTitle>
+          <CardDescription>
+            Enter your email and password below to create your account
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              form.handleSubmit();
+            }}
+          >
+            <FieldGroup>
+              {formError && (
+                <Alert variant="destructive" className="border-destructive/25 bg-destructive/15">
+                  <CircleAlertIcon />
+                  <AlertTitle>{formError}</AlertTitle>
+                </Alert>
               )}
-            </form.Field>
 
-            <form.Field name="password">
-              {(field) => (
-                <Field>
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Input
-                    id="password"
-                    name={field.name}
-                    type="password"
-                    autoComplete="new-password"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => {
-                      setFormError(null);
-                      field.handleChange(e.target.value);
-                    }}
-                  />
-                  <FieldError errors={field.state.meta.errors} />
-                </Field>
-              )}
-            </form.Field>
+              <form.Field name="email">
+                {(field) => (
+                  <Field>
+                    <FieldLabel htmlFor="email">Email</FieldLabel>
+                    <Input
+                      id="email"
+                      name={field.name}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => {
+                        setFormError(null);
+                        field.handleChange(e.target.value);
+                      }}
+                    />
+                    <FieldError errors={field.state.meta.errors} />
+                  </Field>
+                )}
+              </form.Field>
 
-            <Turnstile
-              ref={turnstileRef}
-              action="signup"
-              onSuccess={(token) => setTurnstileToken(token)}
-              onExpire={() => setTurnstileToken(null)}
-              onError={() => {
-                resetCaptcha();
-                setFormError(
-                  "Security verification encountered an error. Please refresh and try again.",
-                );
-              }}
-            />
+              <form.Field name="password">
+                {(field) => (
+                  <Field>
+                    <FieldLabel htmlFor="password">Password</FieldLabel>
+                    <Input
+                      id="password"
+                      name={field.name}
+                      type="password"
+                      autoComplete="new-password"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(e) => {
+                        setFormError(null);
+                        field.handleChange(e.target.value);
+                      }}
+                    />
+                    <FieldError errors={field.state.meta.errors} />
+                  </Field>
+                )}
+              </form.Field>
 
-            <form.Subscribe selector={(state) => state.isSubmitting}>
-              {(isSubmitting) => (
-                <Field>
-                  <Button
-                    type="submit"
-                    loading={isSubmitting}
-                    disabled={!turnstileToken || isSubmitting}
-                  >
-                    Create account
-                  </Button>
-                  <FieldDescription className="text-center">
-                    Already registered?{" "}
-                    <Link
-                      to="/login"
-                      search={true}
-                      className="underline underline-offset-4 hover:text-primary"
+              <Turnstile
+                ref={turnstileRef}
+                action="signup"
+                onSuccess={(token) => setTurnstileToken(token)}
+                onExpire={() => setTurnstileToken(null)}
+                onError={() => {
+                  resetCaptcha();
+                  setFormError(
+                    "Security verification encountered an error. Please refresh and try again.",
+                  );
+                }}
+              />
+
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Field>
+                    <Button
+                      type="submit"
+                      loading={isSubmitting}
+                      disabled={!turnstileToken || isSubmitting}
                     >
-                      Log in
-                    </Link>
-                  </FieldDescription>
-                </Field>
-              )}
-            </form.Subscribe>
-          </FieldGroup>
-        </form>
-      </CardContent>
-    </Card>
+                      Create account
+                    </Button>
+                    <FieldDescription className="text-center">
+                      Already registered?{" "}
+                      <Link
+                        to="/login"
+                        search={true}
+                        className="underline underline-offset-4 hover:text-primary"
+                      >
+                        Log in
+                      </Link>
+                    </FieldDescription>
+                  </Field>
+                )}
+              </form.Subscribe>
+            </FieldGroup>
+          </form>
+        </CardContent>
+      </Card>
+      <LegalLinks agreement />
+    </div>
   );
 }

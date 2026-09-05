@@ -7,12 +7,13 @@ import { WebAuthnAbortService } from "@simplewebauthn/browser";
 import { cn } from "@/lib/utils";
 import { authClient, continuePendingOAuth } from "@/lib/auth-client";
 import {
-  getGithubSignInOptions,
+  getExternalIdentitySignInOptions,
   getLoginFailureResolution,
   loginSchema,
   normalizeEmail,
   translateAuthError,
-  translateGithubOauthError,
+  translateExternalIdentityOauthError,
+  type ExternalIdentityProvider,
 } from "@/lib/auth-policy";
 import {
   isPasskeyCancellation,
@@ -22,22 +23,44 @@ import {
 import { getPendingOAuthVerificationUrl } from "@/lib/oauth-policy";
 import { Button } from "@/components/ui/button";
 import { GithubIcon } from "@/components/github-icon";
+import { GoogleIcon } from "@/components/google-icon";
+import { LegalLinks } from "@/components/legal-links";
 import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
   oauthError?: string;
+  oauthProvider?: ExternalIdentityProvider;
   returnTo?: string;
 }
 
-export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFormProps) {
+function LastUsedBadge({
+  method,
+  lastUsedMethod,
+}: {
+  method: string;
+  lastUsedMethod: string | null;
+}) {
+  if (method !== lastUsedMethod) return null;
+  return <Badge variant="secondary">Last used</Badge>;
+}
+
+export function LoginForm({
+  oauthError,
+  oauthProvider,
+  returnTo,
+  className,
+  ...props
+}: LoginFormProps) {
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(() =>
-    translateGithubOauthError(oauthError),
+    translateExternalIdentityOauthError(oauthProvider, oauthError),
   );
-  const [isGithubPending, setIsGithubPending] = useState(false);
+  const [pendingProvider, setPendingProvider] = useState<ExternalIdentityProvider | null>(null);
+  const [lastUsedLoginMethod, setLastUsedLoginMethod] = useState<string | null>(null);
   const [isPasskeyPending, setIsPasskeyPending] = useState(false);
   const [isWebAuthnSupported, setIsWebAuthnSupported] = useState(true);
   const activeCeremonyRef = useRef<"none" | "conditional" | "explicit">("none");
@@ -59,6 +82,7 @@ export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFo
 
   useEffect(() => {
     let active = true;
+    setLastUsedLoginMethod(authClient.getLastUsedLoginMethod());
 
     async function initConditionalUI() {
       if (typeof window === "undefined" || !window.PublicKeyCredential) {
@@ -137,21 +161,23 @@ export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFo
     }
   };
 
-  const signInWithGithub = async () => {
+  const signInWithExternalIdentity = async (provider: ExternalIdentityProvider) => {
     setFormError(null);
     abortCeremony();
-    setIsGithubPending(true);
+    setPendingProvider(provider);
 
     try {
       const search = typeof window !== "undefined" ? window.location.search : undefined;
-      const result = await authClient.signIn.social(getGithubSignInOptions({ returnTo, search }));
+      const result = await authClient.signIn.social(
+        getExternalIdentitySignInOptions(provider, { returnTo, search }),
+      );
       if (result.error) {
-        setFormError(translateGithubOauthError(result.error.code));
-        setIsGithubPending(false);
+        setFormError(translateExternalIdentityOauthError(provider, result.error.code));
+        setPendingProvider(null);
       }
     } catch {
-      setFormError(translateGithubOauthError("oauth_provider_failure"));
-      setIsGithubPending(false);
+      setFormError(translateExternalIdentityOauthError(provider, "oauth_provider_failure"));
+      setPendingProvider(null);
     }
   };
 
@@ -286,9 +312,10 @@ export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFo
                     <Button
                       type="submit"
                       loading={isSubmitting}
-                      disabled={isSubmitting || isGithubPending || isPasskeyPending}
+                      disabled={isSubmitting || pendingProvider !== null || isPasskeyPending}
                     >
                       Login
+                      <LastUsedBadge method="email" lastUsedMethod={lastUsedLoginMethod} />
                     </Button>
                     <Button
                       variant="outline"
@@ -298,12 +325,16 @@ export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFo
                         !isWebAuthnSupported ? "passkey-unsupported-explanation" : undefined
                       }
                       disabled={
-                        isSubmitting || isGithubPending || isPasskeyPending || !isWebAuthnSupported
+                        isSubmitting ||
+                        pendingProvider !== null ||
+                        isPasskeyPending ||
+                        !isWebAuthnSupported
                       }
                       onClick={signInWithPasskey}
                     >
                       <Fingerprint />
                       Sign in with Passkey
+                      <LastUsedBadge method="passkey" lastUsedMethod={lastUsedLoginMethod} />
                     </Button>
                     {!isWebAuthnSupported && (
                       <p
@@ -317,12 +348,24 @@ export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFo
                     <Button
                       variant="outline"
                       type="button"
-                      loading={isGithubPending}
-                      disabled={isSubmitting || isGithubPending || isPasskeyPending}
-                      onClick={signInWithGithub}
+                      loading={pendingProvider === "google"}
+                      disabled={isSubmitting || pendingProvider !== null || isPasskeyPending}
+                      onClick={() => signInWithExternalIdentity("google")}
+                    >
+                      <GoogleIcon />
+                      Continue with Google
+                      <LastUsedBadge method="google" lastUsedMethod={lastUsedLoginMethod} />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      type="button"
+                      loading={pendingProvider === "github"}
+                      disabled={isSubmitting || pendingProvider !== null || isPasskeyPending}
+                      onClick={() => signInWithExternalIdentity("github")}
                     >
                       <GithubIcon />
                       Continue with GitHub
+                      <LastUsedBadge method="github" lastUsedMethod={lastUsedLoginMethod} />
                     </Button>
                     <FieldDescription className="text-center">
                       Don&apos;t have an account?{" "}
@@ -341,6 +384,7 @@ export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFo
           </form>
         </CardContent>
       </Card>
+      <LegalLinks />
     </div>
   );
 }

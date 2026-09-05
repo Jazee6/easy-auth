@@ -6,7 +6,7 @@ import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 import { isoCBOR, isoBase64URL } from "@simplewebauthn/server/helpers";
 
 import { createEasyAuth } from "./auth-factory";
-import { getGithubSignInOptions } from "./auth-policy";
+import { getExternalIdentitySignInOptions } from "./auth-policy";
 import {
   isPasskeyCancellation,
   sanitizeReturnDestination,
@@ -544,6 +544,51 @@ describe("Passkey integration and security policy", () => {
 
     const pkRow = await database.prepare("SELECT id FROM passkey WHERE id = ?").bind(pkId).first();
     expect(Boolean(pkRow)).toBe(true);
+  });
+
+  test("last-method protection: Google and GitHub can back each other up", async () => {
+    const user = await createAccount("user-google-github-unlink");
+    await database
+      .prepare("DELETE FROM account WHERE user_id = ? AND provider_id = 'credential'")
+      .bind(user.id)
+      .run();
+
+    const googleAccountId = "google-account-for-unlink";
+    const githubAccountId = "github-account-for-unlink";
+    await database
+      .prepare(
+        `INSERT INTO account (id, issuer, account_id, provider_id, user_id, created_at, updated_at)
+         VALUES (?, 'https://accounts.google.com', 'google-user-1', 'google', ?, ?, ?),
+                (?, 'https://github.com', 'github-user-1', 'github', ?, ?, ?)`,
+      )
+      .bind(
+        googleAccountId,
+        user.id,
+        Date.now(),
+        Date.now(),
+        githubAccountId,
+        user.id,
+        Date.now(),
+        Date.now(),
+      )
+      .run();
+
+    const unlinkGoogle = await postAuth(
+      "/unlink-account",
+      { accountId: googleAccountId },
+      user.cookie,
+    );
+    expect(unlinkGoogle.status).toBe(200);
+
+    const unlinkFinalGithub = await postAuth(
+      "/unlink-account",
+      { accountId: githubAccountId },
+      user.cookie,
+    );
+    expect(unlinkFinalGithub.status).toBe(400);
+    expect(((await unlinkFinalGithub.json()) as { code: string }).code).toBe(
+      "FAILED_TO_UNLINK_LAST_ACCOUNT",
+    );
   });
 
   test("concurrency protection: simultaneous passkey deletions cannot delete the final passkey", async () => {
@@ -1195,12 +1240,16 @@ describe("Passkey integration and security policy", () => {
     expect(sanitizeReturnDestination("/sign-in-methods%2f..")).toBe("/profile");
 
     // 2. GitHub re-login carries sanitized returnTo through success and retry
-    const githubSignInMethods = getGithubSignInOptions({ returnTo: "/sign-in-methods" });
+    const githubSignInMethods = getExternalIdentitySignInOptions("github", {
+      returnTo: "/sign-in-methods",
+    });
     expect(githubSignInMethods.callbackURL).toBe("/sign-in-methods");
-    expect(githubSignInMethods.errorCallbackURL).toBe("/login?returnTo=%2Fsign-in-methods");
+    expect(githubSignInMethods.errorCallbackURL).toBe(
+      "/login?returnTo=%2Fsign-in-methods&provider=github",
+    );
 
     // 3. Pending OAuth flow priority over returnTo
-    const githubOAuthFlow = getGithubSignInOptions({
+    const githubOAuthFlow = getExternalIdentitySignInOptions("github", {
       returnTo: "/sign-in-methods",
       search: "?client_id=ea_app&sig=sig123&ba_param=client_id",
     });
@@ -1208,7 +1257,7 @@ describe("Passkey integration and security policy", () => {
       "/login?client_id=ea_app&sig=sig123&ba_param=client_id",
     );
     expect(githubOAuthFlow.errorCallbackURL).toBe(
-      "/login?client_id=ea_app&sig=sig123&ba_param=client_id",
+      "/login?client_id=ea_app&sig=sig123&ba_param=client_id&provider=github",
     );
 
     // 4. Cancellation behavior distinguishes client cancellation from server authorization failure
