@@ -7,8 +7,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "easy-auth-d1",
-      "database_id": "<YOUR_D1_DATABASE_ID>",
+      "database_name": "easy-auth",
+      "database_id": "cf34b8ee-f903-47cd-b48d-10071d9d6e12",
       "migrations_dir": "drizzle",
     },
   ],
