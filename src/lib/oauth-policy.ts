@@ -241,6 +241,27 @@ export function normalizeOAuthRedirectUris(redirectUris: string[]): string[] {
   return [...new Set(redirectUris.map((uri) => uri.trim()).filter(Boolean))];
 }
 
+/**
+ * Reads a string-array column that may hold either an array or a JSON-encoded
+ * string. Better Auth stringifies `string[]` fields on SQLite before drizzle's
+ * json mode stringifies them again, so rows written through Better Auth surface
+ * as a JSON string after drizzle's own parse; rows written by our raw D1
+ * statements come through as arrays.
+ */
+export function parseStoredStringArray(value: unknown): string[] {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(parsed)
+    ? parsed.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
 export function oauthClientCreatePayload(input: ClientRegistrationInput) {
   return {
     client_name: input.name.trim(),

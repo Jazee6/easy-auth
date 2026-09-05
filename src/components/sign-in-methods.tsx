@@ -8,6 +8,7 @@ import {
   deriveSignInMethodState,
   getGithubLinkOptions,
   translateSignInMethodsError,
+  type PasskeyItem,
   type SignInMethodAccount,
 } from "@/lib/auth-policy";
 import { PageHeader } from "@/components/page-header";
@@ -33,19 +34,31 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { toast } from "@/components/ui/toast";
+import { PasskeySettings } from "@/components/passkey-settings";
 
 interface SignInMethodsProps {
   user: {
+    id: string;
     email: string;
   };
   accounts: SignInMethodAccount[];
+  passkeys?: PasskeyItem[];
   status?: string;
   error?: string;
+  resumePasskeyRegistration?: boolean;
 }
 
-export function SignInMethods({ user, accounts, status, error }: SignInMethodsProps) {
+export function SignInMethods({
+  user,
+  accounts,
+  passkeys = [],
+  status,
+  error,
+  resumePasskeyRegistration,
+}: SignInMethodsProps) {
   const router = useRouter();
-  const methodState = deriveSignInMethodState(accounts);
+  const methodState = deriveSignInMethodState(accounts, passkeys);
+
   const [isLinking, setIsLinking] = React.useState(false);
   const [isUnlinking, setIsUnlinking] = React.useState(false);
   const [isUnlinkDialogOpen, setIsUnlinkDialogOpen] = React.useState(false);
@@ -102,7 +115,9 @@ export function SignInMethods({ user, accounts, status, error }: SignInMethodsPr
       if (result.error) {
         toast.add({
           title: "GitHub was not unlinked",
-          description: translateSignInMethodsError(result.error.code ?? "unlink_failed"),
+          description: translateSignInMethodsError(
+            (result.error as { code?: string } | null)?.code ?? "unlink_failed",
+          ),
           type: "error",
         });
         return;
@@ -207,6 +222,12 @@ export function SignInMethods({ user, accounts, status, error }: SignInMethodsPr
             )}
           </ItemActions>
         </Item>
+        <PasskeySettings
+          userId={user.id}
+          resumeRegistration={resumePasskeyRegistration}
+          passkeys={passkeys}
+          canDeletePasskey={(id) => methodState.passkey?.canDelete(id) ?? true}
+        />
       </ItemGroup>
     </div>
   );

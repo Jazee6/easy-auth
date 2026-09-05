@@ -1,6 +1,7 @@
 import { createAuthClient } from "better-auth/react";
 import { adminClient, emailOTPClient, twoFactorClient } from "better-auth/client/plugins";
 import { oauthProviderClient } from "@better-auth/oauth-provider/client";
+import { passkeyClient } from "@better-auth/passkey/client";
 
 import { getOAuthContinuationPayload, type PendingOAuthContinuation } from "./oauth-policy";
 import { getTwoFactorChallengeUrl } from "./two-factor-challenge";
@@ -17,6 +18,7 @@ export const authClient = createAuthClient({
       },
     }),
     oauthProviderClient(),
+    passkeyClient(),
   ],
 });
 

@@ -5,7 +5,7 @@ import { CircleAlertIcon } from "lucide-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 
 import { authClient, continuePendingOAuth } from "@/lib/auth-client";
-import { getPostLoginRedirect } from "@/lib/auth-policy";
+import { sanitizeReturnDestination } from "@/lib/passkey-policy";
 import {
   getLoginRestartUrl,
   initialTwoFactorChallengeValues,
@@ -29,9 +29,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
-export type TwoFactorChallengeFormProps = React.ComponentProps<typeof Card>;
+export interface TwoFactorChallengeFormProps extends React.ComponentProps<typeof Card> {
+  returnTo?: string;
+}
 
-export function TwoFactorChallengeForm({ className, ...props }: TwoFactorChallengeFormProps) {
+export function TwoFactorChallengeForm({
+  returnTo,
+  className,
+  ...props
+}: TwoFactorChallengeFormProps) {
   const navigate = useNavigate();
   const [formError, setFormError] = React.useState<string | null>(null);
   const [restartRequired, setRestartRequired] = React.useState(false);
@@ -76,7 +82,8 @@ export function TwoFactorChallengeForm({ className, ...props }: TwoFactorChallen
       } catch {
         // The Session is already authoritative; the requesting application can restart OAuth.
       }
-      await navigate({ to: getPostLoginRedirect() });
+      const destination = sanitizeReturnDestination(returnTo);
+      await navigate({ href: destination });
     },
   });
 

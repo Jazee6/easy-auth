@@ -2,18 +2,6 @@
 
 Easy Auth is a development-stage, self-hosted authentication foundation and OAuth 2.1/OpenID Connect Authorization Server for an identity domain on the Cloudflare stack. End-to-end OAuth/OIDC is available for development and integration testing; production operational guarantees are not yet available.
 
-## Local development
-
-Requirements: [Bun](https://bun.sh/) and [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
-
-```bash
-bun install
-bun run db:migrate:local
-bun run dev
-```
-
-Database migrations are explicit. Application startup never changes the D1 schema. After an authentication schema change, run `bun run auth:generate`, `bun run db:generate`, and then apply the generated migration.
-
 ## Runtime bindings
 
 Configure local values in `.env.local`. Configure deployed secrets with Wrangler rather than committing them.
@@ -29,19 +17,3 @@ Configure local values in `.env.local`. Configure deployed secrets with Wrangler
 | `VITE_TURNSTILE_SITE_KEY` | Browser       | Cloudflare Turnstile managed-widget site key                              |
 | `GITHUB_CLIENT_ID`        | Server        | GitHub OAuth App client ID                                                |
 | `GITHUB_CLIENT_SECRET`    | Server secret | GitHub OAuth App client secret                                            |
-
-Set the GitHub OAuth App callback URL to `<BETTER_AUTH_URL>/api/auth/callback/github`. Easy Auth uses GitHub's default profile and email scopes; no additional scopes are requested. Resend, Turnstile, and GitHub configuration is required. Missing bindings do not disable verification: Turnstile fails closed and email delivery failures are caught and logged in the background without changing the public registration response.
-
-Local automation must explicitly configure Cloudflare's official always-pass Turnstile test pair: site key `1x00000000000000000000AA` and secret key `1x0000000000000000000000000000000AA`. Manual development and production use environment-provided credentials. Never deploy the test keys. Automated tests inject a deterministic email sender and do not call Resend or production Turnstile.
-
-## Commands
-
-- `bun run test` — automated policy and service-seam tests
-- `bun run typecheck` — TypeScript checking
-- `bun run lint` — Oxlint
-- `bun run fmt:check` — formatting check
-- `bun run build` — production build
-- `bun run db:migrate:local` — apply migrations to local D1
-- `bun run generate-routes` — regenerate the TanStack Router route tree
-
-See [`docs/oauth-operations.md`](docs/oauth-operations.md) for issuer URLs, Administrator assignment, OAuth client ownership transfer, supported protocol behavior, and the reference client. Operations-only factor-loss recovery is documented in [`docs/two-factor-recovery.md`](docs/two-factor-recovery.md). See [`docs/releases/0.5.0-acceptance.md`](docs/releases/0.5.0-acceptance.md) for the current release qualification and manual Account Security checklist; [`docs/releases/0.4.0-acceptance.md`](docs/releases/0.4.0-acceptance.md) remains the preceding release record.

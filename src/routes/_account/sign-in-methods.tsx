@@ -7,12 +7,14 @@ import { privatePageHead } from "@/lib/page-metadata";
 interface SignInMethodsSearch {
   status?: string;
   error?: string;
+  resume?: "add-passkey";
 }
 
 export const Route = createFileRoute("/_account/sign-in-methods")({
   validateSearch: (search: Record<string, unknown>): SignInMethodsSearch => ({
     ...(typeof search.status === "string" ? { status: search.status } : {}),
     ...(typeof search.error === "string" ? { error: search.error } : {}),
+    ...(search.resume === "add-passkey" ? { resume: "add-passkey" as const } : {}),
   }),
   staticData: {
     title: "Sign-in methods",
@@ -23,9 +25,18 @@ export const Route = createFileRoute("/_account/sign-in-methods")({
 });
 
 function SignInMethodsPage() {
-  const accounts = Route.useLoaderData();
+  const data = Route.useLoaderData();
   const { session } = Route.useRouteContext();
-  const { status, error } = Route.useSearch();
+  const { status, error, resume } = Route.useSearch();
 
-  return <SignInMethods user={session.user} accounts={accounts} status={status} error={error} />;
+  return (
+    <SignInMethods
+      user={session.user}
+      accounts={data.accounts}
+      passkeys={data.passkeys}
+      status={status}
+      error={error}
+      resumePasskeyRegistration={resume === "add-passkey"}
+    />
+  );
 }

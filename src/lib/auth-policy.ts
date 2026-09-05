@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { sanitizeReturnDestination } from "./passkey-policy";
 
 export const EMAIL_RESEND_COOLDOWN_SECONDS = 60;
 
@@ -110,12 +111,44 @@ export function validateGithubIdentity(
   return undefined;
 }
 
-export function getGithubSignInOptions(): {
+export interface GithubSignInOptionsParams {
+  returnTo?: string | null;
+  search?: string | null;
+}
+
+export function getGithubSignInOptions(params?: GithubSignInOptionsParams): {
   provider: "github";
-  callbackURL: "/profile";
-  newUserCallbackURL: "/profile";
-  errorCallbackURL: "/login";
+  callbackURL: string;
+  newUserCallbackURL: string;
+  errorCallbackURL: string;
 } {
+  const { returnTo, search } = params ?? {};
+
+  // Check if pending OAuth flow takes priority
+  const query = search ? new URLSearchParams(search.startsWith("?") ? search : `?${search}`) : null;
+  const hasOAuthFlow = Boolean(query?.has("sig") && query?.has("client_id"));
+
+  if (hasOAuthFlow && search) {
+    const formattedSearch = search.startsWith("?") ? search : `?${search}`;
+    const oauthContinuationUrl = `/login${formattedSearch}`;
+    return {
+      provider: "github",
+      callbackURL: oauthContinuationUrl,
+      newUserCallbackURL: oauthContinuationUrl,
+      errorCallbackURL: oauthContinuationUrl,
+    };
+  }
+
+  const destination = sanitizeReturnDestination(returnTo);
+  if (destination !== "/profile") {
+    return {
+      provider: "github",
+      callbackURL: destination,
+      newUserCallbackURL: destination,
+      errorCallbackURL: `/login?${new URLSearchParams({ returnTo: destination })}`,
+    };
+  }
+
   return {
     provider: "github",
     callbackURL: "/profile",
@@ -129,7 +162,17 @@ export interface SignInMethodAccount {
   providerId: string;
 }
 
-export function deriveSignInMethodState(accounts: SignInMethodAccount[]): {
+export interface PasskeyItem {
+  id: string;
+  name?: string | null;
+  createdAt?: Date | number | string | null;
+  aaguid?: string | null;
+}
+
+export function deriveSignInMethodState(
+  accounts: SignInMethodAccount[],
+  passkeys?: PasskeyItem[],
+): {
   password: { isSet: boolean };
   github: {
     isLinked: boolean;
@@ -137,12 +180,29 @@ export function deriveSignInMethodState(accounts: SignInMethodAccount[]): {
     canUnlink: boolean;
     unlinkReason: string | null;
   };
+  passkey?: {
+    items: PasskeyItem[];
+    canDelete: (passkeyId: string) => boolean;
+  };
 } {
   const passwordAccount = accounts.find((account) => account.providerId === "credential");
   const githubAccount = accounts.find((account) => account.providerId === "github");
-  const hasAnotherMethod = accounts.some((account) => account.providerId !== "github");
+  const hasPasskey = Boolean(passkeys && passkeys.length > 0);
+  const hasAnotherMethod = Boolean(passwordAccount) || hasPasskey;
 
-  return {
+  const result: {
+    password: { isSet: boolean };
+    github: {
+      isLinked: boolean;
+      accountId: string | null;
+      canUnlink: boolean;
+      unlinkReason: string | null;
+    };
+    passkey?: {
+      items: PasskeyItem[];
+      canDelete: (passkeyId: string) => boolean;
+    };
+  } = {
     password: { isSet: Boolean(passwordAccount) },
     github: {
       isLinked: Boolean(githubAccount),
@@ -154,6 +214,18 @@ export function deriveSignInMethodState(accounts: SignInMethodAccount[]): {
           : null,
     },
   };
+
+  if (passkeys !== undefined) {
+    result.passkey = {
+      items: passkeys,
+      canDelete(passkeyId: string) {
+        const remainingPasskeys = passkeys.filter((p) => p.id !== passkeyId);
+        return Boolean(passwordAccount) || Boolean(githubAccount) || remainingPasskeys.length > 0;
+      },
+    };
+  }
+
+  return result;
 }
 
 interface GithubLinkEvaluationInput {

@@ -1,19 +1,24 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useForm } from "@tanstack/react-form";
-import { CircleAlertIcon } from "lucide-react";
+import { CircleAlertIcon, Fingerprint } from "lucide-react";
+import { WebAuthnAbortService } from "@simplewebauthn/browser";
 
 import { cn } from "@/lib/utils";
 import { authClient, continuePendingOAuth } from "@/lib/auth-client";
 import {
   getGithubSignInOptions,
   getLoginFailureResolution,
-  getPostLoginRedirect,
   loginSchema,
   normalizeEmail,
   translateAuthError,
   translateGithubOauthError,
 } from "@/lib/auth-policy";
+import {
+  isPasskeyCancellation,
+  sanitizeReturnDestination,
+  translatePasskeyError,
+} from "@/lib/passkey-policy";
 import { getPendingOAuthVerificationUrl } from "@/lib/oauth-policy";
 import { Button } from "@/components/ui/button";
 import { GithubIcon } from "@/components/github-icon";
@@ -24,21 +29,122 @@ import { Input } from "@/components/ui/input";
 
 interface LoginFormProps extends React.ComponentProps<"div"> {
   oauthError?: string;
+  returnTo?: string;
 }
 
-export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
+export function LoginForm({ oauthError, returnTo, className, ...props }: LoginFormProps) {
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(() =>
     translateGithubOauthError(oauthError),
   );
   const [isGithubPending, setIsGithubPending] = useState(false);
+  const [isPasskeyPending, setIsPasskeyPending] = useState(false);
+  const [isWebAuthnSupported, setIsWebAuthnSupported] = useState(true);
+  const activeCeremonyRef = useRef<"none" | "conditional" | "explicit">("none");
+
+  const abortCeremony = () => {
+    if (activeCeremonyRef.current !== "none") {
+      activeCeremonyRef.current = "none";
+      try {
+        WebAuthnAbortService.cancelCeremony();
+      } catch {}
+    }
+  };
+
+  const handlePostSignInRedirect = async () => {
+    if (await continuePendingOAuth()) return;
+    const destination = sanitizeReturnDestination(returnTo);
+    await navigate({ href: destination });
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    async function initConditionalUI() {
+      if (typeof window === "undefined" || !window.PublicKeyCredential) {
+        setIsWebAuthnSupported(false);
+        return;
+      }
+      setIsWebAuthnSupported(true);
+
+      if (!window.PublicKeyCredential.isConditionalMediationAvailable) return;
+      try {
+        const available = await window.PublicKeyCredential.isConditionalMediationAvailable();
+        if (!available || !active) return;
+
+        if (activeCeremonyRef.current !== "none") return;
+        activeCeremonyRef.current = "conditional";
+
+        const res = await authClient.signIn.passkey({ autoFill: true });
+        if (!active || activeCeremonyRef.current !== "conditional") return;
+        activeCeremonyRef.current = "none";
+
+        if (res.error) {
+          if (!isPasskeyCancellation(res.error)) {
+            setFormError(translatePasskeyError(res.error));
+          }
+          return;
+        }
+
+        if (res.data?.session) {
+          await handlePostSignInRedirect();
+        }
+      } catch (err) {
+        if (!active || activeCeremonyRef.current !== "conditional") return;
+        activeCeremonyRef.current = "none";
+        if (!isPasskeyCancellation(err)) {
+          setFormError(translatePasskeyError(err));
+        }
+      }
+    }
+
+    void initConditionalUI();
+
+    return () => {
+      active = false;
+      abortCeremony();
+    };
+  }, []);
+
+  const signInWithPasskey = async () => {
+    setFormError(null);
+    setIsPasskeyPending(true);
+    abortCeremony();
+    activeCeremonyRef.current = "explicit";
+
+    try {
+      const res = await authClient.signIn.passkey();
+      if (activeCeremonyRef.current !== "explicit") return;
+
+      if (res.error) {
+        if (!isPasskeyCancellation(res.error)) {
+          setFormError(translatePasskeyError(res.error));
+        }
+        return;
+      }
+
+      if (res.data?.session) {
+        await handlePostSignInRedirect();
+      }
+    } catch (err) {
+      if (activeCeremonyRef.current !== "explicit") return;
+      if (!isPasskeyCancellation(err)) {
+        setFormError(translatePasskeyError(err));
+      }
+    } finally {
+      activeCeremonyRef.current = "none";
+      setIsPasskeyPending(false);
+    }
+  };
 
   const signInWithGithub = async () => {
     setFormError(null);
+    abortCeremony();
     setIsGithubPending(true);
 
     try {
-      const result = await authClient.signIn.social(getGithubSignInOptions());
+      const search = typeof window !== "undefined" ? window.location.search : undefined;
+      const result = await authClient.signIn.social(getGithubSignInOptions({ returnTo, search }));
       if (result.error) {
         setFormError(translateGithubOauthError(result.error.code));
         setIsGithubPending(false);
@@ -59,6 +165,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
     },
     onSubmit: async ({ value }) => {
       setFormError(null);
+      abortCeremony();
 
       const email = normalizeEmail(value.email);
 
@@ -91,9 +198,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
           return;
         }
 
-        if (!(await continuePendingOAuth())) {
-          await navigate({ to: getPostLoginRedirect() });
-        }
+        await handlePostSignInRedirect();
       } catch (error) {
         setFormError(translateAuthError(error, "login"));
       }
@@ -132,7 +237,7 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                       id="email"
                       name={field.name}
                       type="email"
-                      autoComplete="email"
+                      autoComplete="username webauthn"
                       placeholder="you@example.com"
                       value={field.state.value}
                       onBlur={field.handleBlur}
@@ -181,15 +286,39 @@ export function LoginForm({ oauthError, className, ...props }: LoginFormProps) {
                     <Button
                       type="submit"
                       loading={isSubmitting}
-                      disabled={isSubmitting || isGithubPending}
+                      disabled={isSubmitting || isGithubPending || isPasskeyPending}
                     >
                       Login
                     </Button>
                     <Button
                       variant="outline"
                       type="button"
+                      loading={isPasskeyPending}
+                      aria-describedby={
+                        !isWebAuthnSupported ? "passkey-unsupported-explanation" : undefined
+                      }
+                      disabled={
+                        isSubmitting || isGithubPending || isPasskeyPending || !isWebAuthnSupported
+                      }
+                      onClick={signInWithPasskey}
+                    >
+                      <Fingerprint />
+                      Sign in with Passkey
+                    </Button>
+                    {!isWebAuthnSupported && (
+                      <p
+                        id="passkey-unsupported-explanation"
+                        className="text-xs text-muted-foreground text-center"
+                        role="status"
+                      >
+                        Passkeys are not supported in this browser.
+                      </p>
+                    )}
+                    <Button
+                      variant="outline"
+                      type="button"
                       loading={isGithubPending}
-                      disabled={isSubmitting || isGithubPending}
+                      disabled={isSubmitting || isGithubPending || isPasskeyPending}
                       onClick={signInWithGithub}
                     >
                       <GithubIcon />

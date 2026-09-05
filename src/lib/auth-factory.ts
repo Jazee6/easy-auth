@@ -4,6 +4,7 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin, captcha, emailOTP, jwt, twoFactor } from "better-auth/plugins";
+import { passkey } from "@better-auth/passkey";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { drizzle } from "drizzle-orm/d1";
 
@@ -37,6 +38,8 @@ import {
   type TwoFactorCleanupFailureEvent,
 } from "./two-factor-management-plugin";
 import { getAuthHandlerPath, getConstrainedAuthSurfaceError } from "./two-factor-policy";
+import { derivePasskeyRpConfig } from "./passkey-policy";
+import { createPasskeyManagementPlugin } from "./passkey-management-plugin";
 
 export interface AuthEnvironment {
   DB: D1Database;
@@ -123,6 +126,7 @@ export function createEasyAuth({
   onTwoFactorCleanupFailure,
 }: EasyAuthFactoryOptions) {
   const database = drizzle(environment.DB, { schema });
+  const rpConfig = derivePasskeyRpConfig(environment.BETTER_AUTH_URL);
 
   const auth = betterAuth({
     appName: "Easy Auth",
@@ -237,6 +241,78 @@ export function createEasyAuth({
         },
         clientPrivileges: ({ user }) => hasAdministratorRole(user?.role),
       }),
+      passkey({
+        rpID: rpConfig.rpID,
+        origin: rpConfig.origin,
+        rpName: rpConfig.rpName,
+        authenticatorSelection: {
+          userVerification: "required",
+          residentKey: "preferred",
+        },
+        registration: {
+          requireSession: true,
+          async afterVerification({ verification }) {
+            if (!verification.registrationInfo?.userVerified) {
+              throw APIError.from("BAD_REQUEST", {
+                code: "USER_VERIFICATION_REQUIRED",
+                message: "User verification is required for passkey registration",
+              });
+            }
+          },
+        },
+        authentication: {
+          async afterVerification({ verification }) {
+            if (!verification.authenticationInfo?.userVerified) {
+              throw APIError.from("UNAUTHORIZED", {
+                code: "USER_VERIFICATION_REQUIRED",
+                message: "User verification is required for passkey authentication",
+              });
+            }
+
+            const credentialId = verification.authenticationInfo.credentialID;
+            const targetUser = await environment.DB.prepare(
+              `SELECT user.id, user.banned, user.ban_expires, user.email_verified
+                 FROM passkey
+                 INNER JOIN user ON user.id = passkey.user_id
+                 WHERE passkey.credential_id = ?`,
+            )
+              .bind(credentialId)
+              .first<{
+                id: string;
+                banned: number | null;
+                ban_expires: number | null;
+                email_verified: number;
+              }>();
+
+            if (!targetUser) {
+              throw APIError.from("UNAUTHORIZED", {
+                code: "PASSKEY_NOT_FOUND",
+                message: "Passkey credential not found",
+              });
+            }
+
+            const now = Date.now();
+            const isBanned =
+              targetUser.banned === 1 &&
+              (targetUser.ban_expires === null || targetUser.ban_expires > now);
+
+            if (isBanned) {
+              throw APIError.from("FORBIDDEN", {
+                code: "ACCOUNT_BANNED",
+                message: "This account has been banned",
+              });
+            }
+
+            if (targetUser.email_verified !== 1) {
+              throw APIError.from("FORBIDDEN", {
+                code: "EMAIL_NOT_VERIFIED",
+                message: "Please verify your email address to continue.",
+              });
+            }
+          },
+        },
+      }),
+      createPasskeyManagementPlugin(environment.DB),
       emailOTP({
         sendVerificationOnSignUp: true,
         storeOTP: "plain",

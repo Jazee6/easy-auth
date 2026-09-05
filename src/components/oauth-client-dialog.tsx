@@ -474,7 +474,7 @@ export function ClientTypeBadge({
   const isNative = applicationType === "native";
   const Icon = isNative ? Smartphone : Globe2;
   return (
-    <Badge variant="outline">
+    <Badge variant="outline" className="w-fit!">
       <Icon aria-hidden="true" />
       {isNative ? "Native" : "Web"}
     </Badge>
@@ -485,7 +485,7 @@ export function AuthenticationBadge({ authMethod }: { authMethod: string | null 
   const isPublic = authMethod === "none";
   const Icon = isPublic ? UnlockKeyhole : LockKeyhole;
   return (
-    <Badge variant="outline">
+    <Badge variant="outline" className="w-fit!">
       <Icon aria-hidden="true" />
       {isPublic ? "Public" : "Confidential"}
     </Badge>

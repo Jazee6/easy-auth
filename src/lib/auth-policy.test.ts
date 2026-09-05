@@ -471,6 +471,35 @@ describe("auth-policy", () => {
         newUserCallbackURL: "/profile",
         errorCallbackURL: "/login",
       });
+
+      // Carries sanitized returnTo through success and error/retry
+      expect(getGithubSignInOptions({ returnTo: "/sign-in-methods" })).toEqual({
+        provider: "github",
+        callbackURL: "/sign-in-methods",
+        newUserCallbackURL: "/sign-in-methods",
+        errorCallbackURL: "/login?returnTo=%2Fsign-in-methods",
+      });
+
+      // Invalid/arbitrary returnTo falls back safely
+      expect(getGithubSignInOptions({ returnTo: "//evil.com" })).toEqual({
+        provider: "github",
+        callbackURL: "/profile",
+        newUserCallbackURL: "/profile",
+        errorCallbackURL: "/login",
+      });
+
+      // Preserves pending OAuth flow priority over returnTo
+      expect(
+        getGithubSignInOptions({
+          returnTo: "/sign-in-methods",
+          search: "?client_id=ea_app&sig=signed_token&ba_param=client_id",
+        }),
+      ).toEqual({
+        provider: "github",
+        callbackURL: "/login?client_id=ea_app&sig=signed_token&ba_param=client_id",
+        newUserCallbackURL: "/login?client_id=ea_app&sig=signed_token&ba_param=client_id",
+        errorCallbackURL: "/login?client_id=ea_app&sig=signed_token&ba_param=client_id",
+      });
     });
 
     it("translates cancellation, unverified email, and collisions without exposing framework errors", () => {

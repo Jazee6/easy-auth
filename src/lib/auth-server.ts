@@ -30,7 +30,9 @@ export const fetchAccountSignInMethods = createServerFn({ method: "GET" }).handl
   const headers = getRequestHeaders();
   const session = await getAuthoritativeSession(auth.api, headers);
   if (!session) throw new Error("Authentication required");
-  return auth.api.listUserAccounts({ headers });
+  const accounts = await auth.api.listUserAccounts({ headers });
+  const passkeys = await auth.api.listPasskeys({ headers });
+  return { accounts, passkeys };
 });
 
 export const fetchAccountSessions = createServerFn({ method: "GET" }).handler(async () => {

@@ -40,3 +40,4 @@ Single-context (`CONTEXT.md` + `docs/adr/`). See `docs/agents/domain.md`.
 - `bun run generate-routes` 单独执行会暂时移除 routeTree 尾部的 TanStack Start `Register` 声明；按 generate → build → diff check 顺序验证，Vite Start 插件会恢复该声明
 - Security activity 日期筛选使用 UTC 日期边界：起始日 `>=` 当日零点，结束日 `<` 次日零点；反向范围交换，非法日期直接拒绝，避免静默扩大结果
 - Lucide 不提供 GitHub 等品牌图标；GitHub 品牌入口复用 `src/components/github-icon.tsx`，不要假设 Lucide 存在 `GithubIcon`
+- SQLite/D1 上 Better Auth 的 drizzle 适配器对 `string[]` 字段（如 `redirect_uris`、`scopes`）会先 `JSON.stringify`，再被 drizzle json 列二次编码；直接用 drizzle 读取此类列时必须用 `parseStoredStringArray`（兼容数组和 JSON 字符串），否则拿到空数组

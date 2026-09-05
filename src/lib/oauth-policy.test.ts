@@ -11,6 +11,7 @@ import {
   isDirectOAuthManagementPath,
   oauthClientCreatePayload,
   oauthSecurityEventPolicy,
+  parseStoredStringArray,
   redactAuditSummary,
   scopeDescriptions,
   translateOAuthManagementError,
@@ -235,5 +236,23 @@ describe("OAuth management policy", () => {
       "email",
       "offline_access",
     ]);
+  });
+});
+
+describe("parseStoredStringArray", () => {
+  test("returns plain arrays filtered to strings", () => {
+    expect(parseStoredStringArray(["a", "b"])).toEqual(["a", "b"]);
+    expect(parseStoredStringArray(["a", 1, null, "b"])).toEqual(["a", "b"]);
+  });
+
+  test("parses JSON-encoded strings", () => {
+    expect(parseStoredStringArray('["https://a.example/cb"]')).toEqual(["https://a.example/cb"]);
+  });
+
+  test("returns empty for invalid payloads", () => {
+    expect(parseStoredStringArray("not json")).toEqual([]);
+    expect(parseStoredStringArray("42")).toEqual([]);
+    expect(parseStoredStringArray(null)).toEqual([]);
+    expect(parseStoredStringArray({ a: 1 })).toEqual([]);
   });
 });

@@ -19,6 +19,7 @@ import {
   hasAdministratorRole,
   normalizeOAuthRedirectUris,
   oauthClientCreatePayload,
+  parseStoredStringArray,
   redactAuditSummary,
   validateOAuthRedirectUris,
 } from "./oauth-policy";
@@ -31,12 +32,6 @@ const enabledSchema = v.object({
   clientId: clientIdSchema.entries.clientId,
   disabled: v.boolean(),
 });
-
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
 
 async function requireSession() {
   const headers = getRequestHeaders();
@@ -100,7 +95,7 @@ export const listOAuthClients = createServerFn({ method: "GET" }).handler(async 
     .orderBy(desc(oauthClient.createdAt), desc(oauthClient.clientId));
   return clients.map((client) => ({
     ...client,
-    redirectUris: stringArray(client.redirectUris),
+    redirectUris: parseStoredStringArray(client.redirectUris),
   }));
 });
 
@@ -187,7 +182,7 @@ export const updateOAuthClient = createServerFn({ method: "POST" })
     const redirectUris = normalizeOAuthRedirectUris(data.redirectUris);
     const redirectError = validateOAuthRedirectUris(redirectUris, existingApplicationType);
     if (redirectError) throw new Error(redirectError);
-    const existingRedirectUris = stringArray(existing.redirectUris);
+    const existingRedirectUris = parseStoredStringArray(existing.redirectUris);
     const changed = [
       existing.name !== data.name.trim() ? "name" : null,
       JSON.stringify(existingRedirectUris) !== JSON.stringify(redirectUris) ? "redirectUris" : null,
@@ -339,7 +334,7 @@ export const listApplicationAuthorizations = createServerFn({ method: "GET" }).h
     .orderBy(desc(oauthConsent.createdAt), desc(oauthConsent.id));
   return authorizations.map((authorization) => ({
     ...authorization,
-    scopes: stringArray(authorization.scopes),
+    scopes: parseStoredStringArray(authorization.scopes),
   }));
 });
 
