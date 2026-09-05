@@ -460,7 +460,7 @@ describe("auth-policy", () => {
         requireEmailVerification: true,
         overrideUserInfoOnSignIn: false,
         disableImplicitLinking: true,
-        allowDifferentEmails: false,
+        allowDifferentEmails: true,
         updateUserInfoOnLink: false,
         allowUnlinkingAll: false,
         encryptOAuthTokens: false,
@@ -567,12 +567,11 @@ describe("auth-policy", () => {
       expect(state.github.canUnlink).toBe(true);
     });
 
-    it("requires an unused, verified, same-email external identity for explicit linking", () => {
+    it("allows an unused, verified external identity with a different email", () => {
       const base = {
         provider: "google" as const,
         userId: "user-1",
-        loginEmail: " User@Example.com ",
-        providerEmail: "user@example.COM",
+        providerEmail: "other@example.com",
         providerEmailVerified: true,
         providerIdentityCount: 0,
         identityOwnerUserId: null,
@@ -583,12 +582,6 @@ describe("auth-policy", () => {
         allowed: false,
         code: "google_email_not_verified",
       });
-      expect(evaluateExternalIdentityLink({ ...base, providerEmail: "other@example.com" })).toEqual(
-        {
-          allowed: false,
-          code: "email_does_not_match",
-        },
-      );
       expect(evaluateExternalIdentityLink({ ...base, providerIdentityCount: 1 })).toEqual({
         allowed: false,
         code: "google_already_linked",
@@ -608,9 +601,6 @@ describe("auth-policy", () => {
     });
 
     it("maps provider-aware link and unlink errors to stable feedback", () => {
-      expect(translateSignInMethodsError("google", "email_does_not_match")).toBe(
-        "The verified Google email must match your login email.",
-      );
       expect(
         translateSignInMethodsError("github", "account_already_linked_to_different_user"),
       ).toBe("This GitHub identity is already linked to another account.");

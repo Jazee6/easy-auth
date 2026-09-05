@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { revokeApplicationAuthorization } from "@/lib/oauth-server";
@@ -79,10 +80,13 @@ export function AuthorizedApplications({ applications }: { applications: Authori
             >
               <div className="min-w-0 space-y-1">
                 <p className="font-medium">{application.clientName ?? "Deleted application"}</p>
-                <p className="break-all font-mono text-xs text-muted-foreground">
-                  {application.clientId}
-                </p>
-                <p className="text-sm">Scopes: {application.scopes.join(", ")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {application.scopes.map((scope) => (
+                    <Badge key={scope} variant="secondary">
+                      {scope}
+                    </Badge>
+                  ))}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Authorized {new Date(application.authorizedAt).toLocaleString()}
                 </p>

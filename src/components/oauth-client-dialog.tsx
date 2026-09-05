@@ -459,7 +459,7 @@ function RegistrationResult({ result }: { result: CreatedClient }) {
 
 export function CopyValueRow({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex items-start gap-1 rounded-md bg-muted p-3 font-mono text-sm">
+    <div className="flex items-center gap-1 rounded-md bg-muted p-3 font-mono text-sm">
       <span className="min-w-0 flex-1 break-all">{value}</span>
       <CopyButton value={value} label={label} />
     </div>

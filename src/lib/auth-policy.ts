@@ -74,7 +74,7 @@ export const externalIdentityAuthPolicy = {
   requireEmailVerification: true,
   overrideUserInfoOnSignIn: false,
   disableImplicitLinking: true,
-  allowDifferentEmails: false,
+  allowDifferentEmails: true,
   updateUserInfoOnLink: false,
   allowUnlinkingAll: false,
   encryptOAuthTokens: false,
@@ -277,7 +277,6 @@ export function deriveSignInMethodState(
 interface ExternalIdentityLinkEvaluationInput {
   provider: ExternalIdentityProvider;
   userId: string;
-  loginEmail: string;
   providerEmail?: string | null;
   providerEmailVerified: boolean;
   providerIdentityCount: number;
@@ -293,10 +292,6 @@ export function evaluateExternalIdentityLink(
 
   if (!input.providerEmailVerified) {
     return { allowed: false, code: `${input.provider}_email_not_verified` };
-  }
-
-  if (normalizeEmail(input.providerEmail) !== normalizeEmail(input.loginEmail)) {
-    return { allowed: false, code: "email_does_not_match" };
   }
 
   if (input.identityOwnerUserId && input.identityOwnerUserId !== input.userId) {
@@ -330,13 +325,6 @@ export function translateSignInMethodsError(
   if (!provider) return "Unable to update sign-in methods. Please try again.";
 
   const providerName = getExternalIdentityProviderName(provider);
-  if (
-    errorCode === "email_does_not_match" ||
-    errorCode === "linking_different_emails_not_allowed"
-  ) {
-    return `The verified ${providerName} email must match your login email.`;
-  }
-
   if (
     errorCode === "account_already_linked_to_different_user" ||
     errorCode === "social_account_already_linked" ||
