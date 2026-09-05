@@ -12,4 +12,23 @@
       "migrations_dir": "drizzle",
     },
   ],
+  "vars": {
+    "BETTER_AUTH_URL": "https://account.jaze.top",
+    "EMAIL_FROM": "Easy Auth <easy-auth@mail.jaze.top>",
+    "GITHUB_CLIENT_ID": "Ov23liwYw783xvkYk29K",
+    "GOOGLE_CLIENT_ID": "1044725982371-kkkh6i2ruooo2apt425o78vgvtlnb318.apps.googleusercontent.com",
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true,
+      "persist": true,
+    },
+    "traces": {
+      "enabled": false,
+      "head_sampling_rate": 1,
+      "persist": true,
+    },
+  },
 }
