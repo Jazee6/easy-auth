@@ -5,6 +5,7 @@ import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
 import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 
 import { createEasyAuth } from "./auth-factory";
+import { parseRouterSearch, stringifyRouterSearch } from "./router-search";
 import {
   deleteOAuthClientAtomically,
   revokeApplicationAuthorizationAtomically,
@@ -268,6 +269,60 @@ describe("OAuth HTTP integration", () => {
     expect(response.status).toBe(403);
     const error = (await response.json()) as { code?: string };
     expect(error.code).toBe("OAUTH_MANAGEMENT_SERVER_ONLY");
+  });
+
+  test("preserves a signed OAuth query when navigating from login to signup", async () => {
+    const clientId = "login-signup-flow-client";
+    await database
+      .prepare(
+        "INSERT INTO oauth_client (id, client_id, redirect_uris, name, application_type, token_endpoint_auth_method, grant_types, response_types, scopes, require_pkce, disabled) VALUES (?, ?, ?, ?, 'web', 'none', ?, ?, ?, 1, 0)",
+      )
+      .bind(
+        "login-signup-flow-client-row",
+        clientId,
+        '["https://login-signup-client.example/callback"]',
+        "Login signup flow client",
+        '["authorization_code"]',
+        '["code"]',
+        '["openid","profile","email"]',
+      )
+      .run();
+
+    const verifier = "login-signup-verifier-that-is-at-least-forty-three-characters-long";
+    const challenge = Buffer.from(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)),
+    ).toString("base64url");
+    const query = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: "https://login-signup-client.example/callback",
+      response_type: "code",
+      scope: "openid profile email",
+      state: "login-signup-state",
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    });
+    const authorizeResponse = await getAuth(`/oauth2/authorize?${query.toString()}`, {
+      accept: "text/html",
+    });
+    const loginLocation = authorizeResponse.headers.get("location");
+    expect(authorizeResponse.status).toBe(302);
+    if (!loginLocation) throw new Error("Authorization did not redirect to login");
+    const loginUrl = new URL(loginLocation, BASE_URL);
+    expect(loginUrl.pathname).toBe("/login");
+
+    const signupSearch = stringifyRouterSearch(parseRouterSearch(loginUrl.search));
+    const signupResponse = await postAuth("/sign-up/email", {
+      name: "login-oauth-signup",
+      email: "login-oauth-signup@example.com",
+      password: "integration-password",
+      oauth_query: signupSearch.slice(1),
+    });
+
+    const signupBody = (await signupResponse.json()) as {
+      user?: { email?: string };
+    };
+    expect(signupBody.user?.email).toBe("login-oauth-signup@example.com");
+    expect(signupResponse.status).toBe(200);
   });
 
   test("keeps client mutations, audit records, and generated-state deletion atomic", async () => {
