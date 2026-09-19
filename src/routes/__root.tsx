@@ -119,7 +119,7 @@ function NotFound() {
           <EmptyDescription>The page you requested does not exist or has moved.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Link data-slot="button" className={buttonVariants({ variant: "outline" })} to="/">
+          <Link data-slot="button" className={buttonVariants()} to="/">
             Back to home
           </Link>
         </EmptyContent>

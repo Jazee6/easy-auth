@@ -10,7 +10,7 @@ export function LegalDocumentLayout({ children }: LegalDocumentLayoutProps) {
   return (
     <div className="min-h-svh bg-background">
       <header className="sticky top-0 z-50 border-b bg-background">
-        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-6">
+        <div className="mx-auto flex h-12 max-w-3xl items-center justify-between px-6">
           <Link to="/" className="font-semibold tracking-tight">
             Easy Auth
           </Link>

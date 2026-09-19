@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Outlet, createFileRoute, redirect, useMatches } from "@tanstack/react-router";
 
 import packageJson from "../../../package.json";
@@ -7,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { cn } from "@/lib/utils";
 import { getRouteRedirect } from "@/lib/auth-policy";
 import { fetchSession } from "@/lib/auth-server";
 import { privatePageHead } from "@/lib/page-metadata";
@@ -39,6 +41,8 @@ export const Route = createFileRoute("/_account")({
   component: AccountLayout,
 });
 
+const HEADER_HEIGHT = 48;
+
 function AccountLayout() {
   const { session } = Route.useRouteContext();
   const title = useMatches({
@@ -47,16 +51,46 @@ function AccountLayout() {
       return activeMatch?.staticData.title ?? "Account";
     },
   });
+  const mainRef = useRef<HTMLElement>(null);
+  const [titleScrolledPast, setTitleScrolledPast] = useState(false);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+
+    const update = () => {
+      const heading = main.querySelector("h1");
+      setTitleScrolledPast(
+        heading ? heading.getBoundingClientRect().bottom < HEADER_HEIGHT : true,
+      );
+    };
+
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(main, { childList: true, subtree: true });
+    window.addEventListener("scroll", update, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", update);
+    };
+  }, [title]);
 
   return (
     <SidebarProvider>
       <AppSidebar user={session.user} />
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+        <header className="sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 bg-background px-4">
           <SidebarTrigger className="-ml-1" />
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <span>{title}</span>
-          </div>
+          <span
+            aria-hidden={!titleScrolledPast}
+            className={cn(
+              "truncate text-sm font-semibold transition-opacity duration-200",
+              titleScrolledPast ? "opacity-100" : "opacity-0",
+            )}
+          >
+            {title}
+          </span>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -79,7 +113,7 @@ function AccountLayout() {
           </Tooltip>
           <ThemeSwitcher />
         </header>
-        <main className="flex flex-1 justify-center p-6 md:p-8">
+        <main ref={mainRef} className="flex flex-1 justify-center p-6 md:p-8">
           <Outlet />
         </main>
       </SidebarInset>
