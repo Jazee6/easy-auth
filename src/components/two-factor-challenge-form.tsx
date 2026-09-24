@@ -72,6 +72,7 @@ export function TwoFactorChallengeForm({
           showVerificationError(result.error);
           return;
         }
+        if (result.data && "redirect" in result.data && result.data.redirect) return;
       } catch (error) {
         showVerificationError(error);
         return;

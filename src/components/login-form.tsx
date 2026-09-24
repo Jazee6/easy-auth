@@ -110,6 +110,8 @@ export function LoginForm({
           return;
         }
 
+        // The OAuth provider has already redirected; do not resume the same request again.
+        if (res.data && "redirect" in res.data && res.data.redirect) return;
         if (res.data?.session) {
           await handlePostSignInRedirect();
         }
@@ -147,6 +149,7 @@ export function LoginForm({
         return;
       }
 
+      if (res.data && "redirect" in res.data && res.data.redirect) return;
       if (res.data?.session) {
         await handlePostSignInRedirect();
       }
@@ -220,7 +223,10 @@ export function LoginForm({
           return;
         }
 
-        if (res.data && "twoFactorRedirect" in res.data && res.data.twoFactorRedirect) {
+        if (
+          (res.data && "redirect" in res.data && res.data.redirect) ||
+          (res.data && "twoFactorRedirect" in res.data && res.data.twoFactorRedirect)
+        ) {
           return;
         }
 

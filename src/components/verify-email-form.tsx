@@ -77,6 +77,7 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
         setFormError(translateAuthError(res.error, "verify-email"));
         return;
       }
+      if (res.data && "redirect" in res.data && res.data.redirect) return;
 
       if (!(await continuePendingOAuth({ created: true }))) {
         await navigate({ to: getPostVerificationRedirect() });

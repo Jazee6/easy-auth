@@ -271,6 +271,59 @@ describe("OAuth HTTP integration", () => {
     expect(error.code).toBe("OAUTH_MANAGEMENT_SERVER_ONLY");
   });
 
+  test("returns the OAuth continuation from password sign-in", async () => {
+    const email = "password-oauth-login@example.com";
+    await createVerifiedAccount(email);
+    const clientId = "password-oauth-client";
+    await database
+      .prepare(
+        "INSERT INTO oauth_client (id, client_id, redirect_uris, name, application_type, token_endpoint_auth_method, grant_types, response_types, scopes, require_pkce, disabled) VALUES (?, ?, ?, ?, 'web', 'none', ?, ?, ?, 1, 0)",
+      )
+      .bind(
+        "password-oauth-client-row",
+        clientId,
+        '["https://password-client.example/callback"]',
+        "Password OAuth client",
+        '["authorization_code"]',
+        '["code"]',
+        '["openid","profile","email"]',
+      )
+      .run();
+
+    const verifier = "password-login-verifier-that-is-at-least-forty-three-characters-long";
+    const challenge = Buffer.from(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)),
+    ).toString("base64url");
+    const state = "password-login-state";
+    const query = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: "https://password-client.example/callback",
+      response_type: "code",
+      scope: "openid profile email",
+      state,
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    });
+    const authorizeResponse = await getAuth(`/oauth2/authorize?${query}`, {
+      accept: "text/html",
+    });
+    const loginLocation = authorizeResponse.headers.get("location");
+    if (!loginLocation) throw new Error("Authorization did not redirect to login");
+    const signedQuery = new URL(loginLocation, BASE_URL).search.slice(1);
+    const signInResponse = await postAuth("/sign-in/email", {
+      email,
+      password: "integration-password",
+      oauth_query: signedQuery,
+    });
+    expect(signInResponse.status).toBe(200);
+    const signInBody = (await signInResponse.json()) as { url?: string; redirect?: boolean };
+    expect(signInBody.redirect).toBe(true);
+    if (!signInBody.url) throw new Error("Password sign-in did not return the OAuth redirect");
+    const consentUrl = new URL(signInBody.url, BASE_URL);
+    expect(consentUrl.pathname).toBe("/consent");
+    expect(consentUrl.searchParams.get("state")).toBe(state);
+  });
+
   test("preserves a signed OAuth query when navigating from login to signup", async () => {
     const clientId = "login-signup-flow-client";
     await database
