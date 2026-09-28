@@ -50,6 +50,7 @@ function formatChangedFields(summary: string): string {
   const labels = changed.flatMap((field) => {
     if (field === "name") return ["application name"];
     if (field === "redirectUris") return ["redirect URIs"];
+    if (field === "postLogoutRedirectUris") return ["post-logout redirect URIs"];
     return [];
   });
 

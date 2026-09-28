@@ -21,6 +21,7 @@ import {
   oauthClientCreatePayload,
   parseStoredStringArray,
   redactAuditSummary,
+  validateOAuthPostLogoutRedirectUris,
   validateOAuthRedirectUris,
 } from "./oauth-policy";
 
@@ -86,6 +87,7 @@ export const listOAuthClients = createServerFn({ method: "GET" }).handler(async 
       applicationType: oauthClient.applicationType,
       tokenEndpointAuthMethod: oauthClient.tokenEndpointAuthMethod,
       redirectUris: oauthClient.redirectUris,
+      postLogoutRedirectUris: oauthClient.postLogoutRedirectUris,
       disabled: oauthClient.disabled,
       createdAt: oauthClient.createdAt,
       updatedAt: oauthClient.updatedAt,
@@ -96,6 +98,7 @@ export const listOAuthClients = createServerFn({ method: "GET" }).handler(async 
   return clients.map((client) => ({
     ...client,
     redirectUris: parseStoredStringArray(client.redirectUris),
+    postLogoutRedirectUris: parseStoredStringArray(client.postLogoutRedirectUris),
   }));
 });
 
@@ -127,7 +130,12 @@ export const createOAuthClient = createServerFn({ method: "POST" })
   .validator((input: unknown) => v.parse(clientRegistrationSchema, input))
   .handler(async ({ data }) => {
     const { headers, session } = await requireAdministrator();
-    const redirectError = validateOAuthRedirectUris(data.redirectUris, data.applicationType);
+    const redirectError =
+      validateOAuthRedirectUris(data.redirectUris, data.applicationType) ??
+      validateOAuthPostLogoutRedirectUris(
+        normalizeOAuthRedirectUris(data.postLogoutRedirectUris),
+        data.applicationType,
+      );
     if (redirectError) throw new Error(redirectError);
 
     const payload = oauthClientCreatePayload(data);
@@ -151,6 +159,7 @@ export const createOAuthClient = createServerFn({ method: "POST" })
           applicationType: data.applicationType,
           authentication: data.authentication,
           redirectUris: payload.redirect_uris,
+          postLogoutRedirectUris: payload.post_logout_redirect_uris ?? [],
         },
       });
     } catch (error) {
@@ -180,12 +189,19 @@ export const updateOAuthClient = createServerFn({ method: "POST" })
       throw new Error("Authentication capability cannot be changed after registration");
     }
     const redirectUris = normalizeOAuthRedirectUris(data.redirectUris);
-    const redirectError = validateOAuthRedirectUris(redirectUris, existingApplicationType);
+    const postLogoutRedirectUris = normalizeOAuthRedirectUris(data.postLogoutRedirectUris);
+    const redirectError =
+      validateOAuthRedirectUris(redirectUris, existingApplicationType) ??
+      validateOAuthPostLogoutRedirectUris(postLogoutRedirectUris, existingApplicationType);
     if (redirectError) throw new Error(redirectError);
     const existingRedirectUris = parseStoredStringArray(existing.redirectUris);
+    const existingPostLogoutRedirectUris = parseStoredStringArray(existing.postLogoutRedirectUris);
     const changed = [
       existing.name !== data.name.trim() ? "name" : null,
       JSON.stringify(existingRedirectUris) !== JSON.stringify(redirectUris) ? "redirectUris" : null,
+      JSON.stringify(existingPostLogoutRedirectUris) !== JSON.stringify(postLogoutRedirectUris)
+        ? "postLogoutRedirectUris"
+        : null,
     ].filter((value): value is string => Boolean(value));
     if (changed.length === 0) return { updated: false };
 
@@ -195,6 +211,7 @@ export const updateOAuthClient = createServerFn({ method: "POST" })
       ownerUserId: session.user.id,
       name: data.name.trim(),
       redirectUris,
+      postLogoutRedirectUris,
       audit: {
         id: crypto.randomUUID(),
         actorUserId: session.user.id,

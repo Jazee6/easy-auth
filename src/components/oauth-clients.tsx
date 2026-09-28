@@ -15,6 +15,7 @@ export interface OAuthClientListItem {
   applicationType: string | null;
   tokenEndpointAuthMethod: string | null;
   redirectUris: string[];
+  postLogoutRedirectUris: string[];
   disabled: boolean | null;
   createdAt: Date | null;
   updatedAt: Date | null;

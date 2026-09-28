@@ -38,16 +38,20 @@ export async function updateOAuthClientAtomically(
   mutation: OwnedOAuthClientMutation & {
     name: string;
     redirectUris: string[];
+    postLogoutRedirectUris: string[];
   },
 ): Promise<void> {
   await database.batch([
     database
       .prepare(
-        "UPDATE oauth_client SET name = ?, redirect_uris = ?, updated_at = ? WHERE client_id = ? AND user_id = ?",
+        "UPDATE oauth_client SET name = ?, redirect_uris = ?, post_logout_redirect_uris = ?, updated_at = ? WHERE client_id = ? AND user_id = ?",
       )
       .bind(
         mutation.name,
         JSON.stringify(mutation.redirectUris),
+        mutation.postLogoutRedirectUris.length > 0
+          ? JSON.stringify(mutation.postLogoutRedirectUris)
+          : null,
         mutation.audit.createdAt,
         mutation.clientId,
         mutation.ownerUserId,

@@ -48,12 +48,16 @@ export const redirectUriListSchema = v.pipe(
   v.minLength(1, "At least one redirect URI is required"),
 );
 
+/** Post-logout redirect URIs are optional and follow the same rules as redirect URIs. */
+export const postLogoutRedirectUriListSchema = v.array(redirectUriItemSchema);
+
 export const clientRegistrationSchema = v.pipe(
   v.object({
     name: clientNameSchema,
     applicationType: applicationTypeSchema,
     authentication: authenticationSchema,
     redirectUris: redirectUriListSchema,
+    postLogoutRedirectUris: postLogoutRedirectUriListSchema,
   }),
   v.check(
     (input) => !(input.applicationType === "native" && input.authentication === "confidential"),
@@ -67,6 +71,7 @@ export const clientUpdateSchema = v.object({
   applicationType: applicationTypeSchema,
   authentication: authenticationSchema,
   redirectUris: redirectUriListSchema,
+  postLogoutRedirectUris: postLogoutRedirectUriListSchema,
 });
 
 export type ClientRegistrationInput = v.InferOutput<typeof clientRegistrationSchema>;
@@ -194,6 +199,21 @@ export function validateOAuthRedirectUris(
   return null;
 }
 
+const POST_LOGOUT_ERROR_PREFIX = "Post-logout redirect URIs: ";
+
+/**
+ * Validates optional post-logout redirect URIs with the redirect URI rules for
+ * the application type; errors carry a prefix so they can be told apart.
+ */
+export function validateOAuthPostLogoutRedirectUris(
+  postLogoutRedirectUris: string[],
+  applicationType: "web" | "native",
+): string | null {
+  if (postLogoutRedirectUris.length === 0) return null;
+  const error = validateOAuthRedirectUris(postLogoutRedirectUris, applicationType);
+  return error && `${POST_LOGOUT_ERROR_PREFIX}${error}`;
+}
+
 function oauthManagementErrorText(error: unknown): string {
   if (typeof error === "string") return error.toLowerCase();
   if (typeof error !== "object" || error === null) return "";
@@ -216,6 +236,15 @@ export function getOAuthManagementActionError(
 
 export function translateOAuthManagementError(error: unknown): string {
   const text = oauthManagementErrorText(error);
+  if (text.includes(POST_LOGOUT_ERROR_PREFIX.toLowerCase()) || text.includes("post_logout")) {
+    if (text.includes("web clients require https")) {
+      return "Web clients require HTTPS post-logout redirect URIs on non-loopback hosts.";
+    }
+    if (text.includes("native") || text.includes("private-use")) {
+      return "Use a claimed HTTPS URI, exact loopback URI, or authority-free reverse-domain URI for Native post-logout redirects.";
+    }
+    return "Enter valid exact post-logout redirect URIs for the selected application type.";
+  }
   if (text.includes("web clients require https")) {
     return "Web clients require HTTPS redirect URIs on non-loopback hosts.";
   }
@@ -263,10 +292,15 @@ export function parseStoredStringArray(value: unknown): string[] {
 }
 
 export function oauthClientCreatePayload(input: ClientRegistrationInput) {
+  const postLogoutRedirectUris = normalizeOAuthRedirectUris(input.postLogoutRedirectUris);
   return {
     client_name: input.name.trim(),
     application_type: input.applicationType,
     redirect_uris: normalizeOAuthRedirectUris(input.redirectUris),
+    // Better Auth rejects an empty list, so omit it when no URI is registered.
+    ...(postLogoutRedirectUris.length > 0
+      ? { post_logout_redirect_uris: postLogoutRedirectUris }
+      : {}),
     token_endpoint_auth_method:
       input.authentication === "confidential" ? "client_secret_basic" : "none",
     grant_types: ["authorization_code", "refresh_token"] as const,
@@ -276,7 +310,8 @@ export function oauthClientCreatePayload(input: ClientRegistrationInput) {
     client_secret_expires_at: 0,
     client_credentials_scopes: [] as string[],
     skip_consent: false,
-    enable_end_session: false,
+    // Every trusted application may start OIDC RP-Initiated Logout.
+    enable_end_session: true,
     subject_type: "public" as const,
   };
 }

@@ -15,6 +15,7 @@ import {
   redactAuditSummary,
   scopeDescriptions,
   translateOAuthManagementError,
+  validateOAuthPostLogoutRedirectUris,
   validateOAuthRedirectUris,
 } from "./oauth-policy";
 import * as v from "valibot";
@@ -38,6 +39,7 @@ describe("OAuth management policy", () => {
         v.safeParse(clientRegistrationSchema, {
           ...input,
           redirectUris: ["https://client.example/callback"],
+          postLogoutRedirectUris: [],
         }).success,
       ).toBe(true);
     }
@@ -50,6 +52,7 @@ describe("OAuth management policy", () => {
         applicationType: "native",
         authentication: "confidential",
         redirectUris: ["com.example.app:/callback"],
+        postLogoutRedirectUris: [],
       }).success,
     ).toBe(false);
   });
@@ -61,6 +64,7 @@ describe("OAuth management policy", () => {
         applicationType: "web",
         authentication: "confidential",
         redirectUris: ["app.example/callback"],
+        postLogoutRedirectUris: [],
       }).success,
     ).toBe(false);
   });
@@ -76,11 +80,13 @@ describe("OAuth management policy", () => {
           "https://client.example/second",
           "https://client.example/callback",
         ],
+        postLogoutRedirectUris: [" https://client.example/ ", "https://client.example/"],
       }),
     ).toEqual({
       client_name: "Example App",
       application_type: "web",
       redirect_uris: ["https://client.example/callback", "https://client.example/second"],
+      post_logout_redirect_uris: ["https://client.example/"],
       token_endpoint_auth_method: "client_secret_basic",
       grant_types: ["authorization_code", "refresh_token"],
       response_types: ["code"],
@@ -89,9 +95,43 @@ describe("OAuth management policy", () => {
       client_secret_expires_at: 0,
       client_credentials_scopes: [],
       skip_consent: false,
-      enable_end_session: false,
+      enable_end_session: true,
       subject_type: "public",
     });
+  });
+
+  test("omits post-logout redirect URIs when none are registered", () => {
+    const payload = oauthClientCreatePayload({
+      name: "Example App",
+      applicationType: "web",
+      authentication: "public",
+      redirectUris: ["https://client.example/callback"],
+      postLogoutRedirectUris: [" "],
+    });
+    expect("post_logout_redirect_uris" in payload).toBe(false);
+    expect(payload.enable_end_session).toBe(true);
+  });
+
+  test("validates optional post-logout redirect URIs with the redirect URI rules", () => {
+    expect(validateOAuthPostLogoutRedirectUris([], "web")).toBeNull();
+    expect(validateOAuthPostLogoutRedirectUris(["https://client.example/"], "web")).toBeNull();
+    expect(
+      validateOAuthPostLogoutRedirectUris(["com.example-app:/signed-out"], "native"),
+    ).toBeNull();
+    const webError = validateOAuthPostLogoutRedirectUris(["http://localhost:3000/"], "web");
+    expect(webError).toBe(
+      "Post-logout redirect URIs: Web clients require HTTPS redirect URIs on non-loopback hosts.",
+    );
+    expect(translateOAuthManagementError(new Error(webError ?? ""))).toBe(
+      "Web clients require HTTPS post-logout redirect URIs on non-loopback hosts.",
+    );
+    expect(
+      translateOAuthManagementError(
+        new Error(validateOAuthPostLogoutRedirectUris(["com.example:foo"], "native") ?? ""),
+      ),
+    ).toBe(
+      "Use a claimed HTTPS URI, exact loopback URI, or authority-free reverse-domain URI for Native post-logout redirects.",
+    );
   });
 
   test("audit summaries never retain credential values", () => {
@@ -189,6 +229,7 @@ describe("OAuth management policy", () => {
         applicationType: "native",
         authentication: "public",
         redirectUris: [nativeRedirect],
+        postLogoutRedirectUris: [],
       }).success,
     ).toBe(true);
     expect(
@@ -198,6 +239,7 @@ describe("OAuth management policy", () => {
         applicationType: "native",
         authentication: "public",
         redirectUris: [nativeRedirect],
+        postLogoutRedirectUris: [],
       }).success,
     ).toBe(true);
     expect(validateOAuthRedirectUris([nativeRedirect], "native")).toBeNull();

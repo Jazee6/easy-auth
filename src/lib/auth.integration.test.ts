@@ -5,6 +5,8 @@ import { createLocalJWKSet, jwtVerify, type JSONWebKeySet } from "jose";
 import { convertV4MiniflareOptions, Miniflare } from "miniflare";
 
 import { createEasyAuth } from "./auth-factory";
+import { presentLogoutResponse } from "./logout-presentation";
+import { oauthClientCreatePayload } from "./oauth-policy";
 import { parseRouterSearch, stringifyRouterSearch } from "./router-search";
 import {
   deleteOAuthClientAtomically,
@@ -41,10 +43,14 @@ beforeAll(async () => {
     await database.batch(statements);
   }
 
-  auth = createEasyAuth({
+  auth = createTestAuth(BASE_URL);
+});
+
+function createTestAuth(baseUrl: string) {
+  return createEasyAuth({
     environment: {
       DB: database,
-      BETTER_AUTH_URL: BASE_URL,
+      BETTER_AUTH_URL: baseUrl,
       BETTER_AUTH_SECRET: "integration-test-secret-at-least-32-characters",
       GITHUB_CLIENT_ID: "github-integration-client",
       GITHUB_CLIENT_SECRET: "github-integration-secret",
@@ -55,7 +61,7 @@ beforeAll(async () => {
     captchaEnabled: false,
     tanstackCookiesEnabled: false,
   });
-});
+}
 
 afterAll(async () => {
   await miniflare.dispose();
@@ -431,6 +437,7 @@ describe("OAuth HTTP integration", () => {
       ownerUserId: "owner-lifecycle",
       name: "New name",
       redirectUris: ["https://new.example/callback"],
+      postLogoutRedirectUris: ["https://new.example/"],
       audit: {
         id: "audit-lifecycle-update",
         actorUserId: "owner-lifecycle",
@@ -447,6 +454,12 @@ describe("OAuth HTTP integration", () => {
         .bind("client-lifecycle")
         .first<string>("name"),
     ).toBe("New name");
+    expect(
+      await database
+        .prepare("SELECT post_logout_redirect_uris FROM oauth_client WHERE client_id = ?")
+        .bind("client-lifecycle")
+        .first<string>("post_logout_redirect_uris"),
+    ).toBe('["https://new.example/"]');
     expect(
       await database
         .prepare("SELECT application_type FROM oauth_client WHERE client_id = ?")
@@ -994,5 +1007,245 @@ describe("OAuth HTTP integration", () => {
         .bind(targetId)
         .first<number>("count"),
     ).toBe(1);
+  });
+});
+
+describe("RP-Initiated Logout HTTP integration", () => {
+  // The provider normalizes a non-loopback http issuer to https when checking
+  // id_token_hint, so this suite runs on an https base URL like production.
+  const LOGOUT_BASE_URL = "https://easy-auth.test";
+  const redirectUri = "https://logout-client.example/callback";
+  const postLogoutRedirectUri = "https://logout-client.example/signed-out";
+  let logoutAuth: ReturnType<typeof createEasyAuth>;
+
+  beforeAll(() => {
+    logoutAuth = createTestAuth(LOGOUT_BASE_URL);
+  });
+
+  function logoutRequest(path: string, init: RequestInit = {}): Promise<Response> {
+    const headers = new Headers(init.headers);
+    headers.set("origin", LOGOUT_BASE_URL);
+    return logoutAuth.handler(
+      new Request(`${LOGOUT_BASE_URL}/api/auth${path}`, { ...init, headers }),
+    );
+  }
+
+  async function logoutSignInCookie(email: string): Promise<string> {
+    const response = await logoutRequest("/sign-in/email", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password: "integration-password" }),
+    });
+    expect(response.status).toBe(200);
+    const pair = response.headers.getSetCookie()[0]?.split(";", 1)[0];
+    if (!pair) throw new Error("Sign in did not set a session cookie");
+    return pair;
+  }
+
+  /** Browser-style request through the same presentation layer as the auth route. */
+  async function browserAuth(path: string, init: { cookie: string; body?: URLSearchParams }) {
+    const headers = new Headers({
+      accept: "text/html",
+      "sec-fetch-mode": "navigate",
+      origin: LOGOUT_BASE_URL,
+      cookie: init.cookie,
+    });
+    if (init.body) headers.set("content-type", "application/x-www-form-urlencoded");
+    const request = new Request(`${LOGOUT_BASE_URL}/api/auth${path}`, {
+      method: init.body ? "POST" : "GET",
+      headers,
+      body: init.body,
+    });
+    return presentLogoutResponse(request, await logoutAuth.handler(request));
+  }
+
+  function withSetCookies(cookie: string, response: Response): string {
+    const jar = new Map(cookie.split("; ").map((pair) => [pair.split("=", 1)[0], pair]));
+    for (const setCookie of response.headers.getSetCookie()) {
+      const pair = setCookie.split(";", 1)[0] ?? "";
+      jar.set(pair.split("=", 1)[0], pair);
+    }
+    return [...jar.values()].join("; ");
+  }
+
+  async function hasSession(cookie: string): Promise<boolean> {
+    const response = await logoutRequest("/get-session?disableCookieCache=true", {
+      headers: { cookie },
+    });
+    return Boolean(await response.json());
+  }
+
+  async function setUp(prefix: string, postLogoutRedirectUris: string[]) {
+    const adminEmail = `${prefix}-admin@example.com`;
+    const accountEmail = `${prefix}-account@example.com`;
+    await createVerifiedAccount(adminEmail, "admin");
+    await createVerifiedAccount(accountEmail);
+    const adminCookie = await logoutSignInCookie(adminEmail);
+    const accountCookie = await logoutSignInCookie(accountEmail);
+    const payload = oauthClientCreatePayload({
+      name: `${prefix} client`,
+      applicationType: "web",
+      authentication: "public",
+      redirectUris: [redirectUri],
+      postLogoutRedirectUris,
+    });
+    const client = await logoutAuth.api.adminCreateOAuthClient({
+      headers: new Headers({ cookie: adminCookie }),
+      body: {
+        ...payload,
+        grant_types: [...payload.grant_types],
+        response_types: [...payload.response_types],
+      },
+    });
+    return { client, accountCookie };
+  }
+
+  async function issueIdToken(clientId: string, accountCookie: string): Promise<string> {
+    const verifier = "logout-verifier-that-is-at-least-forty-three-characters-long";
+    const challenge = Buffer.from(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)),
+    ).toString("base64url");
+    const query = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid",
+      state: "logout-state",
+      code_challenge: challenge,
+      code_challenge_method: "S256",
+    });
+    const authorization = await logoutRequest(`/oauth2/authorize?${query.toString()}`, {
+      headers: { cookie: accountCookie, accept: "text/html" },
+    });
+    const consentLocation = authorization.headers.get("location");
+    if (!consentLocation) throw new Error("Authorization did not redirect to consent");
+    const consentResponse = await logoutRequest("/oauth2/consent", {
+      method: "POST",
+      headers: { cookie: accountCookie, "content-type": "application/json" },
+      body: JSON.stringify({
+        accept: true,
+        oauth_query: new URL(consentLocation, LOGOUT_BASE_URL).search.slice(1),
+      }),
+    });
+    const consent = (await consentResponse.json()) as { url?: string };
+    const code = consent.url ? new URL(consent.url).searchParams.get("code") : null;
+    if (!code) throw new Error("Consent did not issue an authorization code");
+    const tokenResponse = await logoutRequest("/oauth2/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        code,
+        code_verifier: verifier,
+      }),
+    });
+    expect(tokenResponse.status).toBe(200);
+    return ((await tokenResponse.json()) as { id_token: string }).id_token;
+  }
+
+  test("registers clients with end session enabled and ends the hinted session without confirmation", async () => {
+    const { client, accountCookie } = await setUp("logout-hint", [postLogoutRedirectUri]);
+    expect(client.enable_end_session).toBe(true);
+    expect(client.post_logout_redirect_uris).toEqual([postLogoutRedirectUri]);
+
+    const idToken = await issueIdToken(client.client_id, accountCookie);
+    const jwks = (await (await logoutRequest("/jwks")).json()) as JSONWebKeySet;
+    const { payload } = await jwtVerify(idToken, createLocalJWKSet(jwks));
+    expect(typeof payload.sid).toBe("string");
+
+    const query = new URLSearchParams({
+      id_token_hint: idToken,
+      client_id: client.client_id,
+      post_logout_redirect_uri: postLogoutRedirectUri,
+      state: "rp-state",
+    });
+    // The provider verifies the hint against its own JWKS over HTTP; serve it from the handler.
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request = new Request(input, init);
+      return request.url.startsWith(LOGOUT_BASE_URL)
+        ? logoutAuth.handler(request)
+        : originalFetch(request);
+    }) as typeof fetch;
+    let response: Response;
+    try {
+      response = await browserAuth(`/oauth2/end-session?${query.toString()}`, {
+        cookie: accountCookie,
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(`${postLogoutRedirectUri}?state=rp-state`);
+    expect(await hasSession(accountCookie)).toBe(false);
+  });
+
+  test("confirms on the Easy Auth page when no hint is given, honoring URIs saved by client updates", async () => {
+    const { client, accountCookie } = await setUp("logout-confirm", []);
+    await updateOAuthClientAtomically(database, {
+      clientId: client.client_id,
+      ownerUserId: (await database
+        .prepare("SELECT user_id FROM oauth_client WHERE client_id = ?")
+        .bind(client.client_id)
+        .first<string>("user_id"))!,
+      name: "logout-confirm client",
+      redirectUris: [redirectUri],
+      postLogoutRedirectUris: [postLogoutRedirectUri],
+      audit: {
+        id: crypto.randomUUID(),
+        actorUserId: "logout-confirm",
+        clientName: "logout-confirm client",
+        action: "update",
+        summary: '{"changed":["postLogoutRedirectUris"]}',
+        createdAt: Date.now(),
+      },
+    });
+
+    const query = new URLSearchParams({
+      client_id: client.client_id,
+      post_logout_redirect_uri: postLogoutRedirectUri,
+    });
+    const confirmation = await browserAuth(`/oauth2/end-session?${query.toString()}`, {
+      cookie: accountCookie,
+    });
+    expect(confirmation.status).toBe(303);
+    expect(confirmation.headers.get("location")).toBe("/logout?step=confirm");
+    expect(await hasSession(accountCookie)).toBe(true);
+
+    const confirmed = await browserAuth("/oauth2/end-session/confirm", {
+      cookie: withSetCookies(accountCookie, confirmation),
+      body: new URLSearchParams({ action: "confirm" }),
+    });
+    expect(confirmed.status).toBe(302);
+    expect(confirmed.headers.get("location")).toBe(postLogoutRedirectUri);
+    expect(await hasSession(accountCookie)).toBe(false);
+  });
+
+  test("shows the signed-out page for unregistered return addresses and the error page for stale confirmations", async () => {
+    const { client, accountCookie } = await setUp("logout-unregistered", [postLogoutRedirectUri]);
+    const query = new URLSearchParams({
+      client_id: client.client_id,
+      post_logout_redirect_uri: "https://elsewhere.example/",
+    });
+    const confirmation = await browserAuth(`/oauth2/end-session?${query.toString()}`, {
+      cookie: accountCookie,
+    });
+    expect(confirmation.headers.get("location")).toBe("/logout?step=confirm");
+
+    const confirmed = await browserAuth("/oauth2/end-session/confirm", {
+      cookie: withSetCookies(accountCookie, confirmation),
+      body: new URLSearchParams({ action: "confirm" }),
+    });
+    expect(confirmed.status).toBe(303);
+    expect(confirmed.headers.get("location")).toBe("/logout?step=signed-out&unregistered=true");
+
+    const stale = await browserAuth("/oauth2/end-session/confirm", {
+      cookie: accountCookie,
+      body: new URLSearchParams({ action: "confirm" }),
+    });
+    expect(stale.status).toBe(303);
+    expect(stale.headers.get("location")).toBe("/logout?step=error");
   });
 });

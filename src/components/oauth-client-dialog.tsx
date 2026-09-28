@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "@tanstack/react-router";
 import * as v from "valibot";
@@ -37,6 +37,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   clientNameSchema,
+  postLogoutRedirectUriListSchema,
   redirectUriListSchema,
   translateOAuthManagementError,
   type ClientRegistrationInput,
@@ -80,6 +81,7 @@ const oauthClientDialogSchema = v.pipe(
     applicationType: v.picklist(["web", "native"]),
     authentication: v.picklist(["confidential", "public"]),
     redirectUris: redirectUriListSchema,
+    postLogoutRedirectUris: postLogoutRedirectUriListSchema,
   }),
   v.check(
     (input) => !(input.applicationType === "native" && input.authentication === "confidential"),
@@ -100,6 +102,7 @@ export interface OAuthClientDialogClient {
   applicationType: string | null;
   tokenEndpointAuthMethod: string | null;
   redirectUris: string[];
+  postLogoutRedirectUris: string[];
   disabled?: boolean | null;
 }
 
@@ -138,6 +141,7 @@ function getDefaultValues(client?: OAuthClientDialogClient): OAuthClientDialogVa
         : "confidential"
       : selectedPreset.authentication,
     redirectUris: client?.redirectUris.length ? [...client.redirectUris] : [""],
+    postLogoutRedirectUris: [...(client?.postLogoutRedirectUris ?? [])],
   };
 }
 
@@ -148,6 +152,7 @@ function toRegistrationInput(value: OAuthClientDialogValue): ClientRegistrationI
     applicationType: preset.applicationType,
     authentication: preset.authentication,
     redirectUris: value.redirectUris,
+    postLogoutRedirectUris: value.postLogoutRedirectUris,
   };
 }
 
@@ -178,6 +183,7 @@ export function OAuthClientDialog({
               applicationType: value.applicationType,
               authentication: value.authentication,
               redirectUris: value.redirectUris,
+              postLogoutRedirectUris: value.postLogoutRedirectUris,
             },
           });
           toast.add(
@@ -230,6 +236,85 @@ export function OAuthClientDialog({
     form.reset(getDefaultValues(client));
     setError(null);
     setResult(null);
+  }
+
+  function renderUriList(list: {
+    name: "redirectUris" | "postLogoutRedirectUris";
+    legend: string;
+    description: ReactNode;
+    idPrefix: string;
+    itemLabel: string;
+    placeholder: string;
+    /** Redirect URIs always keep one input; post-logout URIs may be empty. */
+    keepOne: boolean;
+  }) {
+    return (
+      <form.Field name={list.name} mode="array">
+        {(field) => (
+          <FieldSet>
+            <FieldLegend variant="label">{list.legend}</FieldLegend>
+            <FieldDescription>{list.description}</FieldDescription>
+            <div className="flex flex-col gap-3">
+              {field.state.value.map((_, index) => (
+                <form.Field key={index} name={`${list.name}[${index}]`}>
+                  {(subField) => {
+                    const isInvalid = subField.state.meta.errors.length > 0;
+                    return (
+                      <Field data-invalid={isInvalid || undefined}>
+                        <InputGroup>
+                          <InputGroupInput
+                            id={`${isEdit ? "edit" : "client"}-${list.idPrefix}-${index}`}
+                            name={subField.name}
+                            value={subField.state.value}
+                            onBlur={subField.handleBlur}
+                            onChange={(event) => {
+                              setError(null);
+                              subField.handleChange(event.target.value);
+                            }}
+                            aria-invalid={isInvalid}
+                            placeholder={list.placeholder}
+                          />
+                          {(!list.keepOne || field.state.value.length > 1) && (
+                            <InputGroupAddon align="inline-end">
+                              <InputGroupButton
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() => {
+                                  setError(null);
+                                  void field.removeValue(index);
+                                }}
+                                aria-label={`Remove ${list.itemLabel} ${index + 1}`}
+                              >
+                                <X />
+                              </InputGroupButton>
+                            </InputGroupAddon>
+                          )}
+                        </InputGroup>
+                        {isInvalid && <FieldError errors={subField.state.meta.errors} />}
+                      </Field>
+                    );
+                  }}
+                </form.Field>
+              ))}
+              <FieldError errors={field.state.meta.errors} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setError(null);
+                  field.pushValue("");
+                }}
+              >
+                <Plus /> Add URI
+              </Button>
+            </div>
+          </FieldSet>
+        )}
+      </form.Field>
+    );
   }
 
   return (
@@ -336,77 +421,29 @@ export function OAuthClientDialog({
                   </Field>
                 )}
               </form.Field>
-              <form.Field name="redirectUris" mode="array">
-                {(field) => (
-                  <FieldSet>
-                    <FieldLegend variant="label">Redirect URIs</FieldLegend>
-                    <form.Subscribe selector={(state) => state.values.applicationType}>
-                      {(applicationType) => (
-                        <FieldDescription>
-                          {redirectUriHints[applicationType as ApplicationType]}
-                        </FieldDescription>
-                      )}
-                    </form.Subscribe>
-                    <div className="flex flex-col gap-3">
-                      {field.state.value.map((_, index) => (
-                        <form.Field key={index} name={`redirectUris[${index}]`}>
-                          {(subField) => {
-                            const isInvalid = subField.state.meta.errors.length > 0;
-                            return (
-                              <Field data-invalid={isInvalid || undefined}>
-                                <InputGroup>
-                                  <InputGroupInput
-                                    id={`${isEdit ? "edit" : "client"}-redirect-uri-${index}`}
-                                    name={subField.name}
-                                    value={subField.state.value}
-                                    onBlur={subField.handleBlur}
-                                    onChange={(event) => {
-                                      setError(null);
-                                      subField.handleChange(event.target.value);
-                                    }}
-                                    aria-invalid={isInvalid}
-                                    placeholder="https://app.example/callback"
-                                  />
-                                  {field.state.value.length > 1 && (
-                                    <InputGroupAddon align="inline-end">
-                                      <InputGroupButton
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        onClick={() => {
-                                          setError(null);
-                                          void field.removeValue(index);
-                                        }}
-                                        aria-label={`Remove redirect URI ${index + 1}`}
-                                      >
-                                        <X />
-                                      </InputGroupButton>
-                                    </InputGroupAddon>
-                                  )}
-                                </InputGroup>
-                                {isInvalid && <FieldError errors={subField.state.meta.errors} />}
-                              </Field>
-                            );
-                          }}
-                        </form.Field>
-                      ))}
-                      <FieldError errors={field.state.meta.errors} />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          setError(null);
-                          field.pushValue("");
-                        }}
-                      >
-                        <Plus /> Add URI
-                      </Button>
-                    </div>
-                  </FieldSet>
-                )}
-              </form.Field>
+              {renderUriList({
+                name: "redirectUris",
+                legend: "Redirect URIs",
+                description: (
+                  <form.Subscribe selector={(state) => state.values.applicationType}>
+                    {(applicationType) => redirectUriHints[applicationType as ApplicationType]}
+                  </form.Subscribe>
+                ),
+                idPrefix: "redirect-uri",
+                itemLabel: "redirect URI",
+                placeholder: "https://app.example/callback",
+                keepOne: true,
+              })}
+              {renderUriList({
+                name: "postLogoutRedirectUris",
+                legend: "Post-logout redirect URIs",
+                description:
+                  "Optional. Where the application may return people after signing out. Same rules as redirect URIs.",
+                idPrefix: "post-logout-redirect-uri",
+                itemLabel: "post-logout redirect URI",
+                placeholder: "https://app.example/",
+                keepOne: false,
+              })}
             </FieldGroup>
             <DialogFooter className="mt-6">
               <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
