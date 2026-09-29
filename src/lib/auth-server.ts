@@ -30,8 +30,10 @@ export const fetchAccountSignInMethods = createServerFn({ method: "GET" }).handl
   const headers = getRequestHeaders();
   const session = await getAuthoritativeSession(auth.api, headers);
   if (!session) throw new Error("Authentication required");
-  const accounts = await auth.api.listUserAccounts({ headers });
-  const passkeys = await auth.api.listPasskeys({ headers });
+  const [accounts, passkeys] = await Promise.all([
+    auth.api.listUserAccounts({ headers }),
+    auth.api.listPasskeys({ headers }),
+  ]);
   return { accounts, passkeys };
 });
 

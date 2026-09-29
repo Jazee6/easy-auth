@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, createFileRoute, redirect, useMatches } from "@tanstack/react-router";
 
-import packageJson from "../../../package.json";
+import { version } from "../../../package.json";
 import { AppSidebar } from "@/components/app-sidebar";
 import { GithubIcon } from "@/components/github-icon";
 import { buttonVariants } from "@/components/ui/button";
@@ -60,9 +60,7 @@ function AccountLayout() {
 
     const update = () => {
       const heading = main.querySelector("h1");
-      setTitleScrolledPast(
-        heading ? heading.getBoundingClientRect().bottom < HEADER_HEIGHT : true,
-      );
+      setTitleScrolledPast(heading ? heading.getBoundingClientRect().bottom < HEADER_HEIGHT : true);
     };
 
     update();
@@ -109,7 +107,7 @@ function AccountLayout() {
             >
               <GithubIcon />
             </TooltipTrigger>
-            <TooltipContent>v{packageJson.version}</TooltipContent>
+            <TooltipContent>v{version}</TooltipContent>
           </Tooltip>
           <ThemeSwitcher />
         </header>
