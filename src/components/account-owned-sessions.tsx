@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 
+import { LocalDateTime } from "@/components/local-date-time";
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
 import {
   AlertDialog,
@@ -21,11 +22,6 @@ import type { SelfServiceAccountSession } from "@/lib/admin-sessions";
 import { authClient } from "@/lib/auth-client";
 import { getPostLogoutRedirect } from "@/lib/auth-policy";
 import { revokeAccountOwnedSession, revokeOtherAccountSessions } from "@/lib/auth-server";
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 function FreshSessionRequiredFooter({ onError }: { onError: (message: string) => void }) {
   const navigate = useNavigate();
@@ -236,7 +232,7 @@ function columns(): DataTableColumnDef<SelfServiceAccountSession>[] {
       header: "Last active",
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          {dateFormatter.format(new Date(row.original.updatedAt))}
+          <LocalDateTime value={row.original.updatedAt} />
         </span>
       ),
     },
@@ -245,7 +241,7 @@ function columns(): DataTableColumnDef<SelfServiceAccountSession>[] {
       header: "Expires",
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          {dateFormatter.format(new Date(row.original.expiresAt))}
+          <LocalDateTime value={row.original.expiresAt} />
         </span>
       ),
     },

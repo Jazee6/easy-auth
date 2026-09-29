@@ -40,6 +40,7 @@ import {
   ResponsiveDialogTitle,
   ResponsiveDialogTrigger,
 } from "@/components/responsive-dialog";
+import { LocalDateTime } from "@/components/local-date-time";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -68,8 +69,6 @@ const addPasskeyFormSchema = v.object({
 const renamePasskeyFormSchema = v.object({
   name: renamePasskeySchema,
 });
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
 
 export interface PasskeySettingsProps {
   userId: string;
@@ -373,7 +372,11 @@ export function PasskeySettings({
                     <ItemTitle>{pk.name || "Passkey"}</ItemTitle>
                     <ItemDescription>
                       Created{" "}
-                      {pk.createdAt ? dateFormatter.format(new Date(pk.createdAt)) : "recently"}
+                      {pk.createdAt ? (
+                        <LocalDateTime value={pk.createdAt} format="date" />
+                      ) : (
+                        "recently"
+                      )}
                     </ItemDescription>
                   </ItemContent>
                   <ItemActions>

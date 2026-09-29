@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, ChevronRight, Search, X } from "lucide-react";
 
+import { LocalDateTime } from "@/components/local-date-time";
 import { BanBadge, EmailVerificationBadge, RoleBadge } from "@/components/account-badges";
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
 import { PageHeader } from "@/components/page-header";
@@ -34,15 +35,6 @@ import { getInitials } from "@/lib/auth-policy";
 import { getPaginationItems } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
-function formattedDate(value: number): string {
-  return dateFormatter.format(new Date(value));
-}
-
 function SortHeader({
   field,
   label,
@@ -74,7 +66,7 @@ function BanStatus({ account }: { account: AccountListItem }) {
       )}
       {account.banExpires && (
         <div className="whitespace-nowrap text-xs text-muted-foreground">
-          {formattedDate(account.banExpires)}
+          <LocalDateTime value={account.banExpires} />
         </div>
       )}
     </div>
@@ -140,14 +132,18 @@ export function Accounts({
         <SortHeader field="createdAt" label="Created" search={search} onSort={onSort} />
       ),
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">{formattedDate(row.original.createdAt)}</span>
+        <span className="whitespace-nowrap">
+          <LocalDateTime value={row.original.createdAt} />
+        </span>
       ),
     },
     {
       accessorKey: "updatedAt",
       header: "Updated",
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">{formattedDate(row.original.updatedAt)}</span>
+        <span className="whitespace-nowrap">
+          <LocalDateTime value={row.original.updatedAt} />
+        </span>
       ),
     },
     {

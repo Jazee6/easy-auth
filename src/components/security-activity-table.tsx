@@ -1,6 +1,7 @@
 import { Ban, LockOpen, LogOut, MonitorSmartphone } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { LocalDateTime } from "@/components/local-date-time";
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
 import { RelativeTime } from "@/components/relative-time";
 import { Badge } from "@/components/ui/badge";
@@ -10,11 +11,6 @@ import {
   type SecurityActivityAction,
   type SecurityActivityItem,
 } from "@/lib/admin-security";
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 const actionIcons: Record<SecurityActivityAction, LucideIcon> = {
   ban: Ban,
@@ -80,9 +76,12 @@ function activityColumns(global: boolean): DataTableColumnDef<SecurityActivityIt
             {details.duration && (
               <p className="text-xs text-muted-foreground">
                 {formatBanDuration(details.duration)}
-                {typeof details.expiresAt === "number"
-                  ? ` · until ${dateFormatter.format(new Date(details.expiresAt))}`
-                  : ""}
+                {typeof details.expiresAt === "number" && (
+                  <>
+                    {" · until "}
+                    <LocalDateTime value={details.expiresAt} />
+                  </>
+                )}
               </p>
             )}
           </div>

@@ -142,14 +142,14 @@ export function formatRelativeTime(value: Date | number | string, now = Date.now
     ([, size]) => Math.abs(difference) >= size,
   ) ?? ["second", 1_000];
   const amount = Math.round(difference / milliseconds);
-  return new Intl.RelativeTimeFormat(undefined, { numeric: "always" }).format(
+  return new Intl.RelativeTimeFormat("en-US", { numeric: "always" }).format(
     amount,
     unit as Intl.RelativeTimeFormatUnit,
   );
 }
 
 export function formatAbsoluteTime(value: Date | number | string): string {
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(toTimestamp(value)));

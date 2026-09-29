@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { LocalDateTime } from "@/components/local-date-time";
 import { PageHeader } from "@/components/page-header";
 import { SecurityActivityActionBadge } from "@/components/security-activity-table";
 import { buttonVariants } from "@/components/ui/button";
@@ -40,10 +41,7 @@ import {
 import type { AdminDashboardResult } from "@/lib/admin-dashboard";
 import type { SecurityActivityItem } from "@/lib/admin-security";
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
+const numberFormatter = new Intl.NumberFormat("en-US");
 
 function MetricCard({
   title,
@@ -66,7 +64,7 @@ function MetricCard({
         </CardAction>
       </CardHeader>
       <CardContent>
-        <p className="text-3xl font-semibold tabular-nums">{value.toLocaleString()}</p>
+        <p className="text-3xl font-semibold tabular-nums">{numberFormatter.format(value)}</p>
       </CardContent>
     </Card>
   );
@@ -99,7 +97,8 @@ function RecentActivity({ activity }: { activity: SecurityActivityItem[] }) {
               <span>{item.targetName}</span>
             </ItemTitle>
             <ItemDescription>
-              {item.actorName} acted on {item.targetEmail} · {dateFormatter.format(item.createdAt)}
+              {item.actorName} acted on {item.targetEmail} ·{" "}
+              <LocalDateTime value={item.createdAt} />
             </ItemDescription>
           </ItemContent>
         </Item>

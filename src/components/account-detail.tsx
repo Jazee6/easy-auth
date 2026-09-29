@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { FileQuestion } from "lucide-react";
 
+import { LocalDateTime } from "@/components/local-date-time";
 import { AccountSessions } from "@/components/account-sessions";
 import {
   BanBadge,
@@ -43,11 +44,6 @@ import type { AccountDetail as AccountDetailData } from "@/lib/admin-accounts";
 import type { SecurityActivityItem } from "@/lib/admin-security";
 import type { SafeAccountSession } from "@/lib/admin-sessions";
 import { getInitials } from "@/lib/auth-policy";
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "long",
-  timeStyle: "short",
-});
 
 function Detail({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -163,15 +159,19 @@ export function AccountDetail({
             <Detail label="Two-Factor Authentication">
               <TwoFactorBadge enabled={account.twoFactorEnabled} />
             </Detail>
-            <Detail label="Created">{dateFormatter.format(new Date(account.createdAt))}</Detail>
-            <Detail label="Updated">{dateFormatter.format(new Date(account.updatedAt))}</Detail>
+            <Detail label="Created">
+              <LocalDateTime value={account.createdAt} format="long" />
+            </Detail>
+            <Detail label="Updated">
+              <LocalDateTime value={account.updatedAt} format="long" />
+            </Detail>
             <Detail label="Ban state">
               <BanBadge banState={account.banState} />
             </Detail>
             {account.banReason && <Detail label="Ban reason">{account.banReason}</Detail>}
             {account.banExpires && (
               <Detail label="Ban expiry">
-                {dateFormatter.format(new Date(account.banExpires))}
+                <LocalDateTime value={account.banExpires} format="long" />
               </Detail>
             )}
           </dl>

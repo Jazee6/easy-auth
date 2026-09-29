@@ -2,6 +2,7 @@ import { useState } from "react";
 import { CircleAlertIcon } from "lucide-react";
 import { useRouter } from "@tanstack/react-router";
 
+import { LocalDateTime } from "@/components/local-date-time";
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
 import {
   AlertDialog,
@@ -19,11 +20,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { revokeAccountSession, revokeAllAccountSessions } from "@/lib/admin-server";
 import type { SafeAccountSession } from "@/lib/admin-sessions";
-
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 function actionError(): string {
   return "Unable to revoke the selected Session. Refresh the Account and try again.";
@@ -216,7 +212,7 @@ function sessionColumns(
       header: "Created",
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          {dateFormatter.format(new Date(row.original.createdAt))}
+          <LocalDateTime value={row.original.createdAt} />
         </span>
       ),
     },
@@ -225,7 +221,7 @@ function sessionColumns(
       header: "Updated",
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          {dateFormatter.format(new Date(row.original.updatedAt))}
+          <LocalDateTime value={row.original.updatedAt} />
         </span>
       ),
     },
@@ -234,7 +230,7 @@ function sessionColumns(
       header: "Expires",
       cell: ({ row }) => (
         <span className="whitespace-nowrap">
-          {dateFormatter.format(new Date(row.original.expiresAt))}
+          <LocalDateTime value={row.original.expiresAt} />
         </span>
       ),
     },

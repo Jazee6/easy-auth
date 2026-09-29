@@ -13,6 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { LocalDateTime } from "@/components/local-date-time";
 import { PageHeader } from "@/components/page-header";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -90,7 +91,7 @@ export function AuthorizedApplications({ applications }: { applications: Authori
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Authorized {new Date(application.authorizedAt).toLocaleString()}
+                  Authorized <LocalDateTime value={application.authorizedAt} />
                 </p>
               </div>
               <AlertDialog>
