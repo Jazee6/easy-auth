@@ -14,3 +14,5 @@ __unconfig*
 todos.json
 .idea
 .scratch
+# Better Auth reference schema; diff against src/db/schema.ts by hand
+src/db/auth-schema.generated.ts

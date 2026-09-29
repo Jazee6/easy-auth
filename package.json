@@ -12,7 +12,7 @@
     "og:generate": "bun scripts/generate-og-image.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "auth:generate": "bunx auth@1.7.6 generate --config src/lib/auth.ts --output src/db/schema.ts -y",
+    "auth:generate": "bunx auth@1.7.6 generate --config scripts/auth-schema.config.ts --output src/db/auth-schema.generated.ts -y",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate": "wrangler d1 migrations apply DB --remote",
