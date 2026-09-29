@@ -1,5 +1,7 @@
 import * as v from "valibot";
 
+import { getErrorMatchText } from "./error-text";
+import { normalizePageNumber } from "./pagination";
 import { escapeLikePattern } from "./sql";
 
 export const BAN_REASON_PRESETS = [
@@ -18,6 +20,14 @@ export const BAN_DURATIONS = [
 ] as const;
 
 export type BanDuration = (typeof BAN_DURATIONS)[number];
+
+/** Whether a stored Ban still blocks the Account at `now`. */
+export function isBanEffective(
+  row: { banned: number | null; ban_expires: number | null },
+  now: number,
+): boolean {
+  return row.banned === 1 && (row.ban_expires === null || row.ban_expires > now);
+}
 
 export const banReasonSchema = v.pipe(
   v.string(),
@@ -213,10 +223,7 @@ export function normalizeSecurityActivitySearch(
   let start = validDateOnly(input.start, "start");
   let end = validDateOnly(input.end, "end");
   if (start && end && start > end) [start, end] = [end, start];
-  const page =
-    typeof input.page === "number" && Number.isSafeInteger(input.page) && input.page > 0
-      ? input.page
-      : 1;
+  const page = normalizePageNumber(input.page);
 
   return {
     q: typeof input.q === "string" ? input.q.trim() : "",
@@ -324,15 +331,8 @@ export async function listAccountSecurityActivity(
   return rows.results.map(projectSecurityActivity);
 }
 
-function errorText(error: unknown): string {
-  if (typeof error === "string") return error.toLowerCase();
-  if (typeof error !== "object" || error === null) return "";
-  const candidate = error as { code?: unknown; message?: unknown };
-  return `${String(candidate.code ?? "")} ${String(candidate.message ?? "")}`.toLowerCase();
-}
-
 export function translateUnbanAccountError(error: unknown): string {
-  const text = errorText(error);
+  const text = getErrorMatchText(error);
   if (text.includes("security_cleanup_incomplete")) {
     return "Credential cleanup is incomplete. Retry the Ban action before Unbanning this Account.";
   }
@@ -346,7 +346,7 @@ export function translateUnbanAccountError(error: unknown): string {
 }
 
 export function translateBanAccountError(error: unknown): string {
-  const text = errorText(error);
+  const text = getErrorMatchText(error);
   if (text.includes("security_action_invalid_state")) {
     return "This Account is already banned and its credentials are contained.";
   }

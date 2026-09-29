@@ -1,14 +1,16 @@
 import { APIError } from "@better-auth/core/error";
 import { createAuthMiddleware } from "@better-auth/core/api";
-import { getAuthoritativeSessionFromCtx, isAPIError } from "better-auth/api";
+import { getAuthoritativeSessionFromCtx } from "better-auth/api";
 import * as v from "valibot";
 
 import { hasAdministratorRole, isAllowedDirectAdminPluginPath } from "./admin-policy";
 import {
   banAccountInputSchema,
   getBanDurationFromSeconds,
+  isBanEffective,
   type BanDuration,
 } from "./admin-security";
+import { isSuccessfulEndpointResult } from "./endpoint-result";
 
 export const ADMIN_AUTHENTICATION_REQUIRED = {
   code: "ADMIN_AUTHENTICATION_REQUIRED",
@@ -133,11 +135,6 @@ export interface AdminSecurityPluginOptions {
 const accountIdSchema = v.pipe(v.string(), v.trim(), v.nonEmpty());
 const sessionTokenSchema = v.pipe(v.string(), v.nonEmpty());
 
-function isSuccessfulEndpointResult(result: unknown): boolean {
-  if (result === undefined || result === null || isAPIError(result)) return false;
-  return !(result instanceof Response) || (result.status >= 200 && result.status < 300);
-}
-
 async function getTargetResidue(database: D1Database, accountId: string): Promise<ResidueRow> {
   return (
     (await database
@@ -247,10 +244,7 @@ export function createAdminSecurityPlugin(
                 throw APIError.from("BAD_REQUEST", SECURITY_ACTION_INVALID_INPUT);
               }
 
-              const now = Date.now();
-              const effectivelyBanned =
-                target.banned === 1 && (target.ban_expires === null || target.ban_expires > now);
-              if (effectivelyBanned) {
+              if (isBanEffective(target, Date.now())) {
                 const residue = await getTargetResidue(database, target.id);
                 if (!hasCredentialResidue(residue)) {
                   throw APIError.from("CONFLICT", SECURITY_ACTION_INVALID_STATE);

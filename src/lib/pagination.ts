@@ -16,3 +16,7 @@ export function getPaginationItems(page: number, totalPages: number): Pagination
   pages.push(totalPages);
   return pages;
 }
+
+export function normalizePageNumber(value: unknown): number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : 1;
+}

@@ -2,6 +2,7 @@ import { APIError } from "@better-auth/core/error";
 import { createAuthMiddleware } from "@better-auth/core/api";
 import { getAuthoritativeSessionFromCtx } from "better-auth/api";
 
+import { isBanEffective } from "./admin-security";
 import { PASSKEY_SESSION_FRESH_AGE_MS } from "./passkey-policy";
 
 interface PasskeyUserSecurityRow {
@@ -66,10 +67,7 @@ export function createPasskeyManagementPlugin(database: D1Database) {
               });
             }
 
-            const isBanned =
-              userSecurity.banned === 1 &&
-              (userSecurity.ban_expires === null || userSecurity.ban_expires > now);
-            if (isBanned) {
+            if (isBanEffective(userSecurity, now)) {
               throw APIError.from("FORBIDDEN", {
                 code: "ACCOUNT_BANNED",
                 message: "This account has been banned",

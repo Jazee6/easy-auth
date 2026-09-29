@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import * as v from "valibot";
 
 import {
-  accountNavigation,
   accountSecurityErrorCode,
   backupCodesText,
   getTotpSecret,
@@ -11,17 +10,6 @@ import {
   shouldRefreshTwoFactorStatusAfterClose,
   totpVerificationSchema,
 } from "./account-security";
-
-describe("Account Security navigation", () => {
-  test("places Security between sign-in methods and applications", () => {
-    expect(accountNavigation).toEqual([
-      { label: "Profile", path: "/profile" },
-      { label: "Sign-in methods", path: "/sign-in-methods" },
-      { label: "Security", path: "/security" },
-      { label: "Applications", path: "/applications" },
-    ]);
-  });
-});
 
 describe("Account Security input and setup material", () => {
   test("validates password confirmation and six-digit TOTP codes on submit", () => {

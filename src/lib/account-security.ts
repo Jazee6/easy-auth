@@ -1,12 +1,5 @@
 import * as v from "valibot";
 
-export const accountNavigation = [
-  { label: "Profile", path: "/profile" },
-  { label: "Sign-in methods", path: "/sign-in-methods" },
-  { label: "Security", path: "/security" },
-  { label: "Applications", path: "/applications" },
-] as const;
-
 export const passwordConfirmationSchema = v.object({
   password: v.pipe(v.string("Password is required"), v.nonEmpty("Password is required")),
 });

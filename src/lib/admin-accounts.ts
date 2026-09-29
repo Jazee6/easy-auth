@@ -1,3 +1,4 @@
+import { normalizePageNumber } from "./pagination";
 import { escapeLikePattern } from "./sql";
 
 export const ACCOUNT_PAGE_SIZE = 20;
@@ -74,10 +75,7 @@ export function normalizeAccountListSearch(input: Record<string, unknown>): Acco
   const ban = setValue(banStates, input.ban);
   const sort = setValue(sortFields, input.sort) ?? "createdAt";
   const direction = setValue(sortDirections, input.direction) ?? "desc";
-  const page =
-    typeof input.page === "number" && Number.isSafeInteger(input.page) && input.page > 0
-      ? input.page
-      : 1;
+  const page = normalizePageNumber(input.page);
 
   return {
     q: typeof input.q === "string" ? input.q.trim() : "",

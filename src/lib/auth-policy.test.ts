@@ -10,7 +10,6 @@ import {
   derivePasswordResetPayload,
   deriveSignupPayload,
   deriveSignInMethodState,
-  evaluateExternalIdentityLink,
   getExternalIdentityLinkOptions,
   getExternalIdentitySignInOptions,
   getInitials,
@@ -565,31 +564,6 @@ describe("auth-policy", () => {
       ]);
       expect(state.google.canUnlink).toBe(true);
       expect(state.github.canUnlink).toBe(true);
-    });
-
-    it("allows an unused, verified external identity with a different email", () => {
-      const base = {
-        provider: "google" as const,
-        userId: "user-1",
-        providerEmail: "other@example.com",
-        providerEmailVerified: true,
-        providerIdentityCount: 0,
-        identityOwnerUserId: null,
-      };
-
-      expect(evaluateExternalIdentityLink(base)).toEqual({ allowed: true });
-      expect(evaluateExternalIdentityLink({ ...base, providerEmailVerified: false })).toEqual({
-        allowed: false,
-        code: "google_email_not_verified",
-      });
-      expect(evaluateExternalIdentityLink({ ...base, providerIdentityCount: 1 })).toEqual({
-        allowed: false,
-        code: "google_already_linked",
-      });
-      expect(evaluateExternalIdentityLink({ ...base, identityOwnerUserId: "user-2" })).toEqual({
-        allowed: false,
-        code: "identity_owned_by_another_user",
-      });
     });
 
     it("uses provider-aware destinations for explicit external identity linking", () => {

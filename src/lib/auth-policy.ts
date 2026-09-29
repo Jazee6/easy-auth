@@ -274,37 +274,6 @@ export function deriveSignInMethodState(
   return result;
 }
 
-interface ExternalIdentityLinkEvaluationInput {
-  provider: ExternalIdentityProvider;
-  userId: string;
-  providerEmail?: string | null;
-  providerEmailVerified: boolean;
-  providerIdentityCount: number;
-  identityOwnerUserId?: string | null;
-}
-
-export function evaluateExternalIdentityLink(
-  input: ExternalIdentityLinkEvaluationInput,
-): { allowed: true } | { allowed: false; code: string } {
-  if (!input.providerEmail) {
-    return { allowed: false, code: `${input.provider}_email_missing` };
-  }
-
-  if (!input.providerEmailVerified) {
-    return { allowed: false, code: `${input.provider}_email_not_verified` };
-  }
-
-  if (input.identityOwnerUserId && input.identityOwnerUserId !== input.userId) {
-    return { allowed: false, code: "identity_owned_by_another_user" };
-  }
-
-  if (input.providerIdentityCount > 0) {
-    return { allowed: false, code: `${input.provider}_already_linked` };
-  }
-
-  return { allowed: true };
-}
-
 export function getExternalIdentityLinkOptions(provider: ExternalIdentityProvider): {
   provider: ExternalIdentityProvider;
   callbackURL: string;

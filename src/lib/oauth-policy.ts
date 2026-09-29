@@ -1,15 +1,10 @@
 import * as v from "valibot";
 
+import { getErrorMatchText } from "./error-text";
+
 export { hasAdministratorRole } from "./admin-policy";
 
 export const supportedScopes = ["openid", "profile", "email", "offline_access"] as const;
-
-export const oauthSecurityEventPolicy = {
-  signOut: { revokeTokens: false, deleteConsent: false },
-  passwordReset: { revokeTokens: false, deleteConsent: false },
-  ban: { revokeTokens: true, deleteConsent: false },
-  applicationAuthorizationRevocation: { revokeTokens: true, deleteConsent: true },
-} as const;
 
 export const scopeDescriptions: Record<(typeof supportedScopes)[number], string> = {
   openid: "Confirm your stable Easy Auth account identity.",
@@ -109,17 +104,6 @@ export function isDirectOAuthManagementPath(path: string | undefined): boolean {
   return directOAuthManagementPaths.has(path ?? "");
 }
 
-export function getBannedUserId(path: string | undefined, body: unknown): string | null {
-  if (typeof body !== "object" || body === null) return null;
-  const input = body as { userId?: unknown; data?: unknown };
-  if (typeof input.userId !== "string" || input.userId.length === 0) return null;
-  if (path === "/admin/ban-user") return input.userId;
-  if (path !== "/admin/update-user" || typeof input.data !== "object" || input.data === null) {
-    return null;
-  }
-  return (input.data as { banned?: unknown }).banned === true ? input.userId : null;
-}
-
 function normalizedHostname(hostname: string): string {
   const normalized = hostname.toLowerCase();
   return normalized.startsWith("[") && normalized.endsWith("]")
@@ -214,13 +198,6 @@ export function validateOAuthPostLogoutRedirectUris(
   return error && `${POST_LOGOUT_ERROR_PREFIX}${error}`;
 }
 
-function oauthManagementErrorText(error: unknown): string {
-  if (typeof error === "string") return error.toLowerCase();
-  if (typeof error !== "object" || error === null) return "";
-  const candidate = error as { code?: unknown; message?: unknown };
-  return `${String(candidate.code ?? "")} ${String(candidate.message ?? "")}`.toLowerCase();
-}
-
 const oauthManagementActionErrors = {
   status: "Unable to change the client status. Try again.",
   rotate: "Unable to rotate the client secret. Try again.",
@@ -235,7 +212,7 @@ export function getOAuthManagementActionError(
 }
 
 export function translateOAuthManagementError(error: unknown): string {
-  const text = oauthManagementErrorText(error);
+  const text = getErrorMatchText(error);
   if (text.includes(POST_LOGOUT_ERROR_PREFIX.toLowerCase()) || text.includes("post_logout")) {
     if (text.includes("web clients require https")) {
       return "Web clients require HTTPS post-logout redirect URIs on non-loopback hosts.";

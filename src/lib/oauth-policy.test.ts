@@ -4,14 +4,12 @@ import { oauthProvider } from "@better-auth/oauth-provider";
 import {
   clientRegistrationSchema,
   clientUpdateSchema,
-  getBannedUserId,
   getOAuthContinuationPayload,
   getOAuthManagementActionError,
   getPendingOAuthVerificationUrl,
   hasAdministratorRole,
   isDirectOAuthManagementPath,
   oauthClientCreatePayload,
-  oauthSecurityEventPolicy,
   parseStoredStringArray,
   redactAuditSummary,
   scopeDescriptions,
@@ -145,19 +143,6 @@ describe("OAuth management policy", () => {
     expect(redacted.includes("token")).toBe(false);
   });
 
-  test("keeps consent distinct from sessions and forced token invalidation", () => {
-    expect(oauthSecurityEventPolicy.signOut).toEqual({ revokeTokens: false, deleteConsent: false });
-    expect(oauthSecurityEventPolicy.passwordReset).toEqual({
-      revokeTokens: false,
-      deleteConsent: false,
-    });
-    expect(oauthSecurityEventPolicy.ban).toEqual({ revokeTokens: true, deleteConsent: false });
-    expect(oauthSecurityEventPolicy.applicationAuthorizationRevocation).toEqual({
-      revokeTokens: true,
-      deleteConsent: true,
-    });
-  });
-
   test("blocks direct client mutation and non-atomic consent deletion paths", () => {
     for (const path of [
       "/oauth2/create-client",
@@ -220,22 +205,6 @@ describe("OAuth management policy", () => {
       "/verify-email?client_id=client-1&state=state-1&sig=signed&ba_param=client_id&email=user%40example.com",
     );
     expect(getPendingOAuthVerificationUrl("?client_id=client-1", "user@example.com")).toBeNull();
-  });
-
-  test("recognizes every supported administrator ban path", () => {
-    expect(getBannedUserId("/admin/ban-user", { userId: "user-1" })).toBe("user-1");
-    expect(
-      getBannedUserId("/admin/update-user", {
-        userId: "user-2",
-        data: { banned: true },
-      }),
-    ).toBe("user-2");
-    expect(
-      getBannedUserId("/admin/update-user", {
-        userId: "user-2",
-        data: { banned: false },
-      }),
-    ).toBeNull();
   });
 
   test("validates redirect URI policy before atomic client updates", () => {

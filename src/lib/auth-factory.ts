@@ -18,6 +18,7 @@ import {
   createAdminSecurityPlugin,
   type SecurityActivityFailureEvent,
 } from "./admin-security-plugin";
+import { isBanEffective } from "./admin-security";
 import {
   captchaProtectedAuthEndpoints,
   EMAIL_RESEND_COOLDOWN_SECONDS,
@@ -304,12 +305,7 @@ export function createEasyAuth({
               });
             }
 
-            const now = Date.now();
-            const isBanned =
-              targetUser.banned === 1 &&
-              (targetUser.ban_expires === null || targetUser.ban_expires > now);
-
-            if (isBanned) {
+            if (isBanEffective(targetUser, Date.now())) {
               throw APIError.from("FORBIDDEN", {
                 code: "ACCOUNT_BANNED",
                 message: "This account has been banned",

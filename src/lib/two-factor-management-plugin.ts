@@ -1,7 +1,8 @@
 import { APIError } from "@better-auth/core/error";
 import { createAuthMiddleware } from "@better-auth/core/api";
-import { getAuthoritativeSessionFromCtx, isAPIError } from "better-auth/api";
+import { getAuthoritativeSessionFromCtx } from "better-auth/api";
 
+import { isSuccessfulEndpointResult } from "./endpoint-result";
 import {
   TWO_FACTOR_ALREADY_ENABLED,
   TWO_FACTOR_NOT_ENABLED,
@@ -53,11 +54,6 @@ function isManagementPath(path?: string): boolean {
     path === TWO_FACTOR_DISABLE_PATH ||
     path === TWO_FACTOR_VERIFY_TOTP_PATH
   );
-}
-
-function isSuccessfulEndpointResult(result: unknown): boolean {
-  if (result === undefined || result === null || isAPIError(result)) return false;
-  return !(result instanceof Response) || (result.status >= 200 && result.status < 300);
 }
 
 async function readTwoFactorState(
