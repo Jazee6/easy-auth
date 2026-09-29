@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { admin } from "better-auth/plugins";
 
 import {
   assertAdministratorRouteAccess,
@@ -33,5 +34,11 @@ describe("Administrator boundary policy", () => {
     expect(isDirectAdminPluginPath("/oauth2/get-clients")).toBe(false);
     expect(isDirectAdminPluginPath("/admin/create-oauth-client")).toBe(false);
     expect(isDirectAdminPluginPath(undefined)).toBe(false);
+  });
+
+  test("classifies every endpoint the installed Admin Plugin exposes", () => {
+    const paths = Object.values(admin().endpoints).map((endpoint) => endpoint.path);
+    expect(paths).toContain("/admin/ban-user");
+    expect(paths.filter((path) => !isDirectAdminPluginPath(path))).toEqual([]);
   });
 });

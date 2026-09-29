@@ -10,6 +10,7 @@ import { getAuthoritativeSession } from "./authoritative-session";
 import {
   deleteOAuthClientAtomically,
   revokeApplicationAuthorizationAtomically,
+  rotateOAuthClientSecretAtomically,
   setOAuthClientDisabledAtomically,
   updateOAuthClientAtomically,
 } from "./oauth-management";
@@ -255,37 +256,19 @@ export const rotateOAuthClientSecret = createServerFn({ method: "POST" })
       throw new Error("Public clients do not have a client secret");
     }
 
-    const random = crypto.getRandomValues(new Uint8Array(32));
-    const rawSecret = Array.from(random, (value) => value.toString(16).padStart(2, "0")).join("");
-    const digest = new Uint8Array(
-      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawSecret)),
-    );
-    const storedSecret = btoa(String.fromCharCode(...digest))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-    const database = db.$client;
-    await database.batch([
-      database
-        .prepare(
-          "UPDATE oauth_client SET client_secret = ?, updated_at = ? WHERE client_id = ? AND user_id = ?",
-        )
-        .bind(storedSecret, Date.now(), data.clientId, session.user.id),
-      database
-        .prepare(
-          "INSERT INTO oauth_client_audit (id, actor_user_id, owner_user_id, client_id, client_name, action, summary, created_at) VALUES (?, ?, ?, ?, ?, 'rotate-secret', ?, ?)",
-        )
-        .bind(
-          crypto.randomUUID(),
-          session.user.id,
-          session.user.id,
-          data.clientId,
-          existing.name ?? data.clientId,
-          redactAuditSummary({ changed: ["clientSecret"] }),
-          Date.now(),
-        ),
-    ]);
-    return { clientId: data.clientId, clientSecret: `ea_cs_${rawSecret}` };
+    const clientSecret = await rotateOAuthClientSecretAtomically(db.$client, {
+      clientId: data.clientId,
+      ownerUserId: session.user.id,
+      audit: {
+        id: crypto.randomUUID(),
+        actorUserId: session.user.id,
+        clientName: existing.name ?? data.clientId,
+        action: "rotate-secret",
+        summary: redactAuditSummary({ changed: ["clientSecret"] }),
+        createdAt: Date.now(),
+      },
+    });
+    return { clientId: data.clientId, clientSecret };
   });
 
 export const deleteOAuthClient = createServerFn({ method: "POST" })

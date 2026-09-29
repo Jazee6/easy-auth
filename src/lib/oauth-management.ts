@@ -2,7 +2,7 @@ export interface OAuthClientAuditWrite {
   id: string;
   actorUserId: string;
   clientName: string;
-  action: "update" | "disable" | "enable" | "delete";
+  action: "update" | "disable" | "enable" | "rotate-secret" | "delete";
   summary: string;
   createdAt: number;
 }
@@ -77,6 +77,44 @@ export async function setOAuthClientDisabledAtomically(
       ),
     auditStatement(database, mutation),
   ]);
+}
+
+export const OAUTH_CLIENT_SECRET_PREFIX = "ea_cs_";
+
+/**
+ * Mirrors the oauth-provider `storeClientSecret: "hashed"` format: an unpadded
+ * base64url SHA-256 digest of the secret without its prefix.
+ */
+async function hashOAuthClientSecret(rawSecret: string): Promise<string> {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawSecret)),
+  );
+  return btoa(String.fromCharCode(...digest))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+export async function rotateOAuthClientSecretAtomically(
+  database: D1Database,
+  mutation: OwnedOAuthClientMutation,
+): Promise<string> {
+  const random = crypto.getRandomValues(new Uint8Array(32));
+  const rawSecret = Array.from(random, (value) => value.toString(16).padStart(2, "0")).join("");
+  await database.batch([
+    database
+      .prepare(
+        "UPDATE oauth_client SET client_secret = ?, updated_at = ? WHERE client_id = ? AND user_id = ?",
+      )
+      .bind(
+        await hashOAuthClientSecret(rawSecret),
+        mutation.audit.createdAt,
+        mutation.clientId,
+        mutation.ownerUserId,
+      ),
+    auditStatement(database, mutation),
+  ]);
+  return `${OAUTH_CLIENT_SECRET_PREFIX}${rawSecret}`;
 }
 
 export async function deleteOAuthClientAtomically(

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { oauthProvider } from "@better-auth/oauth-provider";
 
 import {
   clientRegistrationSchema,
@@ -169,6 +170,40 @@ describe("OAuth management policy", () => {
       expect(isDirectOAuthManagementPath(path)).toBe(true);
     }
     expect(isDirectOAuthManagementPath("/oauth2/get-clients")).toBe(false);
+  });
+
+  test("reviews every HTTP endpoint the installed OAuth provider exposes", () => {
+    // Protocol and read-only endpoints reviewed as safe to leave reachable over HTTP.
+    const reviewedHttpPaths = new Set([
+      "/oauth2/authorize",
+      "/oauth2/consent",
+      "/oauth2/continue",
+      "/oauth2/end-session",
+      "/oauth2/end-session/confirm",
+      "/oauth2/get-client",
+      "/oauth2/get-clients",
+      "/oauth2/get-consent",
+      "/oauth2/get-consents",
+      "/oauth2/introspect",
+      "/oauth2/public-client",
+      "/oauth2/public-client-prelogin",
+      "/oauth2/register",
+      "/oauth2/revoke",
+      "/oauth2/token",
+      "/oauth2/userinfo",
+    ]);
+    const endpoints = Object.values(
+      oauthProvider({ loginPage: "/login", consentPage: "/consent" }).endpoints,
+    ) as { path: string; options: { metadata?: { SERVER_ONLY?: boolean } } }[];
+    const httpPaths = endpoints
+      .filter((endpoint) => !endpoint.options.metadata?.SERVER_ONLY)
+      .map((endpoint) => endpoint.path);
+    expect(httpPaths).toContain("/oauth2/token");
+    expect(
+      httpPaths.filter(
+        (path) => !reviewedHttpPaths.has(path) && !isDirectOAuthManagementPath(path),
+      ),
+    ).toEqual([]);
   });
 
   test("uses the provider post-login continuation mode by default", () => {

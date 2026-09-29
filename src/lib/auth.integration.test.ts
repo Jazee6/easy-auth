@@ -11,6 +11,7 @@ import { parseRouterSearch, stringifyRouterSearch } from "./router-search";
 import {
   deleteOAuthClientAtomically,
   revokeApplicationAuthorizationAtomically,
+  rotateOAuthClientSecretAtomically,
   setOAuthClientDisabledAtomically,
   updateOAuthClientAtomically,
 } from "./oauth-management";
@@ -818,6 +819,63 @@ describe("OAuth HTTP integration", () => {
       authorization: `Bearer ${tokens.access_token}`,
     });
     expect(restoredUserInfoResponse.status).toBe(200);
+  });
+
+  test("authenticates a rotated client secret and rejects the previous one", async () => {
+    const adminEmail = "admin-rotate-secret@example.com";
+    const ownerId = await createVerifiedAccount(adminEmail, "admin");
+    const adminCookie = await signInCookie(adminEmail);
+    const client = await auth.api.adminCreateOAuthClient({
+      headers: new Headers({ cookie: adminCookie }),
+      body: {
+        ...oauthClientCreatePayload({
+          name: "Rotated client",
+          applicationType: "web",
+          authentication: "confidential",
+          redirectUris: ["https://rotate.example/callback"],
+          postLogoutRedirectUris: [],
+        }),
+        grant_types: ["authorization_code", "refresh_token"],
+        response_types: ["code"],
+      },
+    });
+    if (!client.client_secret) throw new Error("Confidential client did not return its secret");
+
+    const basic = (secret: string) =>
+      `Basic ${Buffer.from(`${client.client_id}:${secret}`).toString("base64")}`;
+    const introspect = (secret: string) =>
+      postAuthForm(
+        "/oauth2/introspect",
+        new URLSearchParams({ token: "ea_at_unknown", token_type_hint: "access_token" }),
+        basic(secret),
+      );
+
+    expect((await introspect(client.client_secret)).status).toBe(200);
+
+    const rotatedSecret = await rotateOAuthClientSecretAtomically(database, {
+      clientId: client.client_id,
+      ownerUserId: ownerId,
+      audit: {
+        id: crypto.randomUUID(),
+        actorUserId: ownerId,
+        clientName: "Rotated client",
+        action: "rotate-secret",
+        summary: "{}",
+        createdAt: Date.now(),
+      },
+    });
+
+    expect(rotatedSecret.startsWith("ea_cs_")).toBe(true);
+    expect((await introspect(rotatedSecret)).status).toBe(200);
+    expect((await introspect(client.client_secret)).status).toBe(401);
+    expect(
+      await database
+        .prepare(
+          "SELECT count(*) AS count FROM oauth_client_audit WHERE client_id = ? AND action = 'rotate-secret'",
+        )
+        .bind(client.client_id)
+        .first<number>("count"),
+    ).toBe(1);
   });
 
   test("revokes pending authorization codes with an account application authorization", async () => {
