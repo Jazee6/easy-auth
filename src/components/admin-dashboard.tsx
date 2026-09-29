@@ -137,7 +137,7 @@ export function AdminDashboard({ dashboard }: { dashboard: AdminDashboardResult 
   ];
 
   return (
-    <div className="w-full max-w-7xl space-y-8">
+    <div className="w-full max-w-7xl flex flex-col gap-8">
       <PageHeader title="Dashboard" description="Identity Domain account and security overview." />
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Dashboard metrics">

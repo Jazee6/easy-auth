@@ -129,7 +129,7 @@ export function SecurityActivity({
   const clearFilters = () => navigate({ search: { q: "", page: 1 } });
 
   return (
-    <div className="w-full max-w-7xl space-y-6">
+    <div className="w-full max-w-7xl flex flex-col gap-6">
       <PageHeader
         title="Security activity"
         description="Best-effort operational history for Standard Account security actions."

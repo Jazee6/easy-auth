@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { LayoutGrid } from "lucide-react";
+import { CircleAlertIcon, LayoutGrid } from "lucide-react";
 
 import {
   AlertDialog,
@@ -14,6 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/page-header";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -46,12 +47,12 @@ export function AuthorizedApplications({ applications }: { applications: Authori
   };
 
   return (
-    <div className="w-full max-w-4xl space-y-6">
+    <div className="w-full max-w-4xl flex flex-col gap-6">
       <PageHeader
         title="Applications"
         description="Revocation prevents future token use and silent reauthorization. It cannot recall an ID token already delivered or end a relying application's own local session."
       />
-      <section className="space-y-4" aria-labelledby="authorized-applications-list-title">
+      <section className="flex flex-col gap-4" aria-labelledby="authorized-applications-list-title">
         <h2
           id="authorized-applications-list-title"
           className="text-lg font-semibold tracking-tight"
@@ -59,9 +60,10 @@ export function AuthorizedApplications({ applications }: { applications: Authori
           Applications
         </h2>
         {error && (
-          <div role="alert" className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-            {error}
-          </div>
+          <Alert variant="destructive">
+            <CircleAlertIcon />
+            <AlertTitle>{error}</AlertTitle>
+          </Alert>
         )}
         {applications.length === 0 ? (
           <Empty>
@@ -78,7 +80,7 @@ export function AuthorizedApplications({ applications }: { applications: Authori
               key={application.consentId}
               className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="min-w-0 space-y-1">
+              <div className="min-w-0 flex flex-col gap-1">
                 <p className="font-medium">{application.clientName ?? "Deleted application"}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {application.scopes.map((scope) => (

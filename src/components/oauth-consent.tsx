@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { CircleAlertIcon } from "lucide-react";
 
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { scopeDescriptions, supportedScopes } from "@/lib/oauth-policy";
@@ -41,15 +43,16 @@ export function OAuthConsent({
           <CardTitle>Authorize {client.name}?</CardTitle>
           <CardDescription className="break-all">Client ID: {client.clientId}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="flex flex-col gap-5">
           {error && (
-            <div role="alert" className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <CircleAlertIcon />
+              <AlertTitle>{error}</AlertTitle>
+            </Alert>
           )}
           <div>
             <p className="mb-3 text-sm font-medium">This application is requesting:</p>
-            <ul className="space-y-3">
+            <ul className="flex flex-col gap-3">
               {scopes.map((scope) => (
                 <li key={scope} className="rounded-md border p-3">
                   <p className="font-mono text-sm font-medium">{scope}</p>

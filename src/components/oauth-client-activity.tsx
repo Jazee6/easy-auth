@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
-import { CircleCheck, CircleOff, ClipboardPlus, KeyRound, PencilLine, Trash2 } from "lucide-react";
+import {
+  CircleAlertIcon,
+  CircleCheck,
+  CircleOff,
+  ClipboardPlus,
+  KeyRound,
+  PencilLine,
+  Trash2,
+} from "lucide-react";
 
 import { type OAuthClientDialogClient, CopyValueRow } from "@/components/oauth-client-dialog";
 import { RelativeTime } from "@/components/relative-time";
@@ -12,14 +20,15 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/responsive-dialog";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -54,7 +63,7 @@ export function ActivityCell({ record }: { record: OAuthClientActivityRecord }) 
   return (
     <div className="flex min-w-48 items-start gap-2">
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <div className="min-w-0 space-y-0.5">
+      <div className="min-w-0 flex flex-col gap-0.5">
         <p className="font-medium">{event.title}</p>
         <p className="text-sm text-muted-foreground">{event.summary}</p>
       </div>
@@ -78,7 +87,7 @@ export function ActivityTimeline({ activity }: { activity: OAuthClientActivityRe
   }
 
   return (
-    <ol className="space-y-8">
+    <ol className="flex flex-col gap-8">
       {activity.map((record, index) => {
         const event = formatOAuthClientActivityEvent(record);
         const Icon = activityIcons[event.icon];
@@ -93,7 +102,7 @@ export function ActivityTimeline({ activity }: { activity: OAuthClientActivityRe
             <span className="absolute top-0 left-0 flex size-7 items-center justify-center rounded-full border bg-background text-muted-foreground">
               <Icon className="size-3.5" aria-hidden="true" />
             </span>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               <p className="font-medium">{event.title}</p>
               <p className="text-sm text-muted-foreground">{event.summary}</p>
               <p className="text-xs text-muted-foreground">
@@ -116,7 +125,7 @@ const timelineSkeletonRows = [
 
 export function ActivityTimelineSkeleton() {
   return (
-    <div role="status" aria-label="Loading management activity" className="space-y-8">
+    <div role="status" aria-label="Loading management activity" className="flex flex-col gap-8">
       {timelineSkeletonRows.map(([titleWidth, summaryWidth], index) => (
         <div key={index} className="relative pl-9">
           {index < timelineSkeletonRows.length - 1 && (
@@ -128,7 +137,7 @@ export function ActivityTimelineSkeleton() {
           <span className="absolute top-0 left-0 flex size-7 items-center justify-center rounded-full border bg-background">
             <Skeleton className="size-3.5 rounded-full" />
           </span>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1">
             <Skeleton className={cn("h-5", titleWidth)} />
             <Skeleton className={cn("h-5", summaryWidth)} />
             <Skeleton className="h-4 w-24" />
@@ -196,12 +205,10 @@ export function OAuthClientActivitySheet({
             {isLoading ? (
               <ActivityTimelineSkeleton />
             ) : error ? (
-              <div
-                role="alert"
-                className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-              >
-                {error}
-              </div>
+              <Alert variant="destructive">
+                <CircleAlertIcon />
+                <AlertTitle>{error}</AlertTitle>
+              </Alert>
             ) : (
               <ActivityTimeline activity={activity} />
             )}
@@ -257,46 +264,46 @@ export function RotateOAuthClientSecretDialog({
   };
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={open}
       onOpenChange={handleOpenChange}
       onOpenChangeComplete={handleOpenChangeComplete}
     >
-      <DialogContent className="sm:max-w-md" showCloseButton={!isRotating}>
+      <ResponsiveDialogContent className="sm:max-w-md" showCloseButton={!isRotating}>
         {secret ? (
           <>
-            <DialogHeader>
-              <DialogTitle>Save the new client secret</DialogTitle>
-              <DialogDescription>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>Save the new client secret</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
                 This secret is shown once. Closing this dialog clears it and it cannot be recovered.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
+            <div className="flex flex-col gap-3">
               <p className="text-sm text-muted-foreground">New client secret</p>
               <CopyValueRow value={secret} label="client secret" />
             </div>
-            <DialogFooter>
-              <DialogClose render={<Button variant="outline" type="button" />}>
+            <ResponsiveDialogFooter>
+              <ResponsiveDialogClose render={<Button variant="outline" type="button" />}>
                 I have saved it
-              </DialogClose>
-            </DialogFooter>
+              </ResponsiveDialogClose>
+            </ResponsiveDialogFooter>
           </>
         ) : (
           <>
-            <DialogHeader>
-              <DialogTitle>Rotate client secret?</DialogTitle>
-              <DialogDescription>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>Rotate client secret?</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
                 The previous secret will stop working immediately. The replacement is shown once, so
                 save it before closing.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <DialogClose
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
+            <ResponsiveDialogFooter>
+              <ResponsiveDialogClose
                 disabled={isRotating}
                 render={<Button variant="outline" type="button" />}
               >
                 Cancel
-              </DialogClose>
+              </ResponsiveDialogClose>
               <Button
                 type="button"
                 loading={isRotating}
@@ -305,10 +312,10 @@ export function RotateOAuthClientSecretDialog({
               >
                 Rotate secret
               </Button>
-            </DialogFooter>
+            </ResponsiveDialogFooter>
           </>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

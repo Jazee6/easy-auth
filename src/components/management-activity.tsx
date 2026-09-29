@@ -33,12 +33,12 @@ export function ManagementActivity({ activity }: { activity: OAuthClientActivity
   ];
 
   return (
-    <div className="w-full max-w-7xl space-y-6">
+    <div className="w-full max-w-7xl flex flex-col gap-6">
       <PageHeader
         title="Management activity"
         description="Changes to OAuth clients you own. Deleted-client snapshots remain here."
       />
-      <section className="space-y-4" aria-labelledby="management-activity-list-title">
+      <section className="flex flex-col gap-4" aria-labelledby="management-activity-list-title">
         <h2 id="management-activity-list-title" className="text-lg font-semibold tracking-tight">
           Activity
         </h2>

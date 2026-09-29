@@ -116,7 +116,7 @@ export function TwoFactorChallengeForm({
             {(isSubmitting) => (
               <FieldGroup>
                 {formError && (
-                  <Alert variant="destructive" className="border-destructive/25 bg-destructive/15">
+                  <Alert variant="destructive">
                     <CircleAlertIcon />
                     <AlertTitle>{formError}</AlertTitle>
                   </Alert>

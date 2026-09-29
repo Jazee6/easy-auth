@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CircleAlertIcon } from "lucide-react";
 import { useRouter } from "@tanstack/react-router";
 
 import { DataTable, type DataTableColumnDef } from "@/components/data-table";
@@ -13,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { revokeAccountSession, revokeAllAccountSessions } from "@/lib/admin-server";
@@ -80,11 +82,12 @@ function RevokeSessionAction({
             End this {accountName} Session immediately?
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="space-y-2 text-sm">
+        <div className="flex flex-col gap-2 text-sm">
           {error && (
-            <div role="alert" className="rounded-md bg-destructive/15 p-3 text-destructive">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <CircleAlertIcon />
+              <AlertTitle>{error}</AlertTitle>
+            </Alert>
           )}
           <p>
             {session.browser} · {session.operatingSystem} · {session.deviceType}
@@ -162,9 +165,10 @@ function RevokeAllSessionsAction({
           </AlertDialogDescription>
         </AlertDialogHeader>
         {error && (
-          <div role="alert" className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-            {error}
-          </div>
+          <Alert variant="destructive">
+            <CircleAlertIcon />
+            <AlertTitle>{error}</AlertTitle>
+          </Alert>
         )}
         <p className="text-sm text-muted-foreground">
           This affects every active Session for this Standard Account and cannot be undone.
@@ -260,7 +264,7 @@ export function AccountSessions({
   sessions: SafeAccountSession[];
 }) {
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {sessions.length > 0 && (
         <div className="flex justify-end">
           <RevokeAllSessionsAction accountId={accountId} accountName={accountName} />

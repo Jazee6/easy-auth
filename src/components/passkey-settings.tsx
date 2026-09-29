@@ -30,17 +30,16 @@ import {
   AlertDialogPortal,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogOverlay,
-  DialogPortal,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogNestedOverlay,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -315,7 +314,7 @@ export function PasskeySettings({
   };
 
   return (
-    <Dialog open={isManageDialogOpen} onOpenChange={setIsManageDialogOpen}>
+    <ResponsiveDialog open={isManageDialogOpen} onOpenChange={setIsManageDialogOpen}>
       <Item variant="outline">
         <ItemMedia variant="icon">
           <Fingerprint />
@@ -329,17 +328,19 @@ export function PasskeySettings({
           </ItemDescription>
         </ItemContent>
         <ItemActions>
-          <DialogTrigger render={<Button variant="outline" size="sm" />}>Manage</DialogTrigger>
+          <ResponsiveDialogTrigger render={<Button variant="outline" size="sm" />}>
+            Manage
+          </ResponsiveDialogTrigger>
         </ItemActions>
       </Item>
 
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Manage passkeys</DialogTitle>
-          <DialogDescription>
+      <ResponsiveDialogContent className="sm:max-w-lg">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Manage passkeys</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Sign in securely with biometric recognition, security keys, or your device lock.
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         {!isWebAuthnSupported && (
           <p className="text-sm text-destructive" role="status">
@@ -395,7 +396,7 @@ export function PasskeySettings({
           </ItemGroup>
         )}
 
-        <DialogFooter>
+        <ResponsiveDialogFooter>
           <Button
             variant="outline"
             disabled={!isWebAuthnSupported}
@@ -403,10 +404,10 @@ export function PasskeySettings({
           >
             Add passkey
           </Button>
-        </DialogFooter>
+        </ResponsiveDialogFooter>
 
         {/* Add Passkey Dialog */}
-        <Dialog
+        <ResponsiveDialog
           open={isAddDialogOpen}
           onOpenChange={(open) => {
             setIsAddDialogOpen(open);
@@ -421,17 +422,15 @@ export function PasskeySettings({
             }
           }}
         >
-          <DialogPortal>
-            <DialogOverlay forceRender />
-          </DialogPortal>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add a passkey</DialogTitle>
-              <DialogDescription>
+          <ResponsiveDialogNestedOverlay />
+          <ResponsiveDialogContent>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>Add a passkey</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
                 Give your passkey an optional name to help you recognize it later. You will then be
                 prompted to verify your device PIN or biometrics.
-              </DialogDescription>
-            </DialogHeader>
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
             <form
               noValidate
               onSubmit={(e) => {
@@ -458,11 +457,11 @@ export function PasskeySettings({
                   )}
                 </addForm.Field>
               </FieldGroup>
-              <DialogFooter className="mt-4">
+              <ResponsiveDialogFooter className="mt-4">
                 <addForm.Subscribe selector={(state) => state.isSubmitting}>
                   {(isSubmitting) => (
                     <>
-                      <DialogClose
+                      <ResponsiveDialogClose
                         render={
                           <Button variant="outline" type="button" disabled={isSubmitting}>
                             Cancel
@@ -475,13 +474,13 @@ export function PasskeySettings({
                     </>
                   )}
                 </addForm.Subscribe>
-              </DialogFooter>
+              </ResponsiveDialogFooter>
             </form>
-          </DialogContent>
-        </Dialog>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
 
         {/* Rename Passkey Dialog - retains targetPasskeyForRename until exit animation completes */}
-        <Dialog
+        <ResponsiveDialog
           open={isRenameDialogOpen}
           onOpenChange={setIsRenameDialogOpen}
           onOpenChangeComplete={(open) => {
@@ -491,14 +490,14 @@ export function PasskeySettings({
             }
           }}
         >
-          <DialogPortal>
-            <DialogOverlay forceRender />
-          </DialogPortal>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Rename passkey</DialogTitle>
-              <DialogDescription>Update the display name for this passkey.</DialogDescription>
-            </DialogHeader>
+          <ResponsiveDialogNestedOverlay />
+          <ResponsiveDialogContent>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>Rename passkey</ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
+                Update the display name for this passkey.
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
             <form
               noValidate
               onSubmit={(e) => {
@@ -524,11 +523,11 @@ export function PasskeySettings({
                   )}
                 </renameForm.Field>
               </FieldGroup>
-              <DialogFooter className="mt-4">
+              <ResponsiveDialogFooter className="mt-4">
                 <renameForm.Subscribe selector={(state) => state.isSubmitting}>
                   {(isSubmitting) => (
                     <>
-                      <DialogClose
+                      <ResponsiveDialogClose
                         render={
                           <Button variant="outline" type="button" disabled={isSubmitting}>
                             Cancel
@@ -541,10 +540,10 @@ export function PasskeySettings({
                     </>
                   )}
                 </renameForm.Subscribe>
-              </DialogFooter>
+              </ResponsiveDialogFooter>
             </form>
-          </DialogContent>
-        </Dialog>
+          </ResponsiveDialogContent>
+        </ResponsiveDialog>
 
         {/* Delete Passkey AlertDialog - retains targetPasskeyForDelete until exit animation completes */}
         <AlertDialog
@@ -582,7 +581,7 @@ export function PasskeySettings({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

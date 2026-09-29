@@ -219,7 +219,7 @@ export function SignInMethods({
   }, [error, errorProvider, status]);
 
   return (
-    <div className="w-full max-w-2xl space-y-6">
+    <div className="w-full max-w-2xl flex flex-col gap-6">
       <PageHeader
         title="Sign-in methods"
         description="Manage the ways you can sign in to Easy Auth."

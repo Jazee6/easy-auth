@@ -265,7 +265,7 @@ export function AccountOwnedSessions({ sessions }: { sessions: SelfServiceAccoun
   const hasOtherSessions = sessions.some((session) => !session.isCurrent);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <div className="flex justify-end">
         <TerminateOtherSessions disabled={!hasOtherSessions} />
       </div>

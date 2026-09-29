@@ -2,21 +2,30 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "@tanstack/react-router";
 import * as v from "valibot";
-import { Globe2, LockKeyhole, Plus, Smartphone, UnlockKeyhole, X } from "lucide-react";
+import {
+  CircleAlertIcon,
+  Globe2,
+  LockKeyhole,
+  Plus,
+  Smartphone,
+  UnlockKeyhole,
+  X,
+} from "lucide-react";
 
 import { CopyButton } from "@/components/copy-button";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import {
   Field,
   FieldContent,
@@ -318,13 +327,15 @@ export function OAuthClientDialog({
   }
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={open}
       onOpenChange={handleOpenChange}
       onOpenChangeComplete={handleOpenChangeComplete}
     >
-      {!isEdit && <DialogTrigger render={<Button />}>Register client</DialogTrigger>}
-      <DialogContent className="sm:max-w-lg">
+      {!isEdit && (
+        <ResponsiveDialogTrigger render={<Button />}>Register client</ResponsiveDialogTrigger>
+      )}
+      <ResponsiveDialogContent className="sm:max-w-lg">
         {result ? (
           <RegistrationResult result={result} />
         ) : (
@@ -336,22 +347,22 @@ export function OAuthClientDialog({
               void form.handleSubmit();
             }}
           >
-            <DialogHeader>
-              <DialogTitle>{isEdit ? "Edit OAuth client" : "Register OAuth client"}</DialogTitle>
-              <DialogDescription>
+            <ResponsiveDialogHeader>
+              <ResponsiveDialogTitle>
+                {isEdit ? "Edit OAuth client" : "Register OAuth client"}
+              </ResponsiveDialogTitle>
+              <ResponsiveDialogDescription>
                 {isEdit
                   ? "Update the application name and redirect URIs. Type and authentication capability cannot be changed."
                   : "Authorization Code with S256 PKCE is required for every client."}
-              </DialogDescription>
-            </DialogHeader>
+              </ResponsiveDialogDescription>
+            </ResponsiveDialogHeader>
             <FieldGroup className="mt-4">
               {error && (
-                <div
-                  role="alert"
-                  className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-                >
-                  {error}
-                </div>
+                <Alert variant="destructive">
+                  <CircleAlertIcon />
+                  <AlertTitle>{error}</AlertTitle>
+                </Alert>
               )}
               {isEdit ? (
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -445,8 +456,10 @@ export function OAuthClientDialog({
                 keepOne: false,
               })}
             </FieldGroup>
-            <DialogFooter className="mt-6">
-              <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <ResponsiveDialogFooter className="mt-6">
+              <ResponsiveDialogClose render={<Button type="button" variant="outline" />}>
+                Cancel
+              </ResponsiveDialogClose>
               <form.Subscribe selector={(state) => state.isSubmitting}>
                 {(isSubmitting) => (
                   <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
@@ -454,42 +467,42 @@ export function OAuthClientDialog({
                   </Button>
                 )}
               </form.Subscribe>
-            </DialogFooter>
+            </ResponsiveDialogFooter>
           </form>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
 function RegistrationResult({ result }: { result: CreatedClient }) {
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle>
           {result.clientSecret ? "Save this client secret now" : "Client registered"}
-        </DialogTitle>
-        <DialogDescription>
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>
           {result.clientSecret
             ? "It is shown once and cannot be recovered. Losing it requires immediate rotation."
             : `${result.name} is ready to request account authorization.`}
-        </DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
+        </ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
           <p className="text-sm text-muted-foreground">Client ID</p>
           <CopyValueRow value={result.clientId} label="client ID" />
         </div>
         {result.clientSecret && (
-          <div className="space-y-1.5">
+          <div className="flex flex-col gap-1.5">
             <p className="text-sm text-muted-foreground">Client secret</p>
             <CopyValueRow value={result.clientSecret} label="client secret" />
           </div>
         )}
       </div>
-      <DialogFooter>
-        <DialogClose render={<Button type="button" />}>Done</DialogClose>
-      </DialogFooter>
+      <ResponsiveDialogFooter>
+        <ResponsiveDialogClose render={<Button type="button" />}>Done</ResponsiveDialogClose>
+      </ResponsiveDialogFooter>
     </>
   );
 }

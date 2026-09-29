@@ -21,14 +21,14 @@ import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/responsive-dialog";
 import {
   Field,
   FieldContent,
@@ -62,14 +62,10 @@ import { authClient } from "@/lib/auth-client";
 import type { TwoFactorAccountStatus } from "@/lib/two-factor-management";
 
 function TotpQrCode({ value }: { value: string }) {
-  const qr = React.useMemo(() => encode(value, { border: 4, ecc: "M" }), [value]);
-  const path = React.useMemo(
-    () =>
-      qr.data
-        .flatMap((row, y) => row.flatMap((filled, x) => (filled ? [`M${x} ${y}h1v1H${x}z`] : [])))
-        .join(""),
-    [qr],
-  );
+  const qr = encode(value, { border: 4, ecc: "M" });
+  const path = qr.data
+    .flatMap((row, y) => row.flatMap((filled, x) => (filled ? [`M${x} ${y}h1v1H${x}z`] : [])))
+    .join("");
 
   return (
     <svg
@@ -249,7 +245,7 @@ function EnrollmentDialog() {
 
   return (
     <>
-      <Dialog
+      <ResponsiveDialog
         open={open}
         onOpenChange={requestOpenChange}
         onOpenChangeComplete={(nextOpen) => {
@@ -261,24 +257,24 @@ function EnrollmentDialog() {
           if (shouldRefresh) void router.invalidate();
         }}
       >
-        <DialogTrigger render={<Button />}>Set up</DialogTrigger>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
+        <ResponsiveDialogTrigger render={<Button />}>Set up</ResponsiveDialogTrigger>
+        <ResponsiveDialogContent className="sm:max-w-lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>
               {stage === "password"
                 ? "Confirm your password"
                 : stage === "setup"
                   ? "Connect your Authenticator App"
                   : "Save your Backup Codes"}
-            </DialogTitle>
-            <DialogDescription>
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {stage === "password"
                 ? "Two-Factor Authentication protects local password sign-in. Confirm your current password to begin."
                 : stage === "setup"
                   ? "Scan the QR code, then enter the current six-digit code from your app."
                   : "This is the only time Easy Auth will display this set."}
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
 
           {stage === "password" && (
             <form
@@ -315,14 +311,14 @@ function EnrollmentDialog() {
                         </Field>
                       )}
                     </passwordForm.Field>
-                    <DialogFooter>
+                    <ResponsiveDialogFooter>
                       <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                         Cancel
                       </Button>
                       <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
                         Continue
                       </Button>
-                    </DialogFooter>
+                    </ResponsiveDialogFooter>
                   </FieldGroup>
                 )}
               </passwordForm.Subscribe>
@@ -392,14 +388,14 @@ function EnrollmentDialog() {
                         </Field>
                       )}
                     </verificationForm.Field>
-                    <DialogFooter>
+                    <ResponsiveDialogFooter>
                       <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                         Cancel setup
                       </Button>
                       <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
                         Verify and enable
                       </Button>
-                    </DialogFooter>
+                    </ResponsiveDialogFooter>
                   </FieldGroup>
                 )}
               </verificationForm.Subscribe>
@@ -413,7 +409,7 @@ function EnrollmentDialog() {
                 acknowledged={acknowledged}
                 onAcknowledgedChange={setAcknowledged}
               />
-              <DialogFooter>
+              <ResponsiveDialogFooter>
                 <Button
                   disabled={!acknowledged}
                   onClick={() => {
@@ -423,11 +419,11 @@ function EnrollmentDialog() {
                 >
                   Done
                 </Button>
-              </DialogFooter>
+              </ResponsiveDialogFooter>
             </>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <AlertDialogContent>
@@ -510,27 +506,27 @@ function RegenerateBackupCodesDialog() {
 
   return (
     <>
-      <Dialog
+      <ResponsiveDialog
         open={open}
         onOpenChange={requestOpenChange}
         onOpenChangeComplete={(nextOpen) => {
           if (!nextOpen) reset();
         }}
       >
-        <DialogTrigger render={<Button variant="outline" />}>
+        <ResponsiveDialogTrigger render={<Button variant="outline" />}>
           Generate new Backup Codes
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
+        </ResponsiveDialogTrigger>
+        <ResponsiveDialogContent className="sm:max-w-lg">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>
               {codes ? "Save your new Backup Codes" : "Generate new Backup Codes"}
-            </DialogTitle>
-            <DialogDescription>
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {codes
                 ? "This is the only time Easy Auth will display this set."
                 : "Generating a new set immediately invalidates every existing Backup Code."}
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           {codes ? (
             <>
               <BackupCodes
@@ -538,7 +534,7 @@ function RegenerateBackupCodesDialog() {
                 acknowledged={acknowledged}
                 onAcknowledgedChange={setAcknowledged}
               />
-              <DialogFooter>
+              <ResponsiveDialogFooter>
                 <Button
                   disabled={!acknowledged}
                   onClick={() => {
@@ -548,7 +544,7 @@ function RegenerateBackupCodesDialog() {
                 >
                   Done
                 </Button>
-              </DialogFooter>
+              </ResponsiveDialogFooter>
             </>
           ) : (
             <form
@@ -587,21 +583,21 @@ function RegenerateBackupCodesDialog() {
                         </Field>
                       )}
                     </form.Field>
-                    <DialogFooter>
+                    <ResponsiveDialogFooter>
                       <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                         Cancel
                       </Button>
                       <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
                         Generate new codes
                       </Button>
-                    </DialogFooter>
+                    </ResponsiveDialogFooter>
                   </FieldGroup>
                 )}
               </form.Subscribe>
             </form>
           )}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <AlertDialogContent>
@@ -664,7 +660,7 @@ function DisableTwoFactorDialog() {
   });
 
   return (
-    <Dialog
+    <ResponsiveDialog
       open={open}
       onOpenChange={setOpen}
       onOpenChangeComplete={(nextOpen) => {
@@ -680,15 +676,17 @@ function DisableTwoFactorDialog() {
         if (shouldRefresh) void router.invalidate();
       }}
     >
-      <DialogTrigger render={<Button variant="destructive" />}>Disable</DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Disable Two-Factor Authentication?</DialogTitle>
-          <DialogDescription>
+      <ResponsiveDialogTrigger render={<Button variant="destructive" />}>
+        Disable
+      </ResponsiveDialogTrigger>
+      <ResponsiveDialogContent>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>Disable Two-Factor Authentication?</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Local password sign-in will no longer require an Authenticator code. Trusted Devices
             will be removed and every other Easy Auth Session will be terminated.
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         <form
           noValidate
           onSubmit={(event) => {
@@ -725,7 +723,7 @@ function DisableTwoFactorDialog() {
                     </Field>
                   )}
                 </form.Field>
-                <DialogFooter>
+                <ResponsiveDialogFooter>
                   <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                     Cancel
                   </Button>
@@ -737,13 +735,13 @@ function DisableTwoFactorDialog() {
                   >
                     Disable
                   </Button>
-                </DialogFooter>
+                </ResponsiveDialogFooter>
               </FieldGroup>
             )}
           </form.Subscribe>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 

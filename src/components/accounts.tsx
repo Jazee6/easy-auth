@@ -67,7 +67,7 @@ function SortHeader({
 function BanStatus({ account }: { account: AccountListItem }) {
   if (account.banState === "none") return <BanBadge banState={account.banState} />;
   return (
-    <div className="min-w-36 space-y-1">
+    <div className="min-w-36 flex flex-col gap-1">
       <BanBadge banState={account.banState} />
       {account.banReason && (
         <div className="text-xs text-muted-foreground">{account.banReason}</div>
@@ -167,7 +167,7 @@ export function Accounts({
   ];
 
   return (
-    <div className="w-full max-w-7xl space-y-6">
+    <div className="w-full max-w-7xl flex flex-col gap-6">
       <PageHeader
         title="Accounts"
         description={`${result.total} Accounts in this Identity Domain.`}

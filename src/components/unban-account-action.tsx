@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CircleAlertIcon } from "lucide-react";
 import { useRouter } from "@tanstack/react-router";
 
 import {
@@ -12,6 +13,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/toast";
 import { translateUnbanAccountError } from "@/lib/admin-security";
@@ -68,11 +70,12 @@ export function UnbanAccountAction({
             Confirm that {accountName} ({accountEmail}) may sign in again.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <div className="space-y-3 text-sm">
+        <div className="flex flex-col gap-3 text-sm">
           {error && (
-            <div role="alert" className="rounded-md bg-destructive/15 p-3 text-destructive">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <CircleAlertIcon />
+              <AlertTitle>{error}</AlertTitle>
+            </Alert>
           )}
           <p>
             This clears the stored Ban, reason, and expiry. Previously revoked Sessions, OAuth

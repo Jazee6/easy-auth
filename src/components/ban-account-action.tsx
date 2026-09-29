@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CircleAlertIcon } from "lucide-react";
 import { useForm } from "@tanstack/react-form";
 import { useRouter } from "@tanstack/react-router";
 import * as v from "valibot";
@@ -14,6 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
@@ -140,12 +142,10 @@ export function BanAccountAction({
 
           <FieldGroup className="mt-5">
             {error && (
-              <div
-                role="alert"
-                className="rounded-md bg-destructive/15 p-3 text-sm text-destructive"
-              >
-                {error}
-              </div>
+              <Alert variant="destructive">
+                <CircleAlertIcon />
+                <AlertTitle>{error}</AlertTitle>
+              </Alert>
             )}
 
             <form.Field name="reasonChoice">
@@ -235,7 +235,7 @@ export function BanAccountAction({
 
             <form.Subscribe selector={(state) => state.values}>
               {(value) => (
-                <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">
+                <div className="flex flex-col gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm">
                   <p className="font-medium">Confirm these effects</p>
                   <dl className="grid gap-2 sm:grid-cols-[7rem_1fr]">
                     <dt className="text-muted-foreground">Target</dt>

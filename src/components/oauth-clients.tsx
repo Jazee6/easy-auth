@@ -60,7 +60,7 @@ export function OAuthClients({ clients }: { clients: OAuthClientListItem[] }) {
   ];
 
   return (
-    <div className="w-full max-w-7xl space-y-6">
+    <div className="w-full max-w-7xl flex flex-col gap-6">
       <PageHeader
         title="Clients"
         description="Only clients created by your administrator account are shown."
