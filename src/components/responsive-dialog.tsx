@@ -21,6 +21,7 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 const ResponsiveDialogContext = React.createContext(false);
 
@@ -84,7 +85,10 @@ function ResponsiveDialogContent({
     );
   }
   return (
-    <DialogContent className={className} showCloseButton={showCloseButton}>
+    <DialogContent
+      className={cn("max-h-[calc(100dvh-2rem)] overflow-y-auto", className)}
+      showCloseButton={showCloseButton}
+    >
       {children}
     </DialogContent>
   );
