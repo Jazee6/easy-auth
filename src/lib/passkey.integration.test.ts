@@ -500,8 +500,8 @@ describe("Passkey integration and security policy", () => {
     const ghAccountId = "gh-acc-for-unlink";
     await database
       .prepare(
-        `INSERT INTO account (id, issuer, account_id, provider_id, user_id, created_at, updated_at)
-         VALUES (?, 'https://github.com', 'gh-user-99', 'github', ?, ?, ?)`,
+        `INSERT INTO account (id, account_id, provider_id, user_id, created_at, updated_at)
+         VALUES (?, 'gh-user-99', 'github', ?, ?, ?)`,
       )
       .bind(ghAccountId, user.id, Date.now(), Date.now())
       .run();
@@ -557,9 +557,9 @@ describe("Passkey integration and security policy", () => {
     const githubAccountId = "github-account-for-unlink";
     await database
       .prepare(
-        `INSERT INTO account (id, issuer, account_id, provider_id, user_id, created_at, updated_at)
-         VALUES (?, 'https://accounts.google.com', 'google-user-1', 'google', ?, ?, ?),
-                (?, 'https://github.com', 'github-user-1', 'github', ?, ?, ?)`,
+        `INSERT INTO account (id, account_id, provider_id, user_id, created_at, updated_at)
+         VALUES (?, 'google-user-1', 'google', ?, ?, ?),
+                (?, 'github-user-1', 'github', ?, ?, ?)`,
       )
       .bind(
         googleAccountId,
@@ -659,8 +659,8 @@ describe("Passkey integration and security policy", () => {
     const pkId = "pk-race-item";
     await database
       .prepare(
-        `INSERT INTO account (id, issuer, account_id, provider_id, user_id, created_at, updated_at)
-         VALUES (?, 'https://github.com', 'gh-user-race', 'github', ?, ?, ?)`,
+        `INSERT INTO account (id, account_id, provider_id, user_id, created_at, updated_at)
+         VALUES (?, 'gh-user-race', 'github', ?, ?, ?)`,
       )
       .bind(ghId, user.id, Date.now(), Date.now())
       .run();

@@ -175,9 +175,7 @@ describe("Two-Factor Account status", () => {
     ).toEqual({ enabled: false, hasLocalPassword: true });
 
     await database
-      .prepare(
-        "UPDATE account SET provider_id = 'github', issuer = 'github', password = NULL WHERE user_id = ?",
-      )
+      .prepare("UPDATE account SET provider_id = 'github', password = NULL WHERE user_id = ?")
       .bind(account.id)
       .run();
     const projected = await getOwnTwoFactorStatus({
@@ -310,7 +308,7 @@ describe("Two-Factor disable lifecycle", () => {
     await database.batch([
       database
         .prepare(
-          "INSERT INTO account (id, issuer, account_id, provider_id, user_id, access_token, refresh_token, created_at, updated_at) VALUES (?, 'github', ?, 'github', ?, ?, ?, ?, ?)",
+          "INSERT INTO account (id, account_id, provider_id, user_id, access_token, refresh_token, created_at, updated_at) VALUES (?, ?, 'github', ?, ?, ?, ?, ?)",
         )
         .bind(
           "disable-github",

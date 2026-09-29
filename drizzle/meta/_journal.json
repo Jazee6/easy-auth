@@ -15,6 +15,13 @@
       "when": 1790582618609,
       "tag": "0001_enable_end_session",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790665867344,
+      "tag": "0002_drop_account_issuer",
+      "breakpoints": true
     }
   ]
 }

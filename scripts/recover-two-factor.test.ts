@@ -103,11 +103,10 @@ beforeAll(async () => {
         .bind(`${prefix}-session`, `${prefix}-session-token`, userId, now + 60_000, now, now),
       database
         .prepare(
-          "INSERT INTO account (id, issuer, account_id, provider_id, user_id, password, access_token, refresh_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO account (id, account_id, provider_id, user_id, password, access_token, refresh_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(
           `${prefix}-credential`,
-          "credential",
           userId,
           "credential",
           userId,
@@ -119,7 +118,7 @@ beforeAll(async () => {
         ),
       database
         .prepare(
-          "INSERT INTO account (id, issuer, account_id, provider_id, user_id, access_token, refresh_token, created_at, updated_at) VALUES (?, 'github', ?, 'github', ?, ?, ?, ?, ?)",
+          "INSERT INTO account (id, account_id, provider_id, user_id, access_token, refresh_token, created_at, updated_at) VALUES (?, ?, 'github', ?, ?, ?, ?, ?)",
         )
         .bind(
           `${prefix}-github`,
