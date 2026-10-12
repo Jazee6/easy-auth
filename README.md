@@ -1,69 +1,69 @@
 # Easy Auth
 
-中文 ｜ [English](./README.en.md)
+English ｜ [中文](./README.zh.md)
 
-<img width="3588" height="1865" alt="Easy Auth 界面预览" src="https://github.com/user-attachments/assets/40277e51-b2f9-4483-9288-b6a78c1e13b8" />
+<img width="3588" height="1865" alt="Easy Auth interface preview" src="https://github.com/user-attachments/assets/40277e51-b2f9-4483-9288-b6a78c1e13b8" />
 
-Easy Auth 是面向 Cloudflare 的自托管统一身份入口与 OAuth 2.1 / OpenID Connect 授权服务器。
+Easy Auth is a self-hosted unified identity entry point and OAuth 2.1 / OpenID Connect Authorization Server for Cloudflare.
 
-在线演示：<https://account.jaze.top>
+Live Demo: <https://account.jaze.top>
 
-## 功能
+## Features
 
-- 开放注册、登录邮箱验证、密码重置与账户资料维护
-- 本地密码、GitHub、Google 和 Passkey 登录方式
-- 显式关联外部身份，不根据相同邮箱隐式合并账户
-- 基于 TOTP 的双重验证、备用码、可信设备与运维恢复流程
-- 账户会话查看、单会话终止与全部会话终止
-- OAuth 2.1 / OpenID Connect 授权码流程、PKCE、刷新令牌和授权撤销
-- 公共与机密 OAuth 客户端、Web 与 Native Redirect URI 管理
-- 面向管理员的账户、客户端、管理活动和安全活动界面
-- Cloudflare Turnstile、D1 限流与面向 Cloudflare Free Tier 的部署方式
+- Open registration, login email verification, password reset, and Account Profile management
+- Local password, GitHub, Google, and Passkey Sign-in Methods
+- Explicit Linked Identity management without implicit account merging by matching email
+- TOTP-based Two-Factor Authentication, Backup Codes, Trusted Devices, and an operations recovery procedure
+- Account Session inspection, single-Session revocation, and all-Session revocation
+- OAuth 2.1 / OpenID Connect Authorization Code flow, PKCE, refresh tokens, and authorization revocation
+- Public and Confidential OAuth Clients with Web and Native Redirect URI management
+- Administrator interfaces for Accounts, OAuth Clients, Management activity, and Security activity
+- Cloudflare Turnstile, D1-backed rate limiting, and a deployment model designed for Cloudflare Free Tier
 
-## 技术栈
+## Stack
 
-- TanStack Start、React、TanStack Router、TanStack Query
-- Better Auth、OAuth Provider、Passkey
-- Cloudflare Workers、D1、Turnstile
-- Drizzle ORM、Tailwind CSS、shadcn/ui
-- Resend、Bun、TypeScript
+- TanStack Start, React, TanStack Router, and TanStack Query
+- Better Auth, OAuth Provider, and Passkey
+- Cloudflare Workers, D1, and Turnstile
+- Drizzle ORM, Tailwind CSS, and shadcn/ui
+- Resend, Bun, and TypeScript
 
-## 外部身份提供方
+## External identity providers
 
-分别登记以下回调地址：
+Register these callback URLs with their respective providers:
 
-- GitHub：`<BETTER_AUTH_URL>/api/auth/callback/github`
-- Google：`<BETTER_AUTH_URL>/api/auth/callback/google`
+- GitHub: `<BETTER_AUTH_URL>/api/auth/callback/github`
+- Google: `<BETTER_AUTH_URL>/api/auth/callback/google`
 
 ## Runtime bindings
 
-| Binding                   | 范围           | 用途                                                        |
-| ------------------------- | -------------- | ----------------------------------------------------------- |
-| `DB`                      | 服务端         | Cloudflare D1 数据库绑定                                    |
-| `BETTER_AUTH_URL`         | 服务端         | Easy Auth 对外基础 URL                                      |
-| `BETTER_AUTH_SECRET`      | 服务端秘密     | Better Auth 签名秘密，至少 32 个随机字符                    |
-| `RESEND_API_KEY`          | 服务端秘密     | Resend API 凭据                                             |
-| `EMAIL_FROM`              | 服务端         | 完整且已验证的发件身份，例如 `Easy Auth <auth@example.com>` |
-| `TURNSTILE_SECRET_KEY`    | 服务端秘密     | Cloudflare Turnstile 服务端验证 Key                         |
-| `VITE_TURNSTILE_SITE_KEY` | 浏览器构建变量 | Cloudflare Turnstile Managed Widget Site Key                |
-| `GITHUB_CLIENT_ID`        | 服务端         | GitHub OAuth App Client ID                                  |
-| `GITHUB_CLIENT_SECRET`    | 服务端秘密     | GitHub OAuth App Client Secret                              |
-| `GOOGLE_CLIENT_ID`        | 服务端         | Google OAuth 2.0 Web application Client ID                  |
-| `GOOGLE_CLIENT_SECRET`    | 服务端秘密     | Google OAuth 2.0 Web application Client Secret              |
+| Binding                   | Scope         | Purpose                                                                   |
+| ------------------------- | ------------- | ------------------------------------------------------------------------- |
+| `DB`                      | Server        | Cloudflare D1 database binding                                            |
+| `BETTER_AUTH_URL`         | Server        | Public Easy Auth base URL                                                 |
+| `BETTER_AUTH_SECRET`      | Server secret | Better Auth signing secret with at least 32 random characters             |
+| `RESEND_API_KEY`          | Server secret | Resend API credential                                                     |
+| `EMAIL_FROM`              | Server        | Full verified sender identity, for example `Easy Auth <auth@example.com>` |
+| `TURNSTILE_SECRET_KEY`    | Server secret | Cloudflare Turnstile server verification key                              |
+| `VITE_TURNSTILE_SITE_KEY` | Browser build | Cloudflare Turnstile Managed Widget site key                              |
+| `GITHUB_CLIENT_ID`        | Server        | GitHub OAuth App client ID                                                |
+| `GITHUB_CLIENT_SECRET`    | Server secret | GitHub OAuth App client secret                                            |
+| `GOOGLE_CLIENT_ID`        | Server        | Google OAuth 2.0 Web application client ID                                |
+| `GOOGLE_CLIENT_SECRET`    | Server secret | Google OAuth 2.0 Web application client secret                            |
 
-## 初始化管理员
+## Bootstrap an Administrator
 
-先通过正常注册和邮箱验证创建账户，再由有权访问 D1 的运维人员将该账户的 `user.role` 设置为 `admin`。例如，本地环境可以运行：
+First create an Account through normal registration and email verification. An operator with D1 access must then set that Account's `user.role` to `admin`. For example, in a local environment:
 
 ```bash
 bunx wrangler d1 execute DB --local --command "UPDATE user SET role = 'admin' WHERE email = 'admin@example.com'"
 ```
 
-## 安全与运维
+## Security and operations
 
-- 在首次登记 Passkey 前确定稳定的 `BETTER_AUTH_URL`。Passkey 绑定该 URL 的 hostname 和 origin；更换域名后，旧 Passkey 将不可用。
-- 部署前根据实际运营主体审查并修改隐私政策与服务条款页面。
-- 双重验证恢复是仅限授权运维人员执行的流程；参见 [`docs/two-factor-recovery.md`](./docs/two-factor-recovery.md)。
+- Choose a stable `BETTER_AUTH_URL` before registering the first Passkey. Passkeys bind to that URL's hostname and origin; existing Passkeys stop working after a domain change.
+- Review and adapt the Privacy Policy and Terms of Service pages for the actual operator before deployment.
+- Two-Factor Authentication Recovery is restricted to authorized operators; see [`docs/two-factor-recovery.md`](./docs/two-factor-recovery.md).
 
 ## Sponsor
 
