@@ -462,7 +462,7 @@ describe("auth-policy", () => {
         allowDifferentEmails: true,
         updateUserInfoOnLink: false,
         allowUnlinkingAll: false,
-        encryptOAuthTokens: false,
+        encryptOAuthTokens: true,
       });
     });
 

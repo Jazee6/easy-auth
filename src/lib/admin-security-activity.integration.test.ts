@@ -104,13 +104,9 @@ describe("global Security activity projection", () => {
       q: "",
       page: 1,
     });
-    let invalidDateError: unknown;
-    try {
-      normalizeSecurityActivitySearch({ start: "not-a-date" });
-    } catch (error) {
-      invalidDateError = error;
-    }
-    expect(String(invalidDateError)).toContain("Invalid Security activity start date");
+    expect(
+      normalizeSecurityActivitySearch({ start: "not-a-date", end: "2030-02-30", page: 3 }),
+    ).toEqual({ q: "", page: 3 });
   });
 
   test("pages newest-first with a deterministic ID tie-breaker and safe snapshots", async () => {

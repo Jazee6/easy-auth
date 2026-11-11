@@ -21,8 +21,12 @@ import {
 import { isBanEffective } from "./admin-security";
 import {
   captchaProtectedAuthEndpoints,
+  disabledAuthEndpoints,
   EMAIL_RESEND_COOLDOWN_SECONDS,
   externalIdentityAuthPolicy,
+  getProfileWriteError,
+  INVALID_PROFILE,
+  isRateLimitedAuthRequest,
   passwordResetPolicy,
   shouldRejectPasswordlessOtpRequest,
   validateExternalIdentity,
@@ -53,6 +57,29 @@ export interface AuthEnvironment {
   GOOGLE_CLIENT_SECRET?: string;
   BETTER_AUTH_URL?: string;
   BETTER_AUTH_SECRET?: string;
+}
+
+export const requiredProductionAuthEnvironment = [
+  "BETTER_AUTH_URL",
+  "BETTER_AUTH_SECRET",
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
+  "TURNSTILE_SECRET_KEY",
+  "GITHUB_CLIENT_ID",
+  "GITHUB_CLIENT_SECRET",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+] as const satisfies ReadonlyArray<keyof AuthEnvironment>;
+
+/**
+ * Production builds must fail loudly on missing configuration instead of
+ * falling back to localhost passkeys or empty provider / Turnstile secrets.
+ */
+export function assertProductionAuthEnvironment(environment: AuthEnvironment): void {
+  const missing = requiredProductionAuthEnvironment.filter((key) => !environment[key]?.trim());
+  if (missing.length > 0) {
+    throw new Error(`Missing required Easy Auth configuration: ${missing.join(", ")}`);
+  }
 }
 
 export interface EasyAuthFactoryOptions {
@@ -119,6 +146,26 @@ const rejectPasswordlessOtpSignInPlugin = () => ({
   },
 });
 
+const validateProfileWritesPlugin = () => ({
+  id: "validate-profile-writes",
+  hooks: {
+    before: [
+      {
+        matcher(ctx: { path?: string }) {
+          return ctx.path === "/sign-up/email" || ctx.path === "/update-user";
+        },
+        handler: createAuthMiddleware(async (ctx) => {
+          const message = getProfileWriteError(
+            ctx.path,
+            ctx.body as Record<string, unknown> | undefined,
+          );
+          if (message) throw APIError.from("BAD_REQUEST", { ...INVALID_PROFILE, message });
+        }),
+      },
+    ],
+  },
+});
+
 export function createEasyAuth({
   environment,
   waitUntil,
@@ -133,6 +180,7 @@ export function createEasyAuth({
 
   const auth = betterAuth({
     appName: "Easy Auth",
+    disabledPaths: [...disabledAuthEndpoints],
     baseURL: environment.BETTER_AUTH_URL,
     secret: environment.BETTER_AUTH_SECRET,
     database: drizzleAdapter(database, {
@@ -195,6 +243,12 @@ export function createEasyAuth({
           window: EMAIL_RESEND_COOLDOWN_SECONDS,
           max: 1,
         },
+        // Must stay last: Better Auth applies the first matching key. Database rate
+        // limiting writes a D1 row per request, so read-only GET/HEAD traffic
+        // (session polling, JWKS, discovery, authorize) is left to the Cloudflare
+        // WAF rule in front of the Worker to protect the Free Tier write quota.
+        "/**": (request, currentRule) =>
+          isRateLimitedAuthRequest(request.method) ? currentRule : false,
       },
     },
     advanced: {
@@ -324,7 +378,7 @@ export function createEasyAuth({
       createPasskeyManagementPlugin(environment.DB),
       emailOTP({
         sendVerificationOnSignUp: true,
-        storeOTP: "plain",
+        storeOTP: "hashed",
         expiresIn: 300,
         allowedAttempts: 3,
         resendStrategy: "rotate",
@@ -364,6 +418,7 @@ export function createEasyAuth({
       defaultDenyAdminPlugin(),
       constrainOAuthManagementPlugin(),
       rejectPasswordlessOtpSignInPlugin(),
+      validateProfileWritesPlugin(),
       ...(tanstackCookiesEnabled ? [tanstackStartCookies()] : []),
     ],
   });

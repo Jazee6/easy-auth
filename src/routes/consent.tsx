@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import * as v from "valibot";
 
 import { OAuthConsent } from "@/components/oauth-consent";
+import { RouteError } from "@/components/route-error";
 import { getConsentClient } from "@/lib/oauth-server";
 import { privatePageHead } from "@/lib/page-metadata";
 
@@ -16,6 +17,13 @@ export const Route = createFileRoute("/consent")({
   loaderDeps: ({ search }) => ({ clientId: search.client_id }),
   loader: ({ deps }) => getConsentClient({ data: { clientId: deps.clientId } }),
   component: ConsentPage,
+  errorComponent: () => (
+    <RouteError
+      title="Invalid authorization request"
+      description="The application could not be found. Return to the application and try signing in again."
+      action="home"
+    />
+  ),
 });
 
 function ConsentPage() {

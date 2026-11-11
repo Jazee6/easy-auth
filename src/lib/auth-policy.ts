@@ -77,7 +77,7 @@ export const externalIdentityAuthPolicy = {
   allowDifferentEmails: true,
   updateUserInfoOnLink: false,
   allowUnlinkingAll: false,
-  encryptOAuthTokens: false,
+  encryptOAuthTokens: true,
 } as const;
 
 export const externalIdentityProviders = ["google", "github"] as const;
@@ -353,22 +353,83 @@ export function translateExternalIdentityOauthError(
   return `Unable to sign in with ${providerName}. Please try again.`;
 }
 
-export const profileSchema = v.object({
-  name: v.pipe(v.string("Name is required"), v.trim(), v.nonEmpty("Name is required")),
-  image: v.pipe(
-    v.string(),
-    v.trim(),
-    v.check((val) => {
-      if (!val) return true;
-      try {
-        const url = new URL(val);
-        return url.protocol === "https:";
-      } catch {
-        return false;
-      }
-    }, "Avatar must be a valid HTTPS URL"),
+// Must stay above the longest name deriveInitialName can produce (a 64-character local part).
+export const PROFILE_NAME_MAX_LENGTH = 100;
+export const PROFILE_IMAGE_MAX_LENGTH = 2048;
+
+const profileNameSchema = v.pipe(
+  v.string("Name is required"),
+  v.trim(),
+  v.nonEmpty("Name is required"),
+  v.maxLength(
+    PROFILE_NAME_MAX_LENGTH,
+    `Name must be at most ${PROFILE_NAME_MAX_LENGTH} characters`,
   ),
+);
+
+const profileImageSchema = v.pipe(
+  v.string(),
+  v.trim(),
+  v.maxLength(
+    PROFILE_IMAGE_MAX_LENGTH,
+    `Avatar URL must be at most ${PROFILE_IMAGE_MAX_LENGTH} characters`,
+  ),
+  v.check((val) => {
+    if (!val) return true;
+    try {
+      const url = new URL(val);
+      return url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, "Avatar must be a valid HTTPS URL"),
+);
+
+export const profileSchema = v.object({
+  name: profileNameSchema,
+  image: profileImageSchema,
 });
+
+export const INVALID_PROFILE = {
+  code: "INVALID_PROFILE",
+  message: "Invalid profile",
+} as const;
+
+/**
+ * Server-side counterpart of profileSchema for the Better Auth endpoints that
+ * write `name` / `image`. Sign-up never accepts an image: the UI does not send one.
+ * Returns the first validation message, or null when the body is acceptable.
+ */
+function isUntrimmed(value: unknown): boolean {
+  return typeof value === "string" && value !== value.trim();
+}
+
+export function getProfileWriteError(
+  path: string | undefined,
+  body: Record<string, unknown> | undefined,
+): string | null {
+  if (path !== "/sign-up/email" && path !== "/update-user") return null;
+  const input = body ?? {};
+
+  if (path === "/sign-up/email" || "name" in input) {
+    // The hook validates but cannot rewrite the body, so untrimmed input is
+    // rejected rather than stored with padding that bypasses the length limit.
+    if (isUntrimmed(input.name)) return "Name must not start or end with whitespace";
+    const result = v.safeParse(profileNameSchema, input.name);
+    if (!result.success) return result.issues[0].message;
+  }
+
+  if ("image" in input && input.image !== undefined) {
+    if (path === "/sign-up/email") return "Avatar cannot be set during sign-up";
+    if (input.image !== null) {
+      if (isUntrimmed(input.image)) return "Avatar URL must not start or end with whitespace";
+      const result = v.safeParse(profileImageSchema, input.image);
+      if (!result.success) return result.issues[0].message;
+    }
+  }
+
+  return null;
+}
 
 export type CredentialsInput = v.InferInput<typeof credentialsSchema>;
 export type LoginInput = CredentialsInput;
@@ -437,6 +498,27 @@ export const captchaProtectedAuthEndpoints = [
   "/sign-up/email",
   "/email-otp/send-verification-otp",
   "/email-otp/request-password-reset",
+] as const;
+
+/** Only state-changing requests consume a database rate-limit row. */
+export function isRateLimitedAuthRequest(method: string): boolean {
+  const normalized = method.toUpperCase();
+  return normalized !== "GET" && normalized !== "HEAD" && normalized !== "OPTIONS";
+}
+
+/**
+ * Better Auth endpoints Easy Auth does not use. Several of them can send email
+ * (or are aliases of endpoints that do) without the Turnstile and cooldown rules
+ * applied to the supported paths, so they are disabled outright.
+ */
+export const disabledAuthEndpoints = [
+  // Deprecated alias of /email-otp/request-password-reset.
+  "/forget-password/email-otp",
+  "/email-otp/request-email-change",
+  "/email-otp/change-email",
+  "/change-email",
+  "/send-verification-email",
+  "/request-password-reset",
 ] as const;
 
 export type AuthRequestOperation =

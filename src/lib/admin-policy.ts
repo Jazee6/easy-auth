@@ -5,14 +5,13 @@ export const ADMIN_PLUGIN_ENDPOINT_PROHIBITED = {
 
 const ADMINISTRATOR_ACCESS_ERROR = "AdministratorAccessForbiddenError";
 
+/**
+ * Mirrors the SQL check in admin-accounts.ts and scripts/recover-two-factor.sh:
+ * remove every space, then look for an exact `admin` entry in the comma list.
+ * Keep the three implementations identical.
+ */
 export function hasAdministratorRole(role: unknown): boolean {
-  return (
-    typeof role === "string" &&
-    role
-      .split(",")
-      .map((value) => value.trim())
-      .includes("admin")
-  );
+  return typeof role === "string" && role.replaceAll(" ", "").split(",").includes("admin");
 }
 
 export function assertAdministratorRouteAccess(role: unknown): void {
@@ -32,26 +31,13 @@ export function isAdministratorAccessError(error: unknown): boolean {
   );
 }
 
-const directAdminPluginPaths = new Set([
-  "/admin/set-role",
-  "/admin/get-user",
-  "/admin/create-user",
-  "/admin/update-user",
-  "/admin/list-users",
-  "/admin/list-user-sessions",
-  "/admin/unban-user",
-  "/admin/ban-user",
-  "/admin/impersonate-user",
-  "/admin/stop-impersonating",
-  "/admin/revoke-user-session",
-  "/admin/revoke-user-sessions",
-  "/admin/remove-user",
-  "/admin/set-user-password",
-  "/admin/has-permission",
-]);
-
+/**
+ * Every `/admin/*` path is treated as an Admin Plugin endpoint so endpoints added
+ * by a future Better Auth release are denied by default. `/admin/oauth2/*`
+ * belongs to the OAuth Provider plugin, whose endpoints are all SERVER_ONLY.
+ */
 export function isDirectAdminPluginPath(path: string | undefined): boolean {
-  return directAdminPluginPaths.has(path ?? "");
+  return path !== undefined && path.startsWith("/admin/") && !path.startsWith("/admin/oauth2/");
 }
 
 export function isAllowedDirectAdminPluginPath(path: string | undefined): boolean {

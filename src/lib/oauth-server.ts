@@ -21,6 +21,7 @@ import {
   normalizeOAuthRedirectUris,
   oauthClientCreatePayload,
   parseStoredStringArray,
+  getSecretRotationAuditSummary,
   redactAuditSummary,
   validateOAuthPostLogoutRedirectUris,
   validateOAuthRedirectUris,
@@ -264,7 +265,7 @@ export const rotateOAuthClientSecret = createServerFn({ method: "POST" })
         actorUserId: session.user.id,
         clientName: existing.name ?? data.clientId,
         action: "rotate-secret",
-        summary: redactAuditSummary({ changed: ["clientSecret"] }),
+        summary: getSecretRotationAuditSummary(),
         createdAt: Date.now(),
       },
     });

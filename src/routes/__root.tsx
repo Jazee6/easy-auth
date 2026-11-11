@@ -12,6 +12,7 @@ import { useEffect } from "react";
 
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import { Toaster } from "@/components/ui/toast";
+import { RouteError } from "@/components/route-error";
 import { RouteProgress } from "@/components/route-progress";
 import { ThemeProvider } from "@/components/theme-provider";
 import { buttonVariants } from "@/components/ui/button";
@@ -97,6 +98,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
   }),
   shellComponent: RootDocument,
   notFoundComponent: NotFound,
+  errorComponent: () => <RouteError />,
 });
 
 function NotFound() {

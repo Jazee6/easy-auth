@@ -68,19 +68,23 @@ export function VerifyEmailForm({ initialEmail = "", className, ...props }: Veri
         return;
       }
 
-      const res = await authClient.emailOtp.verifyEmail({
-        email: normalizedEmail,
-        otp: value.otp.trim(),
-      });
+      try {
+        const res = await authClient.emailOtp.verifyEmail({
+          email: normalizedEmail,
+          otp: value.otp.trim(),
+        });
 
-      if (res.error) {
-        setFormError(translateAuthError(res.error, "verify-email"));
-        return;
-      }
-      if (res.data && "redirect" in res.data && res.data.redirect) return;
+        if (res.error) {
+          setFormError(translateAuthError(res.error, "verify-email"));
+          return;
+        }
+        if (res.data && "redirect" in res.data && res.data.redirect) return;
 
-      if (!(await continuePendingOAuth({ created: true }))) {
-        await navigate({ to: getPostVerificationRedirect() });
+        if (!(await continuePendingOAuth({ created: true }))) {
+          await navigate({ to: getPostVerificationRedirect() });
+        }
+      } catch {
+        setFormError(translateAuthError(null, "verify-email"));
       }
     },
   });

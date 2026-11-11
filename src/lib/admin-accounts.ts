@@ -87,7 +87,7 @@ export function normalizeAccountListSearch(input: Record<string, unknown>): Acco
   };
 }
 
-const administratorExpression =
+export const administratorExpression =
   "instr(',' || replace(coalesce(role, ''), ' ', '') || ',', ',admin,') > 0";
 
 function banStateExpression(now: number): string {

@@ -309,3 +309,11 @@ export function redactAuditSummary(summary: Record<string, unknown>): string {
   );
   return JSON.stringify(safe);
 }
+
+/**
+ * Field names such as `clientSecret` match the redaction pattern themselves, so
+ * the rotation summary records the event without naming the secret field.
+ */
+export function getSecretRotationAuditSummary(): string {
+  return redactAuditSummary({ rotated: true });
+}

@@ -40,7 +40,10 @@ export const session = sqliteTable(
       .references(() => user.id, { onDelete: "cascade" }),
     impersonatedBy: text("impersonated_by"),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
+  (table) => [
+    index("session_userId_idx").on(table.userId),
+    index("session_expiresAt_idx").on(table.expiresAt),
+  ],
 );
 
 export const account = sqliteTable(
@@ -72,6 +75,7 @@ export const account = sqliteTable(
   },
   (table) => [
     uniqueIndex("account_userId_providerId_uidx").on(table.userId, table.providerId),
+    uniqueIndex("account_providerId_accountId_uidx").on(table.providerId, table.accountId),
     index("account_userId_idx").on(table.userId),
   ],
 );
@@ -91,7 +95,10 @@ export const verification = sqliteTable(
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [index("verification_identifier_idx").on(table.identifier)],
+  (table) => [
+    index("verification_identifier_idx").on(table.identifier),
+    index("verification_expiresAt_idx").on(table.expiresAt),
+  ],
 );
 
 export const jwks = sqliteTable("jwks", {

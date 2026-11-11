@@ -11,6 +11,7 @@ import {
   isDirectOAuthManagementPath,
   oauthClientCreatePayload,
   parseStoredStringArray,
+  getSecretRotationAuditSummary,
   redactAuditSummary,
   scopeDescriptions,
   translateOAuthManagementError,
@@ -141,6 +142,10 @@ describe("OAuth management policy", () => {
     expect(redacted).toContain("name");
     expect(redacted.includes("secret")).toBe(false);
     expect(redacted.includes("token")).toBe(false);
+  });
+
+  test("keeps a non-empty audit summary for secret rotation", () => {
+    expect(JSON.parse(getSecretRotationAuditSummary())).toEqual({ rotated: true });
   });
 
   test("blocks direct client mutation and non-atomic consent deletion paths", () => {
