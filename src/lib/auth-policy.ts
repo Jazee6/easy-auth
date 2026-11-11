@@ -656,10 +656,6 @@ export interface RouteRedirectParams {
 export function getRouteRedirect({ pathname, hasSession }: RouteRedirectParams): string | null {
   const cleanPath = pathname === "" ? "/" : pathname;
 
-  if (cleanPath === "/") {
-    return hasSession ? "/profile" : "/login";
-  }
-
   if (cleanPath === "/login" || cleanPath === "/signup" || cleanPath === "/verify-email") {
     return hasSession ? "/profile" : null;
   }

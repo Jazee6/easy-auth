@@ -1,0 +1,23 @@
+# Easy Auth
+
+> Easy Auth is an open-source (Apache-2.0), self-hosted identity provider and OAuth 2.1 / OpenID Connect Authorization Server that runs on Cloudflare Workers and D1 and is designed for the Cloudflare Free Tier.
+
+Easy Auth gives every Account in an identity domain one sign-in for all of its trusted applications. It is built with TanStack Start, React, Better Auth, Drizzle ORM and TypeScript.
+
+Key facts:
+
+- Sign-in methods: email and password, GitHub, Google, and WebAuthn Passkeys.
+- Two-factor authentication: TOTP authenticator apps, backup codes, trusted devices, and an operator recovery procedure.
+- Authorization Server: OAuth 2.1 / OpenID Connect Authorization Code flow with PKCE, refresh tokens, ID tokens, discovery at `/.well-known/openid-configuration`, and authorization revocation.
+- OAuth clients: public and confidential clients with Web and Native redirect URIs, managed by administrators.
+- External identities (GitHub, Google) are linked explicitly; accounts are never merged implicitly by matching email.
+- Accounts can review and revoke their sessions and application authorizations.
+- Administrators manage accounts, bans, OAuth clients, and immutable management and security activity logs.
+- Infrastructure: one Cloudflare Worker, one D1 database, Cloudflare Turnstile, D1-backed rate limiting, Resend for email.
+
+## Links
+
+- [Website (English)](https://account.jaze.top/): product overview and FAQ
+- [Website (中文)](https://account.jaze.top/zh): 中文介绍与常见问题
+- [Source code](https://github.com/Jazee6/easy-auth): repository, README and deployment guide
+- [License](https://www.apache.org/licenses/LICENSE-2.0): Apache License 2.0

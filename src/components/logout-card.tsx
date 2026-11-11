@@ -37,7 +37,7 @@ function LogoutConfirmation() {
           <Button type="submit" className="w-full" loading={submitting}>
             Sign out
           </Button>
-          <Link to="/" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
+          <Link to="/profile" className={cn(buttonVariants({ variant: "outline" }), "w-full")}>
             Stay signed in
           </Link>
         </form>

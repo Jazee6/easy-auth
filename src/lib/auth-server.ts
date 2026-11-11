@@ -22,6 +22,12 @@ export const fetchSession = createServerFn({ method: "GET" }).handler(async () =
   });
 });
 
+/** Presentation-only (Cookie Cache): exposes whether a Session exists, never its contents. */
+export const fetchHasSession = createServerFn({ method: "GET" }).handler(async () => {
+  const session = await auth.api.getSession({ headers: getRequestHeaders() });
+  return Boolean(session?.session);
+});
+
 export const fetchAuthoritativeSession = createServerFn({ method: "GET" }).handler(async () => {
   return getAuthoritativeSession(auth.api, getRequestHeaders());
 });

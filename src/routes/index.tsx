@@ -1,18 +1,15 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { fetchSession } from "@/lib/auth-server";
-import { getRouteRedirect } from "@/lib/auth-policy";
+import { createFileRoute } from "@tanstack/react-router";
+
+import { LandingPage } from "@/components/landing-page";
+import { fetchHasSession } from "@/lib/auth-server";
+import { landingPageHead } from "@/lib/landing-content";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: async () => {
-    const session = await fetchSession();
-    const redirectPath = getRouteRedirect({
-      pathname: "/",
-      hasSession: Boolean(session?.session),
-    });
-
-    if (redirectPath) {
-      throw redirect({ to: redirectPath });
-    }
-  },
-  component: () => null,
+  head: () => landingPageHead("en"),
+  loader: () => fetchHasSession(),
+  component: EnglishLandingPage,
 });
+
+function EnglishLandingPage() {
+  return <LandingPage locale="en" hasSession={Route.useLoaderData()} />;
+}

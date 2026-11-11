@@ -677,9 +677,9 @@ describe("auth-policy", () => {
   });
 
   describe("route redirect decisions", () => {
-    it("redirects root (/) to /profile for authenticated users and /login for unauthenticated visitors", () => {
-      expect(getRouteRedirect({ pathname: "/", hasSession: true })).toBe("/profile");
-      expect(getRouteRedirect({ pathname: "/", hasSession: false })).toBe("/login");
+    it("serves the landing page at root (/) without redirecting", () => {
+      expect(getRouteRedirect({ pathname: "/", hasSession: true })).toBeNull();
+      expect(getRouteRedirect({ pathname: "/", hasSession: false })).toBeNull();
     });
 
     it("redirects login, signup, and verify-email to /profile for authenticated users, but allows unauthenticated visitors", () => {

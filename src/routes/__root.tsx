@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useLocation,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -16,6 +17,7 @@ import { RouteError } from "@/components/route-error";
 import { RouteProgress } from "@/components/route-progress";
 import { ThemeProvider } from "@/components/theme-provider";
 import { buttonVariants } from "@/components/ui/button";
+import { getLandingLocale, landingHtmlLang } from "@/lib/landing-content";
 import { themeBootstrapScript } from "@/lib/theme";
 import {
   Empty,
@@ -131,8 +133,11 @@ function NotFound() {
 }
 
 function RootDocument({ children }: { children?: React.ReactNode }) {
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const lang = landingHtmlLang[getLandingLocale(pathname) ?? "en"];
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={lang} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <HeadContent />
